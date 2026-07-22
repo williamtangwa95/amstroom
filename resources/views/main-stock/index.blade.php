@@ -34,7 +34,7 @@
     <div class="col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-box-seam-fill"></i></div>
-            <div class="stat-value" style="color:#58a6ff;">{{ $stocks->total() }}</div>
+            <div class="stat-value" style="color:#58a6ff;">{{ $stocks->count() }}</div>
             <div class="stat-label">Stock Batches</div>
         </div>
     </div>
@@ -45,7 +45,7 @@
         <table class="table table-hover mb-0" id="mainStockTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>No</th>
                     <th>Product</th>
                     <th>Category</th>
                     <th>Buy Price</th>
@@ -59,7 +59,7 @@
             <tbody>
                 @foreach($stocks as $stock)
                 <tr>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $stock->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td>
                         <div style="font-weight:600;font-size:.83rem;">{{ $stock->item->item_name }}</div>
                         <div style="font-size:.7rem;color:var(--text-secondary);">{{ $stock->item->brand }}</div>
@@ -85,11 +85,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $stocks->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#mainStockTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#mainStockTable').DataTable())</script>
 @endpush

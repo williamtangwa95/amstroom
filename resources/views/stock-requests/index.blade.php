@@ -20,7 +20,7 @@
         <table class="table table-hover mb-0" id="requestsTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>No</th>
                     <th>Shop</th>
                     <th>Requester</th>
                     <th>Date</th>
@@ -32,7 +32,7 @@
             <tbody>
                 @foreach($requests as $req)
                 <tr>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">#{{ $req->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $req->shop->shop_name }}</td>
                     <td style="font-size:.82rem;">{{ $req->requester->name }}</td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $req->request_date->format('M d, Y') }}</td>
@@ -50,11 +50,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $requests->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#requestsTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#requestsTable').DataTable())</script>
 @endpush

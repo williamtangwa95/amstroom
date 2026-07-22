@@ -20,7 +20,7 @@ class ShopStockController extends Controller
             $query->where('shop_id', $shopId);
         }
 
-        $stocks = $query->latest()->paginate(20);
+        $stocks = $query->latest()->get();
         $shops  = $user->isOwner() ? Shop::active()->get() : collect();
 
         $lowStockItems = ShopStock::with('item', 'shop')
@@ -44,5 +44,21 @@ class ShopStockController extends Controller
         ]);
         $shopStock->update(['low_stock_alert' => $request->low_stock_alert]);
         return back()->with('success', 'Low stock alert threshold updated.');
+    }
+
+    public function updatePrice(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'selling_price' => 'required|numeric|min:' . $shopStock->buying_price,
+        ]);
+
+        $shopStock->update(['selling_price' => $request->selling_price]);
+
+        return back()->with('success', 'Selling price updated successfully.');
     }
 }

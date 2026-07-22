@@ -40,9 +40,10 @@
         </div>
     </div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="reportsTransferTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Request ID</th>
                     <th>Shop</th>
                     <th>Requester</th>
@@ -54,6 +55,7 @@
             <tbody>
                 @foreach($requests as $req)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.78rem;color:var(--text-secondary);">#{{ $req->id }}</td>
                     <td style="font-weight:600;">{{ $req->shop->shop_name }}</td>
                     <td>{{ $req->requester->name }}</td>
@@ -65,8 +67,9 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $requests->links() }}
-    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>$(()=>$('#reportsTransferTable').DataTable())</script>
+@endpush

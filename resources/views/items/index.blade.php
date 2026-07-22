@@ -16,12 +16,12 @@
     <div class="card-body p-0">
         <table class="table table-hover mb-0" id="itemsTable">
             <thead>
-                <tr><th>#</th><th>Product</th><th>Category</th><th>Brand/Model</th><th>Warranty</th><th>Main Stock</th><th class="no-sort">Actions</th></tr>
+                <tr><th>No</th><th>Product</th><th>Category</th><th>Brand/Model</th><th>Warranty</th><th>Main Stock</th><th class="no-sort">Actions</th></tr>
             </thead>
             <tbody>
                 @foreach($items as $item)
                 <tr>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $item->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td>
                         <div style="font-weight:600;font-size:.85rem;">{{ $item->item_name }}</div>
                         @if($item->specification)

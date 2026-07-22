@@ -23,7 +23,7 @@ class DefectController extends Controller
             $query->where('shop_id', $user->shop_id);
         }
 
-        $defects = $query->latest()->paginate(15);
+        $defects = $query->latest()->get();
 
         return view('defects.index', compact('defects'));
     }

@@ -39,6 +39,7 @@
         <table class="table table-hover mb-0" id="salesTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Sale ID</th>
                     <th>Shop</th>
                     <th>Seller</th>
@@ -53,8 +54,9 @@
             <tbody>
                 @foreach($sales as $sale)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.78rem;color:var(--text-secondary);">#SL-{{ $sale->id }}</td>
-                    <td style="font-size:.82rem;font-weight:600;">{{ $sale->shop->shop_name }}</td>
+                    <td style="font-size:.82rem;font-weight:600;">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
                     <td style="font-size:.82rem;">{{ $sale->seller->name }}</td>
                     <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
                     <td><span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;">{{ $sale->items->count() }} item(s)</span></td>
@@ -72,11 +74,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $sales->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#salesTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#salesTable').DataTable())</script>
 @endpush

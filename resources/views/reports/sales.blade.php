@@ -21,8 +21,9 @@
                 <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Shops</option>
+                    <option value="owner" {{ request('shop_id') === 'owner' ? 'selected' : '' }}>Main Store (Owner)</option>
                     @foreach($shops as $s)
-                    <option value="{{ $s->id }}" {{ request('shop_id') == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                    <option value="{{ $s->id }}" {{ request('shop_id') == $s->id && request('shop_id') !== 'owner' ? 'selected' : '' }}>{{ $s->shop_name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -54,7 +55,7 @@
     <div class="col-md-6">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-receipt"></i></div>
-            <div class="stat-value" style="color:#58a6ff;">{{ $sales->total() }}</div>
+            <div class="stat-value" style="color:#58a6ff;">{{ $sales->count() }}</div>
             <div class="stat-label">Total Sales Transactions</div>
         </div>
     </div>
@@ -64,11 +65,12 @@
     <div class="card-header"><i class="bi bi-shop me-2" style="color:#bc8cff;"></i>Revenue Breakdown by Shop</div>
     <div class="card-body p-0">
         <table class="table mb-0">
-            <thead><tr><th>Shop Name</th><th>Total Transactions</th><th>Revenue Generated</th></tr></thead>
+            <thead><tr><th>No</th><th>Shop Name</th><th>Total Transactions</th><th>Revenue Generated</th></tr></thead>
             <tbody>
             @foreach($salesByShop as $sbs)
             <tr>
-                <td style="font-weight:600;">{{ $sbs->shop ? $sbs->shop->shop_name : 'Deleted Shop' }}</td>
+                <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
+                <td style="font-weight:600;">{{ $sbs->shop ? $sbs->shop->shop_name : ($sbs->shop_id === null ? 'Main Store (Owner)' : 'Deleted Shop') }}</td>
                 <td>{{ number_format($sbs->count) }}</td>
                 <td><strong style="color:#3fb950;">TZS {{ number_format($sbs->revenue, 0) }}</strong></td>
             </tr>
@@ -81,13 +83,14 @@
 <div class="card">
     <div class="card-header"><i class="bi bi-list-check me-2" style="color:#58a6ff;"></i>Sales Log</div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>Date</th><th>Shop</th><th>Seller</th><th>Customer</th><th>Method</th><th>Amount</th></tr></thead>
+        <table class="table table-hover mb-0" id="salesReportLogTable">
+            <thead><tr><th>No</th><th>Date</th><th>Shop</th><th>Seller</th><th>Customer</th><th>Method</th><th>Amount</th></tr></thead>
             <tbody>
             @foreach($sales as $sl)
             <tr>
+                <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                 <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sl->sale_date->format('M d, Y') }}</td>
-                <td style="font-size:.82rem;">{{ $sl->shop->shop_name }}</td>
+                <td style="font-size:.82rem;">{{ $sl->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
                 <td style="font-size:.82rem;">{{ $sl->seller->name }}</td>
                 <td style="font-size:.82rem;">{{ $sl->customer_name ?: 'Walk-in' }}</td>
                 <td style="font-size:.78rem;">{{ str_replace('_',' ',ucfirst($sl->payment_method)) }}</td>
@@ -97,8 +100,9 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $sales->links() }}
-    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>$(()=>$('#salesReportLogTable').DataTable())</script>
+@endpush

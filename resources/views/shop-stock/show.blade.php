@@ -38,6 +38,23 @@
                     </form>
                 </div>
 
+                @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+                <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
+                    <form method="POST" action="{{ route('shop-stock.update-price', $shopStock) }}">
+                        @csrf @method('PATCH')
+                        <label class="form-label fw-600">Update Item Selling Price</label>
+                        <div class="input-group">
+                            <input type="number" name="selling_price" class="form-control @error('selling_price') is-invalid @enderror" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="{{ (int)$shopStock->buying_price }}" required>
+                            <button type="submit" class="btn btn-accent">Update Price</button>
+                        </div>
+                        <small class="form-text text-muted mt-1 d-block">Minimum allowed price: TZS {{ number_format($shopStock->buying_price, 0) }} (equal to buying price)</small>
+                        @error('selling_price')
+                        <div class="invalid-feedback d-block mt-1">{{ $message }}</div>
+                        @enderror
+                    </form>
+                </div>
+                @endif
+
                 <a href="{{ route('shop-stock.index') }}" class="btn btn-outline-custom mt-3">Back</a>
             </div>
         </div>

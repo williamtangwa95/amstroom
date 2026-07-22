@@ -11,11 +11,12 @@
     <div class="card-body p-0">
         <table class="table table-hover mb-0" id="historyTable">
             <thead>
-                <tr><th>Date</th><th>Product</th><th>Type</th><th>From</th><th>To</th><th>Qty</th><th>By</th></tr>
+                <tr><th>No</th><th>Date</th><th>Product</th><th>Type</th><th>From</th><th>To</th><th>Qty</th><th>By</th></tr>
             </thead>
             <tbody>
                 @foreach($logs as $log)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $log->date->format('M d, Y') }}</td>
                     <td style="font-size:.82rem;font-weight:500;">{{ $log->item->item_name }}</td>
                     <td>
@@ -42,11 +43,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $logs->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#historyTable').DataTable({paging:false,order:[[0,'desc']]}))</script>
+<script>$(()=>$('#historyTable').DataTable({order:[[0,'desc']]}))</script>
 @endpush

@@ -51,7 +51,7 @@
         <table class="table table-hover mb-0" id="transfersTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>No</th>
                     <th>Transfer Date</th>
                     <th>Destination Shop</th>
                     <th>Items</th>
@@ -63,7 +63,7 @@
             <tbody>
                 @foreach($transfers as $transfer)
                 <tr>
-                    <td class="fw-600">{{ $transfer->id }}</td>
+                    <td class="fw-600">{{ $loop->iteration }}</td>
                     <td>{{ $transfer->transfer_date->format('M d, Y') }}</td>
                     <td>
                         <i class="bi bi-shop text-primary me-1"></i>
@@ -76,12 +76,21 @@
                                 {{ $transfer->pending_items_count }} pending
                             </span>
                         @endif
+                        @if($transfer->rejected_items_count > 0)
+                            <span class="badge bg-danger text-white ms-1" style="font-size:.68rem;">
+                                {{ $transfer->rejected_items_count }} rejected
+                            </span>
+                        @endif
                     </td>
                     <td>{{ $transfer->approver?->name ?? 'System' }}</td>
                     <td>
                         @if($transfer->status === 'received')
                             <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;">
                                 <i class="bi bi-check-circle-fill me-1"></i>Received
+                            </span>
+                        @elseif($transfer->status === 'rejected')
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;">
+                                <i class="bi bi-x-circle-fill me-1"></i>Rejected
                             </span>
                         @elseif($transfer->status === 'partially_received')
                             <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.72rem;">
@@ -102,12 +111,6 @@
                 @endforeach
             </tbody>
         </table>
-
-        @if($transfers->hasPages())
-        <div class="px-3 py-2 border-top">
-            {{ $transfers->links() }}
-        </div>
-        @endif
     </div>
 </div>
 @endsection
@@ -117,8 +120,6 @@
 $(function() {
     if ($.fn.DataTable) {
         $('#transfersTable').DataTable({
-            paging: false,
-            info: false,
             order: [[0, 'desc']],
             columnDefs: [{ orderable: false, targets: [3, 5, 6] }],
             language: {

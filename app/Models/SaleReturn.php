@@ -19,7 +19,7 @@ class SaleReturn extends Model
 
     public function sale()
     {
-        return $this->belongsTo(Sale::class);
+        return $this->belongsTo(Sale::class)->withTrashed();
     }
 
     public function requester()

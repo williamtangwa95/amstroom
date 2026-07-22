@@ -10,11 +10,15 @@ return new class extends Migration
     public function up(): void
     {
         // Use raw query to alter enum columns safely in MySQL
-        DB::statement("ALTER TABLE sale_returns MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'reverted') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE sale_returns MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'reverted') NOT NULL DEFAULT 'pending'");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE sale_returns MODIFY COLUMN status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE sale_returns MODIFY COLUMN status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'");
+        }
     }
 };

@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('shop')->where('role', '!=', 'owner')->latest()->paginate(15);
+        $users = User::with('shop')->where('role', '!=', 'owner')->latest()->get();
         return view('users.index', compact('users'));
     }
 

@@ -24,4 +24,9 @@ class MainStock extends Model
     {
         return $this->belongsTo(Item::class);
     }
+
+    public function isLowStock(): bool
+    {
+        return $this->remaining_quantity <= 5;
+    }
 }

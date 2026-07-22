@@ -132,7 +132,7 @@ document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
                 Swal.fire({icon:'warning', title:'Stock Limit Reached', text:`Only ${maxStock} units available in shop.`, background:'#161b22', color:'#e6edf3'});
             }
         } else {
-            cart[id] = { id, name, price, qty: 1, maxStock };
+            cart[id] = { id, name, price, qty: 1, maxStock, negotiatedPrice: price };
         }
         renderCart();
     });
@@ -155,20 +155,27 @@ function renderCart() {
 
     keys.forEach(id => {
         const item = cart[id];
-        const subtotal = item.qty * item.price;
+        const subtotal = item.qty * item.negotiatedPrice;
         total += subtotal;
 
         html += `
-            <div class="cart-item-row d-flex align-items-center justify-content-between">
+            <div class="cart-item-row d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
                 <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
                 <div style="flex:1;min-width:0;" class="pe-2">
                     <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name}</div>
-                    <div style="font-size:.72rem;color:var(--text-secondary);">TZS ${item.price.toLocaleString()} × ${item.qty}</div>
+                    <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${item.price.toLocaleString()}</div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
                     <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
                     <input type="number" name="items[${index}][quantity]" value="${item.qty}" readonly style="width:40px;text-align:center;" class="form-control form-control-sm py-0 px-1">
                     <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
+                    
+                    <div class="input-group input-group-sm ms-2" style="width:120px;">
+                        <input type="number" name="items[${index}][price]" value="${item.negotiatedPrice}" 
+                               class="form-control form-control-sm py-0 px-1" min="${item.price}" 
+                               onchange="updateItemPrice('${id}', this.value)" required>
+                    </div>
+
                     <button type="button" class="btn btn-xs text-danger ms-1" onclick="removeItem('${id}')"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
@@ -179,6 +186,19 @@ function renderCart() {
     list.innerHTML = html;
     document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
     document.getElementById('checkoutBtn').disabled = false;
+}
+
+function updateItemPrice(id, val) {
+    if (cart[id]) {
+        const floatVal = parseFloat(val);
+        if (isNaN(floatVal) || floatVal < cart[id].price) {
+            Swal.fire({icon:'warning', title:'Invalid Price', text:`Negotiated price cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`, background:'#161b22', color:'#e6edf3'});
+            cart[id].negotiatedPrice = cart[id].price;
+        } else {
+            cart[id].negotiatedPrice = floatVal;
+        }
+        renderCart();
+    }
 }
 
 function changeQty(id, delta) {

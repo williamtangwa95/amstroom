@@ -23,6 +23,7 @@
         <table class="table table-hover mb-0" id="defectsTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Date</th>
                     <th>Location</th>
                     <th>Product</th>
@@ -37,6 +38,7 @@
             <tbody>
                 @foreach($defects as $def)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $def->date->format('M d, Y') }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $def->shop ? $def->shop->shop_name : 'Main Warehouse' }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $def->item->item_name }}</td>
@@ -65,11 +67,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $defects->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#defectsTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#defectsTable').DataTable())</script>
 @endpush

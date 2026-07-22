@@ -423,9 +423,13 @@
             border: 1px solid #cbd5e1 !important;
             color: #0f172a !important;
             border-radius: 6px;
-            padding: .3rem .6rem;
+            padding: .3rem .5rem !important;
             font-size: .83rem;
             margin: 0 .4rem;
+            display: inline-block !important;
+            width: auto !important;
+            min-width: 65px !important;
+            background-image: none !important;
         }
 
         .dataTables_wrapper .dataTables_paginate {
@@ -670,6 +674,13 @@
             </a>
         </div>
 
+        <div class="nav-section-label">System</div>
+        <div class="nav-item-custom">
+            <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="bi bi-gear-fill"></i> Settings
+            </a>
+        </div>
+
         @elseif(auth()->user()->isShopAdmin())
         <div class="nav-section-label">Shop Operations</div>
 
@@ -713,6 +724,13 @@
             </a>
         </div>
 
+        <div class="nav-section-label">System</div>
+        <div class="nav-item-custom">
+            <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="bi bi-gear-fill"></i> Settings
+            </a>
+        </div>
+
         @else {{-- Seller --}}
         <div class="nav-section-label">My Workspace</div>
 
@@ -743,6 +761,13 @@
         <div class="nav-item-custom">
             <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}">
                 <i class="bi bi-exclamation-triangle-fill"></i> Report Defect
+            </a>
+        </div>
+
+        <div class="nav-section-label">System</div>
+        <div class="nav-item-custom">
+            <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="bi bi-printer-fill"></i> Printer Settings
             </a>
         </div>
         @endif
@@ -866,7 +891,7 @@
     // Global DataTable defaults
     $.extend(true, $.fn.dataTable.defaults, {
         language: { search: '', searchPlaceholder: 'Search...' },
-        pageLength: 15,
+        pageLength: 10,
         order: [],
         columnDefs: [{ orderable: false, targets: 'no-sort' }]
     });

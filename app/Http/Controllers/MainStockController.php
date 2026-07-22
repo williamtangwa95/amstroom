@@ -14,7 +14,7 @@ class MainStockController extends Controller
     {
         $stocks = MainStock::with('item.category')
             ->latest()
-            ->paginate(15);
+            ->get();
 
         $totalValue = MainStock::selectRaw('SUM(remaining_quantity * buying_price) as val')->value('val') ?? 0;
         $totalSellValue = MainStock::selectRaw('SUM(remaining_quantity * selling_price) as val')->value('val') ?? 0;
@@ -73,7 +73,7 @@ class MainStockController extends Controller
         $logs = StockLog::with('item.category', 'performer')
             ->whereIn('transaction_type', ['STOCK_RECEIVED', 'STOCK_TRANSFER', 'ADJUSTMENT'])
             ->latest()
-            ->paginate(20);
+            ->get();
         return view('main-stock.history', compact('logs'));
     }
 

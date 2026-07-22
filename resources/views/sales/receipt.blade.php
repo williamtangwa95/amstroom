@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Receipt #SL-{{ $sale->id }} — {{ $sale->shop->shop_name }}</title>
+    <title>Receipt #SL-{{ $sale->id }} — {{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</title>
     <style>
         body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; width: 300px; margin: 0 auto; padding: 10px; }
         .text-center { text-align: center; }
@@ -20,9 +20,9 @@
 
 <div class="text-center">
     <h2 style="margin:0 0 4px 0;font-size:16px;">AMSTROOM</h2>
-    <div class="bold">{{ $sale->shop->shop_name }}</div>
-    <div>{{ $sale->shop->location }}</div>
-    <div>Tel: {{ $sale->shop->phone ?: 'N/A' }}</div>
+    <div class="bold">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</div>
+    <div>{{ $sale->shop?->location ?? 'Main Store / HQ' }}</div>
+    <div>Tel: {{ $sale->shop?->phone ?? '+255700000001' }}</div>
 </div>
 
 <div class="divider"></div>

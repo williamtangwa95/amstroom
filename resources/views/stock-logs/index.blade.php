@@ -38,6 +38,7 @@
         <table class="table table-hover mb-0" id="logsTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Date</th>
                     <th>Product</th>
                     <th>Transaction Type</th>
@@ -51,6 +52,7 @@
             <tbody>
                 @foreach($logs as $log)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $log->date->format('M d, Y') }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $log->item->item_name }}</td>
                     <td>
@@ -77,11 +79,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $logs->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#logsTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#logsTable').DataTable())</script>
 @endpush

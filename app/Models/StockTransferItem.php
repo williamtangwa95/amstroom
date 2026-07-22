@@ -11,11 +11,12 @@ class StockTransferItem extends Model
 
     protected $fillable = [
         'transfer_id', 'item_id', 'quantity', 'buying_price', 'selling_price',
-        'status', 'received_by', 'received_at',
+        'status', 'received_by', 'received_at', 'rejection_reason', 'rejected_by', 'rejected_at',
     ];
 
     protected $casts = [
         'received_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     public function transfer()
@@ -31,5 +32,10 @@ class StockTransferItem extends Model
     public function receiver()
     {
         return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 }

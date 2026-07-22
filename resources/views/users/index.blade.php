@@ -18,7 +18,7 @@
         <table class="table table-hover mb-0" id="usersTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>No</th>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Phone</th>
@@ -30,7 +30,7 @@
             <tbody>
                 @foreach($users as $u)
                 <tr>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $u->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-weight:600;font-size:.85rem;">{{ $u->name }}</td>
                     <td style="font-size:.82rem;">{{ $u->email }}</td>
                     <td style="font-size:.82rem;">{{ $u->phone ?: '—' }}</td>
@@ -67,11 +67,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $users->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#usersTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#usersTable').DataTable())</script>
 @endpush

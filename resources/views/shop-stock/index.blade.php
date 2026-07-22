@@ -40,12 +40,14 @@
         <table class="table table-hover mb-0" id="shopStockTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Shop</th>
                     <th>Product</th>
                     <th>Category</th>
                     <th>Initial Qty</th>
                     <th>Remaining Qty</th>
                     <th>Alert Threshold</th>
+                    <th>Buying Price</th>
                     <th>Selling Price</th>
                     <th class="no-sort">Actions</th>
                 </tr>
@@ -53,6 +55,7 @@
             <tbody>
                 @foreach($stocks as $st)
                 <tr class="{{ $st->isLowStock() ? 'low-stock-row' : '' }}">
+                    <td style="font-size:.82rem;font-weight:600;">{{ $loop->iteration }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $st->shop->shop_name }}</td>
                     <td>
                         <div style="font-weight:600;font-size:.83rem;">{{ $st->item->item_name }}</div>
@@ -69,8 +72,9 @@
                         @endif
                     </td>
                     <td style="font-size:.8rem;color:var(--text-secondary);">{{ $st->low_stock_alert }} units</td>
+                    <td style="font-size:.82rem;font-weight:600;">TZS {{ number_format($st->buying_price, 0) }}</td>
                     <td style="font-size:.82rem;font-weight:600;">TZS {{ number_format($st->selling_price, 0) }}</td>
-                    <td>
+                    <td>    
                         <a href="{{ route('shop-stock.show', $st) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
                     </td>
                 </tr>
@@ -78,11 +82,8 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $stocks->links() }}
-    </div>
 </div>
 @endsection
 @push('scripts')
-<script>$(()=>$('#shopStockTable').DataTable({paging:false}))</script>
+<script>$(()=>$('#shopStockTable').DataTable())</script>
 @endpush

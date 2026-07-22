@@ -24,7 +24,7 @@ class StockLogController extends Controller
             $query->where('item_id', $request->item_id);
         }
 
-        $logs = $query->latest()->paginate(25);
+        $logs = $query->latest()->get();
 
         $types = ['STOCK_RECEIVED', 'STOCK_TRANSFER', 'SALE', 'DEFECT', 'ADJUSTMENT'];
 

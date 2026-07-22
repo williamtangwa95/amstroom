@@ -10,10 +10,19 @@
 @php $canManage = auth()->user()->isShopAdmin() || auth()->user()->isOwner(); @endphp
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3">
+    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
         <h6 class="mb-0 fw-700">
             <i class="bi bi-arrow-counterclockwise text-danger me-2"></i>Customer Sales Returns
         </h6>
+        @if($canManage)
+            <button type="button" class="btn btn-sm btn-danger d-none" id="bulkDeleteBtn" onclick="submitBulkDelete()">
+                <i class="bi bi-trash me-1"></i> Delete Selected (<span id="selectedCount">0</span>)
+            </button>
+            <form id="bulkActionForm" action="{{ route('sales-returns.bulk-destroy') }}" method="POST" class="d-none">
+                @csrf
+                @method('DELETE')
+            </form>
+        @endif
     </div>
 
     <div class="card-body p-0">
@@ -48,7 +57,12 @@
         <table class="table table-hover mb-0" id="returnsTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    @if($canManage)
+                        <th style="width: 40px;" class="text-center">
+                            <input type="checkbox" class="form-check-input" id="selectAllCb">
+                        </th>
+                    @endif
+                    <th>No</th>
                     <th>Return Date</th>
                     <th>Sale ID</th>
                     <th>Shop Branch</th>
@@ -62,14 +76,19 @@
             <tbody>
                 @foreach($returns as $ret)
                 <tr>
-                    <td class="fw-600">{{ $ret->id }}</td>
+                    @if($canManage)
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input return-checkbox" value="{{ $ret->id }}">
+                        </td>
+                    @endif
+                    <td class="fw-600">{{ $loop->iteration }}</td>
                     <td>{{ $ret->return_date->format('M d, Y') }}</td>
                     <td>
                         <a href="{{ route('sales.show', $ret->sale_id) }}" class="fw-600">
                             #SL-{{ $ret->sale_id }}
                         </a>
                     </td>
-                    <td>{{ $ret->sale->shop->shop_name }}</td>
+                    <td>{{ $ret->sale->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
                     <td>
                         @foreach($ret->items as $ri)
                             <div class="small fw-600">
@@ -106,8 +125,8 @@
                     </td>
                     <td class="text-center">
                         @if($canManage)
-                            @if($ret->status === 'pending')
-                                <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                @if($ret->status === 'pending')
                                     <form method="POST" action="{{ route('sales-returns.approve', $ret) }}" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-success px-2 py-1"
@@ -122,18 +141,16 @@
                                             <i class="bi bi-x-lg"></i> Reject
                                         </button>
                                     </form>
-                                </div>
-                            @elseif($ret->status === 'approved')
-                                <form method="POST" action="{{ route('sales-returns.revert', $ret) }}" class="d-inline">
+                                @endif
+                                <form method="POST" action="{{ route('sales-returns.destroy', $ret) }}" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-warning px-2 py-1"
-                                            onclick="return confirm('Revert this return? Items will be removed from shop stock.')">
-                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Revert
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1"
+                                            onclick="return confirm('Are you sure you want to delete this return record?')">
+                                        <i class="bi bi-trash"></i> Delete
                                     </button>
                                 </form>
-                            @else
-                                <span class="text-muted small">—</span>
-                            @endif
+                            </div>
                         @else
                             <span class="text-muted small">—</span>
                         @endif
@@ -142,25 +159,38 @@
                 @endforeach
             </tbody>
         </table>
-
-        @if($returns->hasPages())
-        <div class="px-3 py-2 border-top">
-            {{ $returns->links() }}
-        </div>
-        @endif
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
+function submitBulkDelete() {
+    const selectedIds = [];
+    $('.return-checkbox:checked').each(function() {
+        selectedIds.push($(this).val());
+    });
+    
+    if (selectedIds.length === 0) {
+        alert('Please select at least one record.');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to delete the selected ' + selectedIds.length + ' record(s)?')) {
+        const form = $('#bulkActionForm');
+        form.find('input[name="ids[]"]').remove();
+        selectedIds.forEach(id => {
+            form.append('<input type="hidden" name="ids[]" value="' + id + '">');
+        });
+        form.submit();
+    }
+}
+
 $(function() {
     if ($.fn.DataTable) {
         $('#returnsTable').DataTable({
-            paging: false,
-            info: false,
-            order: [[0, 'desc']],
-            columnDefs: [{ orderable: false, targets: [4, 8] }],
+            order: [[{{ $canManage ? 1 : 0 }}, 'desc']],
+            columnDefs: [{ orderable: false, targets: [{{ $canManage ? '0, 5, 9' : '4, 8' }}] }],
             language: {
                 search: '',
                 searchPlaceholder: 'Search returns...',
@@ -168,6 +198,23 @@ $(function() {
             }
         });
     }
+
+    $('#selectAllCb').on('change', function() {
+        const checked = this.checked;
+        $('.return-checkbox').prop('checked', checked).trigger('change');
+    });
+
+    $(document).on('change', '.return-checkbox', function() {
+        const checkedCount = $('.return-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#bulkDeleteBtn').removeClass('d-none');
+            $('#selectedCount').text(checkedCount);
+        } else {
+            $('#bulkDeleteBtn').addClass('d-none');
+        }
+        
+        $('#selectAllCb').prop('checked', checkedCount === $('.return-checkbox').length);
+    });
 });
 </script>
 @endpush

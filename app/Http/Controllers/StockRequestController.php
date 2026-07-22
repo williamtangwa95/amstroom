@@ -28,7 +28,7 @@ class StockRequestController extends Controller
             $query->where('shop_id', $user->shop_id);
         }
 
-        $requests = $query->latest()->paginate(15);
+        $requests = $query->latest()->get();
         $pendingCount = StockRequest::where('status', 'pending')->count();
 
         return view('stock-requests.index', compact('requests', 'pendingCount'));

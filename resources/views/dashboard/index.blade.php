@@ -156,8 +156,8 @@
                     <tbody>
                     @forelse($recentSales as $sale)
                     <tr>
-                        <td><span style="font-size:.78rem;">{{ $sale->shop->shop_name ?? 'N/A' }}</span></td>
-                        <td><span style="font-size:.78rem;">{{ $sale->seller->name ?? 'N/A' }}</span></td>
+                        <td><span style="font-size:.78rem;">{{ $sale->shop->shop_name ?? 'Main Store (Owner)' }}</span></td>
+                        <td><span style="font-size:.78rem;">{{ $sale->seller->name ?? 'System Owner' }}</span></td>
                         <td><strong style="color:#3fb950;font-size:.82rem;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
                         <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d') }}</span></td>
                     </tr>

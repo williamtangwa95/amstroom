@@ -18,9 +18,10 @@
 <div class="card">
     <div class="card-header"><i class="bi bi-building-fill me-2" style="color:#d29922;"></i>Main Warehouse Stock Summary</div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="reportsMainStockTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Product</th>
                     <th>Category</th>
                     <th>Total Remaining Qty</th>
@@ -31,6 +32,7 @@
             <tbody>
                 @foreach($mainStocks as $ms)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-weight:600;">{{ $ms->item->item_name }}</td>
                     <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $ms->item->category->category_name }}</span></td>
                     <td><strong style="color:{{ $ms->qty > 0 ? '#3fb950' : '#e94560' }}">{{ $ms->qty }}</strong></td>
@@ -41,17 +43,15 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $mainStocks->links() }}
-    </div>
 </div>
 @else
 <div class="card">
     <div class="card-header"><i class="bi bi-shop me-2" style="color:#3fb950;"></i>Shop Stocks Inventory</div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="reportsShopStockTable">
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>Shop</th>
                     <th>Product</th>
                     <th>Category</th>
@@ -63,6 +63,7 @@
             <tbody>
                 @foreach($shopStocks as $ss)
                 <tr>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-weight:600;">{{ $ss->shop->shop_name }}</td>
                     <td>{{ $ss->item->item_name }}</td>
                     <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $ss->item->category->category_name }}</span></td>
@@ -74,9 +75,19 @@
             </tbody>
         </table>
     </div>
-    <div class="card-body border-top" style="border-color:var(--card-border) !important;">
-        {{ $shopStocks->links() }}
-    </div>
 </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+$(() => {
+    if ($('#reportsMainStockTable').length) {
+        $('#reportsMainStockTable').DataTable();
+    }
+    if ($('#reportsShopStockTable').length) {
+        $('#reportsShopStockTable').DataTable();
+    }
+});
+</script>
+@endpush

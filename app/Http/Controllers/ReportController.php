@@ -21,7 +21,11 @@ class ReportController extends Controller
         $query = Sale::with('shop', 'seller');
 
         if ($shopId) {
-            $query->where('shop_id', $shopId);
+            if ($shopId === 'owner') {
+                $query->whereNull('shop_id');
+            } else {
+                $query->where('shop_id', $shopId);
+            }
         }
 
         if ($period === 'daily') {
@@ -35,12 +39,17 @@ class ReportController extends Controller
             if ($request->filled('date_to'))   $query->whereDate('sale_date', '<=', $request->date_to);
         }
 
-        $sales = $query->latest()->paginate(20);
+        $sales = $query->latest()->get();
         $totalRevenue = $query->sum('total_amount');
 
         // Summary by shop
         $salesByShop = Sale::selectRaw('shop_id, SUM(total_amount) as revenue, COUNT(*) as count')
-            ->when($shopId, fn($q) => $q->where('shop_id', $shopId))
+            ->when($shopId, function($q) use ($shopId) {
+                if ($shopId === 'owner') {
+                    return $q->whereNull('shop_id');
+                }
+                return $q->where('shop_id', $shopId);
+            })
             ->groupBy('shop_id')
             ->with('shop')
             ->get();
@@ -49,7 +58,12 @@ class ReportController extends Controller
 
         // Chart data: daily sales for period
         $chartData = Sale::selectRaw('sale_date, SUM(total_amount) as total')
-            ->when($shopId, fn($q) => $q->where('shop_id', $shopId))
+            ->when($shopId, function($q) use ($shopId) {
+                if ($shopId === 'owner') {
+                    return $q->whereNull('shop_id');
+                }
+                return $q->where('shop_id', $shopId);
+            })
             ->where('sale_date', '>=', now()->subDays(30))
             ->groupBy('sale_date')
             ->orderBy('sale_date')
@@ -66,11 +80,11 @@ class ReportController extends Controller
             ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
             ->groupBy('item_id')
             ->with('item.category')
-            ->paginate(20);
+            ->get();
 
         $shopStocks = \App\Models\ShopStock::with('item.category', 'shop')
             ->where('remaining_quantity', '>', 0)
-            ->paginate(20);
+            ->get();
 
         return view('reports.stock', compact('mainStocks', 'shopStocks', 'type'));
     }
@@ -85,7 +99,7 @@ class ReportController extends Controller
             $query->where('status', $status);
         }
 
-        $requests = $query->latest()->paginate(20);
+        $requests = $query->latest()->get();
         $stats = [
             'pending'  => StockRequest::where('status', 'pending')->count(),
             'approved' => StockRequest::where('status', 'approved')->count(),
@@ -106,7 +120,7 @@ class ReportController extends Controller
             $query->where('shop_id', $request->shop_id);
         }
 
-        $defects = $query->latest()->paginate(20);
+        $defects = $query->latest()->get();
         $totalDefective = $query->sum('quantity');
         $shops = Shop::all();
 

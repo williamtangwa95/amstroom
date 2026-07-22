@@ -28,7 +28,7 @@ class SaleReturnController extends Controller
             });
         }
 
-        $returns = $query->latest()->paginate(15);
+        $returns = $query->latest()->get();
         return view('sales-returns.index', compact('returns'));
     }
 
@@ -107,6 +107,10 @@ class SaleReturnController extends Controller
                     $this->stabilizeStock($sale->shop_id, $saleItem->item_id, $entry['qty'], $sale);
                 }
             }
+
+            if ($isAdminOrOwner) {
+                $sale->delete();
+            }
         });
 
         $msg = $isAdminOrOwner 
@@ -142,6 +146,9 @@ class SaleReturnController extends Controller
             foreach ($saleReturn->items as $returnItem) {
                 $this->stabilizeStock($saleReturn->sale->shop_id, $returnItem->item_id, $returnItem->quantity, $saleReturn->sale);
             }
+
+            // Delete the sale record also
+            $saleReturn->sale->delete();
         });
 
         return redirect()->route('sales-returns.index')
@@ -173,64 +180,47 @@ class SaleReturnController extends Controller
     }
 
     /**
-     * Admin: Revert an approved sale return.
-     * Deducts the returned items back from the shop stock.
+     * Admin: Delete a single sale return record.
      */
-    public function revert(SaleReturn $saleReturn)
+    public function destroy(SaleReturn $saleReturn)
     {
         $user = Auth::user();
 
         // Authorization: Admin or Owner of the target shop
-        if (!$user->isOwner() && (!$user->isShopAdmin() || $user->shop_id !== $saleReturn->sale->shop_id)) {
+        if (!$user->isOwner() && (!$user->isShopAdmin() || $user->shop_id !== $saleReturn->sale?->shop_id)) {
             abort(403, 'Unauthorized action.');
         }
 
-        if ($saleReturn->status !== 'approved') {
-            return back()->with('error', 'Only approved returns can be reverted.');
-        }
-
-        $saleReturn->load('items.item', 'sale.shop');
-
-        // Check if there is enough quantity in shop stock to deduct
-        foreach ($saleReturn->items as $returnItem) {
-            $shopStock = ShopStock::where('shop_id', $saleReturn->sale->shop_id)
-                ->where('item_id', $returnItem->item_id)
-                ->first();
-
-            if (!$shopStock || $shopStock->remaining_quantity < $returnItem->quantity) {
-                return back()->with('error', "Cannot revert return. Insufficient shop stock for product: \"{$returnItem->item->item_name}\". Available: " . ($shopStock ? $shopStock->remaining_quantity : 0) . ", Required to deduct: {$returnItem->quantity}.");
-            }
-        }
-
-        DB::transaction(function () use ($saleReturn, $user) {
-            $saleReturn->update([
-                'status' => 'reverted',
-            ]);
-
-            foreach ($saleReturn->items as $returnItem) {
-                $shopStock = ShopStock::where('shop_id', $saleReturn->sale->shop_id)
-                    ->where('item_id', $returnItem->item_id)
-                    ->first();
-
-                // Deduct from stock
-                $shopStock->decrement('remaining_quantity', $returnItem->quantity);
-
-                // Add audit log
-                StockLog::create([
-                    'item_id'          => $returnItem->item_id,
-                    'from_location'    => $saleReturn->sale->shop->shop_name,
-                    'to_location'      => 'Reverted Return (Stock Removed)',
-                    'quantity'         => $returnItem->quantity,
-                    'transaction_type' => 'ADJUSTMENT',
-                    'performed_by'     => $user->id,
-                    'date'             => now()->toDateString(),
-                    'notes'            => "Reverted Sale Return #{$saleReturn->id} (Sale #{$saleReturn->sale_id})",
-                ]);
-            }
-        });
+        $saleReturn->delete();
 
         return redirect()->route('sales-returns.index')
-            ->with('success', 'Sale return successfully reverted. Items deducted back from shop stock.');
+            ->with('success', 'Sale return record deleted successfully.');
+    }
+
+    /**
+     * Admin: Bulk delete multiple sale return records.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:sale_returns,id',
+        ]);
+
+        // Authorization check for each item
+        foreach ($request->ids as $id) {
+            $saleReturn = SaleReturn::findOrFail($id);
+            if (!$user->isOwner() && (!$user->isShopAdmin() || $user->shop_id !== $saleReturn->sale?->shop_id)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        SaleReturn::destroy($request->ids);
+
+        return redirect()->route('sales-returns.index')
+            ->with('success', 'Selected sale return records deleted successfully.');
     }
 
     /**

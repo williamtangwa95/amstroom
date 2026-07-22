@@ -10,7 +10,7 @@ class ShopController extends Controller
 {
     public function index()
     {
-        $shops = Shop::withCount(['users', 'sales'])->latest()->paginate(15);
+        $shops = Shop::withCount(['users', 'sales'])->latest()->get();
         return view('shops.index', compact('shops'));
     }
 

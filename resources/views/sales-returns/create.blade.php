@@ -40,7 +40,7 @@
                         </div>
                         <div class="col-6">
                             <span class="text-muted">Shop Branch:</span>
-                            <strong class="text-dark d-block">{{ $sale->shop->shop_name }}</strong>
+                            <strong class="text-dark d-block">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</strong>
                         </div>
                         <div class="col-6 text-end">
                             <span class="text-muted">Total Paid:</span>

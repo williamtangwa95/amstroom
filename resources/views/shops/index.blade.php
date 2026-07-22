@@ -21,7 +21,7 @@
         <table class="table table-hover mb-0" id="shopsTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th>No</th>
                     <th>Shop Name</th>
                     <th>Location</th>
                     <th>Phone</th>
@@ -34,7 +34,7 @@
             <tbody>
                 @foreach($shops as $shop)
                 <tr>
-                    <td style="color:var(--text-secondary);font-size:.75rem;">{{ $shop->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td>
                         <div style="font-weight:600;font-size:.85rem;">{{ $shop->shop_name }}</div>
                         <div style="font-size:.73rem;color:var(--text-secondary);">{{ $shop->email }}</div>

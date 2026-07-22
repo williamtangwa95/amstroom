@@ -46,4 +46,9 @@ class StockTransfer extends Model
     {
         return $this->hasMany(StockTransferItem::class, 'transfer_id')->where('status', 'received');
     }
+
+    public function rejectedItems()
+    {
+        return $this->hasMany(StockTransferItem::class, 'transfer_id')->where('status', 'rejected');
+    }
 }

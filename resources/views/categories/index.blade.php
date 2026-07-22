@@ -16,12 +16,12 @@
     <div class="card-body p-0">
         <table class="table table-hover mb-0" id="catTable">
             <thead>
-                <tr><th>#</th><th>Category Name</th><th>Description</th><th>Products</th><th>Created</th><th class="no-sort">Actions</th></tr>
+                <tr><th>No</th><th>Category Name</th><th>Description</th><th>Products</th><th>Created</th><th class="no-sort">Actions</th></tr>
             </thead>
             <tbody>
                 @foreach($categories as $cat)
                 <tr>
-                    <td style="color:var(--text-secondary);font-size:.75rem;">{{ $cat->id }}</td>
+                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td><strong style="font-size:.85rem;">{{ $cat->category_name }}</strong></td>
                     <td style="font-size:.8rem;color:var(--text-secondary);">{{ Str::limit($cat->description, 60) ?: '—' }}</td>
                     <td><span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">{{ $cat->items_count }}</span></td>

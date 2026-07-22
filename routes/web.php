@@ -93,10 +93,6 @@ Route::middleware('auth')->group(function () {
         // Owner: update defect status
         Route::patch('defects/{defect}/status', [DefectController::class, 'updateStatus'])->name('defects.update-status');
 
-        // Branding & Settings
-        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
-        Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
-        Route::delete('settings/logo', [SettingController::class, 'removeLogo'])->name('settings.remove-logo');
     });
 
     // ─── OWNER + SHOP ADMIN ──────────────────────────────────────────────────
@@ -112,14 +108,24 @@ Route::middleware('auth')->group(function () {
         Route::get('stock-transfers', [StockTransferController::class, 'index'])->name('stock-transfers.index');
         Route::get('stock-transfers/{stockTransfer}', [StockTransferController::class, 'show'])->name('stock-transfers.show');
 
-        // Shop Admin: Receive/Approve stock items
+        // Transfer item actions
         Route::post('stock-transfers/item/{transferItem}/approve', [StockTransferController::class, 'approveItem'])->name('stock-transfers.approve-item');
+        Route::post('stock-transfers/item/{transferItem}/reject', [StockTransferController::class, 'rejectItem'])->name('stock-transfers.reject-item');
         Route::post('stock-transfers/{stockTransfer}/approve-bulk', [StockTransferController::class, 'approveBulk'])->name('stock-transfers.approve-bulk');
+
+        // Owner: modify transfer items
+        Route::put('stock-transfers/item/{transferItem}', [StockTransferController::class, 'updateItem'])->name('stock-transfers.update-item');
+        Route::delete('stock-transfers/item/{transferItem}', [StockTransferController::class, 'deleteItem'])->name('stock-transfers.delete-item');
+        Route::post('stock-transfers/{stockTransfer}/add-item', [StockTransferController::class, 'addItem'])->name('stock-transfers.add-item');
 
         // Shop Admin: Approve/Reject/Revert sale returns
         Route::post('sales-returns/{saleReturn}/approve', [SaleReturnController::class, 'approve'])->name('sales-returns.approve');
         Route::post('sales-returns/{saleReturn}/reject', [SaleReturnController::class, 'reject'])->name('sales-returns.reject');
-        Route::post('sales-returns/{saleReturn}/revert', [SaleReturnController::class, 'revert'])->name('sales-returns.revert');
+        Route::delete('sales-returns/bulk', [SaleReturnController::class, 'bulkDestroy'])->name('sales-returns.bulk-destroy');
+        Route::delete('sales-returns/{saleReturn}', [SaleReturnController::class, 'destroy'])->name('sales-returns.destroy');
+
+        // Shop stock price update
+        Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
     });
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────
@@ -129,13 +135,13 @@ Route::middleware('auth')->group(function () {
         Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
         Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
-        Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
-        Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
+        Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->withTrashed();
+        Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt')->withTrashed();
 
         // Sale Returns (all roles can view and request returns)
         Route::get('sales-returns', [SaleReturnController::class, 'index'])->name('sales-returns.index');
-        Route::get('sales/{sale}/return/create', [SaleReturnController::class, 'create'])->name('sales-returns.create');
-        Route::post('sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales-returns.store');
+        Route::get('sales/{sale}/return/create', [SaleReturnController::class, 'create'])->name('sales-returns.create')->withTrashed();
+        Route::post('sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales-returns.store')->withTrashed();
 
         // Defects (all roles can view/report)
         Route::get('defects', [DefectController::class, 'index'])->name('defects.index');
@@ -146,5 +152,10 @@ Route::middleware('auth')->group(function () {
         Route::get('shop-stock', [ShopStockController::class, 'index'])->name('shop-stock.index');
         Route::get('shop-stock/{shopStock}', [ShopStockController::class, 'show'])->name('shop-stock.show');
         Route::patch('shop-stock/{shopStock}/alert', [ShopStockController::class, 'updateAlert'])->name('shop-stock.update-alert');
+
+        // Branding & Settings (all roles can access with customized permissions)
+        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::delete('settings/logo', [SettingController::class, 'removeLogo'])->name('settings.remove-logo');
     });
 });

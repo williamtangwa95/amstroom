@@ -16,7 +16,7 @@
             <div class="card-body">
                 <div class="row mb-3" style="font-size:.85rem;">
                     <div class="col-6">
-                        <p class="mb-1" style="color:var(--text-secondary);">Shop: <strong style="color:var(--text-primary);">{{ $sale->shop->shop_name }}</strong></p>
+                        <p class="mb-1" style="color:var(--text-secondary);">Shop: <strong style="color:var(--text-primary);">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</strong></p>
                         <p class="mb-1" style="color:var(--text-secondary);">Seller: <strong style="color:var(--text-primary);">{{ $sale->seller->name }}</strong></p>
                         <p class="mb-1" style="color:var(--text-secondary);">Customer: <strong style="color:var(--text-primary);">{{ $sale->customer_name ?: 'Walk-in' }}</strong></p>
                     </div>
