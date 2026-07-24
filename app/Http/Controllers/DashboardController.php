@@ -81,6 +81,7 @@ class DashboardController extends Controller
         $shop = $user->shop;
         $shopStock = ShopStock::where('shop_id', $user->shop_id)->sum('remaining_quantity');
         $shopSales = Sale::where('shop_id', $user->shop_id)->sum('total_amount');
+        $todaySales = Sale::where('shop_id', $user->shop_id)->whereDate('sale_date', today())->sum('total_amount');
         $pendingRequests = StockRequest::where('shop_id', $user->shop_id)->where('status', 'pending')->count();
         $lowStockCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
         $defectsCount = Defect::where('shop_id', $user->shop_id)->count();
@@ -94,7 +95,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard.index', compact(
-            'shop', 'shopStock', 'shopSales', 'pendingRequests',
+            'shop', 'shopStock', 'shopSales', 'todaySales', 'pendingRequests',
             'lowStockCount', 'defectsCount', 'recentSales', 'monthlySales'
         ));
     }
@@ -104,12 +105,13 @@ class DashboardController extends Controller
         $shop = $user->shop;
         $mySales = Sale::where('seller_id', $user->id)->sum('total_amount');
         $mySalesCount = Sale::where('seller_id', $user->id)->count();
+        $todaySales = Sale::where('seller_id', $user->id)->whereDate('sale_date', today())->sum('total_amount');
         $availableStock = ShopStock::where('shop_id', $user->shop_id)->where('remaining_quantity', '>', 0)->count();
         $lowStockCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
         $recentSales = Sale::with('items.item')->where('seller_id', $user->id)->latest()->take(5)->get();
 
         return view('dashboard.index', compact(
-            'shop', 'mySales', 'mySalesCount', 'availableStock', 'lowStockCount', 'recentSales'
+            'shop', 'mySales', 'mySalesCount', 'todaySales', 'availableStock', 'lowStockCount', 'recentSales'
         ));
     }
 }

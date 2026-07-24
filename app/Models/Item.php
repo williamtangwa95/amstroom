@@ -10,7 +10,7 @@ class Item extends Model
     use HasFactory;
 
     protected $fillable = [
-        'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period',
+        'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period', 'image_path',
     ];
 
     public function category()
@@ -45,6 +45,9 @@ class Item extends Model
 
     public function getTotalMainStock(): int
     {
+        if ($this->relationLoaded('mainStocks')) {
+            return $this->mainStocks->sum('remaining_quantity');
+        }
         return $this->mainStocks()->sum('remaining_quantity');
     }
 }

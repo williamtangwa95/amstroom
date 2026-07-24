@@ -11,6 +11,17 @@
         <div class="card mb-4">
             <div class="card-header"><i class="bi bi-layers-fill me-2" style="color:#3fb950;"></i>{{ $shopStock->item->item_name }} @ {{ $shopStock->shop->shop_name }}</div>
             <div class="card-body">
+                @if($shopStock->item->image_path)
+                    <div class="text-center mb-3">
+                        <img src="{{ asset('storage/' . $shopStock->item->image_path) }}" alt="{{ $shopStock->item->item_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
+                    </div>
+                @else
+                    <div class="text-center mb-3 py-4 bg-light rounded border text-muted">
+                        <i class="bi bi-image fs-1 d-block mb-1" style="color: var(--text-secondary);"></i>
+                        <small class="text-secondary">No image uploaded</small>
+                    </div>
+                @endif
+
                 <table class="table table-borderless" style="font-size:.85rem;">
                     <tr><th style="color:var(--text-secondary);width:40%;">Shop</th><td><strong>{{ $shopStock->shop->shop_name }}</strong></td></tr>
                     <tr><th style="color:var(--text-secondary);">Category</th><td>{{ $shopStock->item->category->category_name }}</td></tr>
@@ -26,6 +37,16 @@
                     </tr>
                     <tr><th style="color:var(--text-secondary);">Date Received</th><td>{{ $shopStock->date_received ? $shopStock->date_received->format('F d, Y') : '—' }}</td></tr>
                 </table>
+
+                <form method="POST" action="{{ route('items.upload-image', $shopStock->item) }}" enctype="multipart/form-data" class="mt-3 pt-3 border-top">
+                    @csrf
+                    <label class="form-label fw-600 small">Upload/Change Product Photo (Max 1MB)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="file" name="image" class="form-control" accept="image/*" required>
+                        <button type="submit" class="btn btn-accent">Upload</button>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">JPEG, PNG, GIF, WebP. Max 1MB.</small>
+                </form>
 
                 <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
                     <form method="POST" action="{{ route('shop-stock.update-alert', $shopStock) }}">
@@ -44,7 +65,7 @@
                         @csrf @method('PATCH')
                         <label class="form-label fw-600">Update Item Selling Price</label>
                         <div class="input-group">
-                            <input type="number" name="selling_price" class="form-control @error('selling_price') is-invalid @enderror" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="{{ (int)$shopStock->buying_price }}" required>
+                            <input type="text" name="selling_price" class="form-control currency-input @error('selling_price') is-invalid @enderror" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="{{ (int)$shopStock->buying_price }}" required>
                             <button type="submit" class="btn btn-accent">Update Price</button>
                         </div>
                         <small class="form-text text-muted mt-1 d-block">Minimum allowed price: TZS {{ number_format($shopStock->buying_price, 0) }} (equal to buying price)</small>

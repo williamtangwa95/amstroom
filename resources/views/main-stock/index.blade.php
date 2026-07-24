@@ -61,8 +61,19 @@
                 <tr>
                     <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td>
-                        <div style="font-weight:600;font-size:.83rem;">{{ $stock->item->item_name }}</div>
-                        <div style="font-size:.7rem;color:var(--text-secondary);">{{ $stock->item->brand }}</div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if($stock->item->image_path)
+                                <img src="{{ asset('storage/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);">
+                            @else
+                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 32px; height: 32px; border: 1px solid var(--card-border);">
+                                    <i class="bi bi-image" style="font-size: 0.8rem;"></i>
+                                </div>
+                            @endif
+                            <div>
+                                <div style="font-weight:600;font-size:.83rem;">{{ $stock->item->item_name }}</div>
+                                <div style="font-size:.7rem;color:var(--text-secondary);">{{ $stock->item->brand }}</div>
+                            </div>
+                        </div>
                     </td>
                     <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $stock->item->category->category_name }}</span></td>
                     <td style="font-size:.82rem;">TZS {{ number_format($stock->buying_price, 0) }}</td>

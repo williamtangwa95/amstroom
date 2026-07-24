@@ -17,16 +17,16 @@
                         <div class="row g-2 mb-3 request-item-row align-items-end">
                             <div class="col-md-7">
                                 <label class="form-label">Item *</label>
-                                <select name="items[0][item_id]" class="form-select" required>
+                                <select name="items[0][item_id]" class="form-select item-select" required>
                                     <option value="">Select product...</option>
                                     @foreach($items as $item)
-                                    <option value="{{ $item->id }}">[{{ $item->category->category_name }}] {{ $item->item_name }} (Warehouse Stock: {{ $item->getTotalMainStock() }})</option>
+                                    <option value="{{ $item->id }}" data-stock="{{ $item->getTotalMainStock() }}">[{{ $item->category->category_name }}] {{ $item->item_name }} (Warehouse Stock: {{ $item->getTotalMainStock() }})</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Quantity *</label>
-                                <input type="number" name="items[0][quantity]" class="form-control" min="1" value="1" required>
+                                <input type="number" name="items[0][quantity]" class="form-control quantity-input" min="1" value="1" required>
                             </div>
                             <div class="col-md-1">
                                 <button type="button" class="btn btn-outline-danger w-100 remove-row" style="display:none;"><i class="bi bi-trash"></i></button>
@@ -66,6 +66,7 @@ document.getElementById('addItemBtn').addEventListener('click', function() {
     newRow.querySelector('select').value = '';
     newRow.querySelector('input').name = `items[${itemIndex}][quantity]`;
     newRow.querySelector('input').value = '1';
+    newRow.querySelector('input').removeAttribute('max');
     
     const removeBtn = newRow.querySelector('.remove-row');
     removeBtn.style.display = 'block';
@@ -74,5 +75,53 @@ document.getElementById('addItemBtn').addEventListener('click', function() {
     container.appendChild(newRow);
     itemIndex++;
 });
+
+// Event delegation for validation
+const container = document.getElementById('requestItemsContainer');
+
+container.addEventListener('change', function(e) {
+    if (e.target.classList.contains('item-select')) {
+        validateRowStock(e.target.closest('.request-item-row'));
+    }
+});
+
+container.addEventListener('input', function(e) {
+    if (e.target.classList.contains('quantity-input')) {
+        const row = e.target.closest('.request-item-row');
+        const select = row.querySelector('.item-select');
+        const option = select.options[select.selectedIndex];
+        if (option && option.value !== '') {
+            const stock = parseInt(option.getAttribute('data-stock') || 0, 10);
+            let val = parseInt(e.target.value, 10);
+            if (val > stock) {
+                e.target.value = stock;
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Limit Exceeded',
+                    text: `The requested quantity cannot exceed the warehouse stock of ${stock}.`,
+                    confirmButtonColor: '#0088cc'
+                });
+            }
+        }
+    }
+});
+
+function validateRowStock(row) {
+    const select = row.querySelector('.item-select');
+    const input = row.querySelector('.quantity-input');
+    const option = select.options[select.selectedIndex];
+    
+    if (!option || option.value === '') {
+        input.removeAttribute('max');
+        return;
+    }
+    
+    const stock = parseInt(option.getAttribute('data-stock') || 0, 10);
+    input.setAttribute('max', stock);
+    
+    if (parseInt(input.value, 10) > stock) {
+        input.value = stock;
+    }
+}
 </script>
 @endpush

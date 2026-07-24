@@ -11,7 +11,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-pencil me-2" style="color:#e94560;"></i>Edit: {{ $item->item_name }}</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('items.update', $item) }}">
+                <form method="POST" action="{{ route('items.update', $item) }}" enctype="multipart/form-data">
                     @csrf @method('PUT')
                     <div class="row g-3">
                         <div class="col-12">
@@ -41,6 +41,16 @@
                         <div class="col-12">
                             <label class="form-label">Specifications</label>
                             <textarea name="specification" class="form-control" rows="4">{{ old('specification', $item->specification) }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Product Image (Optional, Max 1MB)</label>
+                            @if($item->image_path)
+                            <div class="mb-2">
+                                <img src="{{ asset('storage/' . $item->image_path) }}" alt="{{ $item->item_name }}" class="rounded img-thumbnail" style="max-height: 100px;">
+                            </div>
+                            @endif
+                            <input type="file" name="image" class="form-control" accept="image/*">
+                            <small class="text-muted">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: 1MB.</small>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

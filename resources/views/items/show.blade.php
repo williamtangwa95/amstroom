@@ -11,6 +11,17 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-info-circle-fill me-2" style="color:#58a6ff;"></i>Product Details</div>
             <div class="card-body">
+                @if($item->image_path)
+                    <div class="text-center mb-3">
+                        <img src="{{ asset('storage/' . $item->image_path) }}" alt="{{ $item->item_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
+                    </div>
+                @else
+                    <div class="text-center mb-3 py-4 bg-light rounded border text-muted">
+                        <i class="bi bi-image fs-1 d-block mb-1" style="color: var(--text-secondary);"></i>
+                        <small class="text-secondary">No image uploaded</small>
+                    </div>
+                @endif
+
                 <table class="table table-borderless mb-0" style="font-size:.83rem;">
                     <tr><th style="color:var(--text-secondary);width:40%;">Category</th><td>{{ $item->category->category_name }}</td></tr>
                     <tr><th style="color:var(--text-secondary);">Brand</th><td>{{ $item->brand ?: '—' }}</td></tr>
@@ -22,6 +33,16 @@
                     <a href="{{ route('items.edit', $item) }}" class="btn btn-sm btn-accent">Edit</a>
                     <a href="{{ route('items.index') }}" class="btn btn-sm btn-outline-custom">Back</a>
                 </div>
+
+                <form method="POST" action="{{ route('items.upload-image', $item) }}" enctype="multipart/form-data" class="mt-3 pt-3 border-top">
+                    @csrf
+                    <label class="form-label fw-600 small">Upload/Change Photo (Max 1MB)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="file" name="image" class="form-control" accept="image/*" required>
+                        <button type="submit" class="btn btn-accent">Upload</button>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">JPEG, PNG, GIF, WebP. Max 1MB.</small>
+                </form>
             </div>
         </div>
     </div>

@@ -12,10 +12,14 @@
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body text-center p-4">
-                <div class="avatar-circle mx-auto mb-3 text-white d-flex align-items-center justify-content-center rounded-circle shadow-sm"
-                     style="width: 80px; height: 80px; font-size: 2.2rem; background: linear-gradient(135deg, #0088cc, #005f9e);">
-                    <i class="bi bi-person-fill"></i>
-                </div>
+                @if($user->avatar_path)
+                    <img src="{{ asset('storage/' . $user->avatar_path) }}" alt="{{ $user->name }}" class="mx-auto mb-3 rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 2px solid var(--accent);">
+                @else
+                    <div class="avatar-circle mx-auto mb-3 text-white d-flex align-items-center justify-content-center rounded-circle shadow-sm"
+                         style="width: 80px; height: 80px; font-size: 2.2rem; background: linear-gradient(135deg, #0088cc, #005f9e);">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                @endif
                 <h5 class="fw-700 mb-1" style="color:var(--text-primary);">{{ $user->name }}</h5>
                 <p class="text-muted small mb-2">{{ $user->email }}</p>
 
@@ -53,7 +57,7 @@
                 </h6>
             </div>
             <div class="card-body p-4">
-                <form method="POST" action="{{ route('profile.update') }}">
+                <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -81,6 +85,15 @@
                             <input type="text" name="phone" id="phone" class="form-control @error('phone') is-invalid @enderror"
                                    value="{{ old('phone', $user->phone) }}" placeholder="+255...">
                             @error('phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-12">
+                            <label for="avatar" class="form-label fw-600">Profile Picture (Optional, Max 1MB)</label>
+                            <input type="file" name="avatar" id="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
+                            <small class="text-muted" style="font-size: .75rem;">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: 1MB.</small>
+                            @error('avatar')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

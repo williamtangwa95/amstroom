@@ -36,7 +36,20 @@
                     <tr>
                         <td style="font-weight:600;">{{ $reqItem->item->item_name }}</td>
                         <td style="color:var(--text-secondary);font-size:.78rem;">{{ $reqItem->item->category->category_name }}</td>
-                        <td><strong style="color:#58a6ff;">{{ $reqItem->quantity }}</strong></td>
+                        <td>
+                            @if(auth()->user()->isOwner() && $stockRequest->status === 'pending')
+                                <form method="POST" action="{{ route('stock-requests.update-item', $reqItem) }}" class="d-flex align-items-center gap-2">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="number" name="quantity" class="form-control form-control-sm" value="{{ $reqItem->quantity }}" min="1" style="width: 80px;" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" style="padding: 0.15rem 0.4rem;" title="Update Quantity">
+                                        <i class="bi bi-save"></i> Save
+                                    </button>
+                                </form>
+                            @else
+                                <strong style="color:#58a6ff;">{{ $reqItem->quantity }}</strong>
+                            @endif
+                        </td>
                         <td><strong style="color:{{ $avail >= $reqItem->quantity ? '#3fb950' : '#e94560' }}">{{ $avail }}</strong></td>
                     </tr>
                     @endforeach

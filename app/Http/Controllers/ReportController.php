@@ -8,6 +8,8 @@ use App\Models\SaleItem;
 use App\Models\Shop;
 use App\Models\StockRequest;
 use App\Models\StockTransfer;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -125,5 +127,125 @@ class ReportController extends Controller
         $shops = Shop::all();
 
         return view('reports.defect', compact('defects', 'totalDefective', 'shops'));
+    }
+
+    public function expenses(Request $request)
+    {
+        $period = $request->get('period', 'monthly');
+        $shopId = $request->get('shop_id');
+        $categoryId = $request->get('expense_category_id');
+
+        $query = Expense::with('category', 'recorder', 'approver')
+            ->whereIn('status', ['approved', 'review_requested', 'editable']);
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $query->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $query->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        if ($categoryId) {
+            $query->where('expense_category_id', $categoryId);
+        }
+
+        if ($period === 'daily') {
+            $query->whereDate('activity_date', today());
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year);
+        } elseif ($period === 'yearly') {
+            $query->whereYear('activity_date', now()->year);
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) $query->whereDate('activity_date', '>=', $request->date_from);
+            if ($request->filled('date_to'))   $query->whereDate('activity_date', '<=', $request->date_to);
+        }
+
+        $expenses = $query->latest()->get();
+        $totalAmount = $query->sum('amount');
+
+        // Summary by category
+        $expensesByCategory = Expense::selectRaw('expense_category_id, SUM(amount) as total_amount, COUNT(*) as count')
+            ->whereIn('status', ['approved', 'review_requested', 'editable'])
+            ->when($shopId, function($q) use ($shopId) {
+                if ($shopId === 'owner') {
+                    return $q->whereHas('recorder', function($sq) { $sq->whereNull('shop_id'); });
+                }
+                return $q->whereHas('recorder', function($sq) use ($shopId) { $sq->where('shop_id', $shopId); });
+            })
+            ->when($categoryId, function($q) use ($categoryId) {
+                return $q->where('expense_category_id', $categoryId);
+            })
+            ->groupBy('expense_category_id')
+            ->with('category')
+            ->get();
+
+        $categories = ExpenseCategory::orderBy('name')->get();
+        $shops = Shop::all();
+
+        return view('reports.expenses', compact('expenses', 'totalAmount', 'expensesByCategory', 'categories', 'shops', 'period'));
+    }
+
+    public function salesVsExpenses(Request $request)
+    {
+        $period = $request->get('period', 'monthly');
+        $shopId = $request->get('shop_id');
+
+        // 1. Get Sales
+        $salesQuery = Sale::query();
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $salesQuery->whereNull('shop_id');
+            } else {
+                $salesQuery->where('shop_id', $shopId);
+            }
+        }
+        
+        // 2. Get Expenses
+        $expensesQuery = Expense::whereIn('status', ['approved', 'review_requested', 'editable']);
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $expensesQuery->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $expensesQuery->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        // Apply period to queries
+        if ($period === 'daily') {
+            $salesQuery->whereDate('sale_date', today());
+            $expensesQuery->whereDate('activity_date', today());
+        } elseif ($period === 'monthly') {
+            $salesQuery->whereMonth('sale_date', now()->month)->whereYear('sale_date', now()->year);
+            $expensesQuery->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year);
+        } elseif ($period === 'yearly') {
+            $salesQuery->whereYear('sale_date', now()->year);
+            $expensesQuery->whereYear('activity_date', now()->year);
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) {
+                $salesQuery->whereDate('sale_date', '>=', $request->date_from);
+                $expensesQuery->whereDate('activity_date', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $salesQuery->whereDate('sale_date', '<=', $request->date_to);
+                $expensesQuery->whereDate('activity_date', '<=', $request->date_to);
+            }
+        }
+
+        $totalSales = $salesQuery->sum('total_amount');
+        $totalExpenses = $expensesQuery->sum('amount');
+        $netProfit = $totalSales - $totalExpenses;
+
+        $shops = Shop::all();
+
+        return view('reports.sales_vs_expenses', compact('totalSales', 'totalExpenses', 'netProfit', 'shops', 'period'));
     }
 }

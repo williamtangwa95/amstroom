@@ -11,7 +11,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-box-seam-fill me-2" style="color:#e94560;"></i>New Product</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('items.store') }}">
+                <form method="POST" action="{{ route('items.store') }}" enctype="multipart/form-data">
                     @csrf
                     <div class="row g-3">
                         <div class="col-12">
@@ -42,6 +42,11 @@
                         <div class="col-12">
                             <label class="form-label">Specifications</label>
                             <textarea name="specification" class="form-control" rows="4" placeholder="Core i7, 16GB RAM, 512GB SSD...">{{ old('specification') }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Product Image (Optional, Max 1MB)</label>
+                            <input type="file" name="image" class="form-control" accept="image/*">
+                            <small class="text-muted">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: 1MB.</small>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

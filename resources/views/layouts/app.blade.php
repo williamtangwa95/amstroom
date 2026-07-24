@@ -643,6 +643,12 @@
         </div>
 
         <div class="nav-item-custom">
+            <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> Expenses Ledger
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
             <a href="{{ route('stock-logs.index') }}" class="nav-link-custom {{ request()->routeIs('stock-logs.*') ? 'active' : '' }}">
                 <i class="bi bi-clock-history"></i> Audit Logs
             </a>
@@ -671,6 +677,18 @@
         <div class="nav-item-custom">
             <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}">
                 <i class="bi bi-shield-exclamation"></i> Defect Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> Expenses Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
             </a>
         </div>
 
@@ -724,6 +742,12 @@
             </a>
         </div>
 
+        <div class="nav-item-custom">
+            <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> Expenses Ledger
+            </a>
+        </div>
+
         <div class="nav-section-label">System</div>
         <div class="nav-item-custom">
             <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
@@ -761,6 +785,12 @@
         <div class="nav-item-custom">
             <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}">
                 <i class="bi bi-exclamation-triangle-fill"></i> Report Defect
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> My Expenses
             </a>
         </div>
 
@@ -821,6 +851,30 @@
         </div>
 
         <div class="ms-auto d-flex align-items-center gap-2">
+            <!-- Notification Bell Dropdown -->
+            <div class="dropdown me-1" id="notificationDropdownContainer">
+                <button class="btn btn-sm btn-outline-custom position-relative" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" aria-expanded="false" style="padding: .35rem .65rem; border: 1px solid var(--input-border); background: var(--input-bg);">
+                    <i class="bi bi-bell fs-6"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notificationBadge" style="font-size: .55rem; padding: .25em .45em;">
+                        0
+                    </span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow border-0 p-0 mt-2" aria-labelledby="notificationBellBtn" style="width: 320px; border-radius: 12px; overflow: hidden; z-index: 10000;">
+                    <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0088cc, #005f9e) !important;">
+                        <span class="fw-700 small">Notifications</span>
+                        <span class="badge bg-white text-primary rounded-pill px-2 py-1" id="notificationDropdownCount" style="font-size: .65rem; font-weight: 800; color: #0088cc !important;">0 New</span>
+                    </div>
+                    <div class="list-group list-group-flush" id="notificationDropdownList" style="max-height: 250px; overflow-y: auto;">
+                        <div class="p-3 text-center text-muted small" id="noNotificationsPlaceholder">
+                            <i class="bi bi-bell-slash d-block mb-1 fs-5"></i> No new notifications
+                        </div>
+                    </div>
+                    <a href="{{ route('notifications.index') }}" class="dropdown-item text-center py-2 text-primary border-top small fw-600 bg-light" style="color: #0088cc !important;">
+                        View All Notifications
+                    </a>
+                </div>
+            </div>
+
             @if(auth()->user()->shop)
             <div class="user-badge">
                 <i class="bi bi-shop text-primary"></i>
@@ -829,7 +883,11 @@
             @endif
 
             <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none" title="Manage Profile">
-                <i class="bi bi-person-circle text-primary"></i>
+                @if(auth()->user()->avatar_path)
+                    <img src="{{ asset('storage/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent);">
+                @else
+                    <i class="bi bi-person-circle text-primary"></i>
+                @endif
                 <span class="fw-600 text-dark">{{ auth()->user()->name }}</span>
                 <span class="role-pill role-{{ auth()->user()->role }}">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
             </a>
@@ -914,6 +972,148 @@
             }).then(result => {
                 if (result.isConfirmed) form.submit();
             });
+        });
+    });
+
+    // Real-time Notification Polling System
+    function playSynthChime() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+            gain1.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+            osc1.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.4);
+
+            setTimeout(() => {
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+                gain2.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                osc2.start(ctx.currentTime);
+                osc2.stop(ctx.currentTime + 0.5);
+            }, 100);
+        } catch (e) {
+            console.error('Web Audio API error: ', e);
+        }
+    }
+
+    function playNotificationSound(ringtoneUrl) {
+        if (ringtoneUrl) {
+            const audio = new Audio(ringtoneUrl);
+            audio.play().catch(e => {
+                console.warn('Custom ringtone playback failed, falling back to synth chime: ', e);
+                playSynthChime();
+            });
+        } else {
+            playSynthChime();
+        }
+    }
+
+    window.pollNotifications = function() {
+        $.ajax({
+            url: "{{ route('notifications.poll') }}",
+            type: 'GET',
+            success: function(response) {
+                const badge = $('#notificationBadge');
+                const dropdownCount = $('#notificationDropdownCount');
+                const list = $('#notificationDropdownList');
+                const placeholder = $('#noNotificationsPlaceholder');
+
+                // Update unread badges
+                if (response.unread_count > 0) {
+                    badge.removeClass('d-none').text(response.unread_count);
+                    dropdownCount.text(`${response.unread_count} New`);
+                } else {
+                    badge.addClass('d-none');
+                    dropdownCount.text('0 New');
+                }
+
+                // Render recent notifications
+                if (response.recent.length === 0) {
+                    placeholder.removeClass('d-none');
+                    list.find('.notification-item').remove();
+                } else {
+                    placeholder.addClass('d-none');
+                    list.find('.notification-item').remove();
+                    
+                    let itemsHtml = '';
+                    response.recent.forEach(function(item) {
+                        itemsHtml += `
+                            <a href="{{ route('notifications.index') }}" class="list-group-item list-group-item-action p-2.5 border-bottom notification-item transition-all" style="font-size: .8rem; border-left: 3px solid #0088cc;">
+                                <div class="fw-700 text-dark">${item.title}</div>
+                                <div class="text-secondary text-truncate" style="font-size: .72rem; max-width: 280px;">${item.message}</div>
+                            </a>
+                        `;
+                    });
+                    list.prepend(itemsHtml);
+                }
+
+                // Play sound if flagged
+                if (response.play_sound) {
+                    playNotificationSound(response.ringtone_url);
+                }
+            },
+            error: function(xhr) {
+                console.error('Notification poll failed: ', xhr);
+            }
+        });
+    };
+
+    // Run poll on load and every 10 seconds
+    $(document).ready(function() {
+        window.pollNotifications();
+        setInterval(window.pollNotifications, 10000);
+    });
+
+    window.formatCurrencyValue = function(val) {
+        if (!val) return '';
+        var clean = String(val).replace(/[^0-9.]/g, '');
+        var parts = clean.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (parts.length > 2) {
+            parts = [parts[0], parts.slice(1).join('')];
+        }
+        return parts.join('.');
+    };
+
+    $(document).on('input', '.currency-input', function() {
+        var isText = (this.type === 'text' || this.type === 'search' || this.type === 'tel' || this.type === 'url' || !this.type);
+        var selectionStart = isText ? this.selectionStart : 0;
+        var selectionEnd = isText ? this.selectionEnd : 0;
+        var originalLength = this.value.length;
+
+        var formattedValue = window.formatCurrencyValue(this.value);
+        this.value = formattedValue;
+
+        if (isText) {
+            var newLength = formattedValue.length;
+            var diff = newLength - originalLength;
+            this.setSelectionRange(selectionStart + diff, selectionEnd + diff);
+        }
+    });
+
+    $(document).ready(function() {
+        $('.currency-input').each(function() {
+            this.value = window.formatCurrencyValue(this.value);
+        });
+    });
+
+    $(document).on('submit', 'form', function() {
+        $(this).find('.currency-input').each(function() {
+            this.value = this.value.replace(/,/g, '');
         });
     });
 </script>

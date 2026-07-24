@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -25,12 +26,22 @@ class ProfileController extends Controller
         $user = auth()->user();
 
         $request->validate([
-            'name'  => 'required|string|max:150',
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'phone' => 'nullable|string|max:20',
+            'name'   => 'required|string|max:150',
+            'email'  => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'phone'  => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|max:1024', // max 1MB
         ]);
 
-        $user->update($request->only('name', 'email', 'phone'));
+        $data = $request->only('name', 'email', 'phone');
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+            $data['avatar_path'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user->update($data);
 
         return back()->with('success', 'Profile information updated successfully.');
     }

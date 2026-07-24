@@ -456,7 +456,7 @@
     {{-- Receive/Approve Item Modal (Shop Admin / Admin) --}}
     @if($isShopAdmin && $ti->status === 'pending')
     <div class="modal fade" id="approveModal{{ $ti->id }}" tabindex="-1" aria-labelledby="approveModalLabel{{ $ti->id }}" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <form method="POST" action="{{ route('stock-transfers.approve-item', $ti) }}">
                     @csrf
@@ -467,27 +467,31 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4 text-start">
-                        <div class="mb-3 bg-light p-3 rounded border">
-                            <div class="row">
-                                <div class="col-6 mb-2">
-                                    <span class="text-muted small">Quantity:</span>
-                                    <strong class="text-dark d-block">{{ $ti->quantity }}</strong>
-                                </div>
-                                <div class="col-6 mb-2 text-end">
-                                    <span class="text-muted small">Owner's Selling Price:</span>
-                                    <strong class="text-dark d-block">TZS {{ number_format($ti->selling_price, 0) }}</strong>
-                                </div>
-                            </div>
-                            <small class="text-muted d-block mt-2">
-                                <i class="bi bi-info-circle me-1 text-primary"></i>
-                                This item will be added to your shop stock. The <strong>buying price</strong> for your shop is set to <strong>TZS {{ number_format($ti->selling_price, 0) }}</strong> (owner's selling price).
-                            </small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-600 small">Determine Shop Selling Price (TZS) *</label>
-                            <input type="number" name="selling_price" class="form-control" placeholder="e.g. 7000" min="{{ $ti->selling_price }}" value="{{ $ti->selling_price }}" required>
-                            <small class="text-muted" style="font-size: .75rem;">This price will be displayed as the standard selling price for sellers in your shop. It must not be less than TZS {{ number_format($ti->selling_price, 0) }}.</small>
-                        </div>
+                        <p class="small text-muted mb-3">
+                            You are receiving this item. Please determine the selling price to be used in your shop. The buying price for your shop is set to the owner's selling price.
+                        </p>
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Qty</th>
+                                    <th>Buying Price (TZS)</th>
+                                    <th style="width: 200px;">Selling Price (TZS) *</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="fw-600">{{ $ti->item?->item_name }}</div>
+                                    </td>
+                                    <td>{{ $ti->quantity }}</td>
+                                    <td>TZS {{ number_format($ti->selling_price, 0) }}</td>
+                                    <td>
+                                        <input type="text" name="selling_price" class="form-control form-control-sm currency-input" min="{{ $ti->selling_price }}" value="{{ $ti->selling_price }}" required>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -564,7 +568,7 @@ function submitBulkApprove() {
                 <td>${qty}</td>
                 <td>TZS ${parseInt(price).toLocaleString()}</td>
                 <td>
-                    <input type="number" name="selling_prices[${itemId}]" class="form-control form-control-sm" min="${price}" value="${price}" required>
+                    <input type="text" name="selling_prices[${itemId}]" class="form-control form-control-sm currency-input" min="${price}" value="${price}" required>
                 </td>
             </tr>
         `;

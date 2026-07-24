@@ -16,6 +16,7 @@ class SettingController extends Controller
         $slogan       = '';
         $logo         = '';
         $printerEnabled = Setting::get('printer_enabled_user_' . $user->id, '1');
+        $notificationRingtone = Setting::get('notification_sound_user_' . $user->id);
 
         if ($user->isOwner()) {
             $systemName = Setting::get('system_name', 'AMSTROOM');
@@ -28,12 +29,28 @@ class SettingController extends Controller
             $logo       = $shop->logo;
         }
 
-        return view('settings.index', compact('systemName', 'slogan', 'logo', 'printerEnabled'));
+        return view('settings.index', compact('systemName', 'slogan', 'logo', 'printerEnabled', 'notificationRingtone'));
     }
 
     public function update(Request $request)
     {
         $user = Auth::user();
+
+        // Process ringtone upload for any user role
+        if ($request->hasFile('notification_ringtone')) {
+            $request->validate([
+                'notification_ringtone' => 'required|file|mimes:mp3,wav,ogg,oga|max:5120',
+            ]);
+
+            $settingKey = 'notification_sound_user_' . $user->id;
+            $oldSound = Setting::get($settingKey);
+            if ($oldSound && Storage::disk('public')->exists($oldSound)) {
+                Storage::disk('public')->delete($oldSound);
+            }
+
+            $path = $request->file('notification_ringtone')->store('ringtones', 'public');
+            Setting::set($settingKey, $path);
+        }
 
         if ($user->isOwner()) {
             $request->validate([
@@ -120,5 +137,18 @@ class SettingController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    public function removeRingtone()
+    {
+        $user = Auth::user();
+        $settingKey = 'notification_sound_user_' . $user->id;
+        $oldSound = Setting::get($settingKey);
+        if ($oldSound && Storage::disk('public')->exists($oldSound)) {
+            Storage::disk('public')->delete($oldSound);
+        }
+        Setting::set($settingKey, null);
+
+        return back()->with('success', 'Custom ringtone removed. Default sound will be used.');
     }
 }

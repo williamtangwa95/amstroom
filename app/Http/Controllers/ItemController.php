@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
@@ -29,11 +30,18 @@ class ItemController extends Controller
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
             'warranty_period'=> 'nullable|string|max:50',
+            'image'          => 'nullable|image|max:1024',
         ]);
 
-        Item::create($request->only(
+        $data = $request->only(
             'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period'
-        ));
+        );
+
+        if ($request->hasFile('image')) {
+            $data['image_path'] = $request->file('image')->store('items', 'public');
+        }
+
+        Item::create($data);
 
         return redirect()->route('items.index')
             ->with('success', 'Item registered successfully.');
@@ -60,11 +68,21 @@ class ItemController extends Controller
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
             'warranty_period'=> 'nullable|string|max:50',
+            'image'          => 'nullable|image|max:1024',
         ]);
 
-        $item->update($request->only(
+        $data = $request->only(
             'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period'
-        ));
+        );
+
+        if ($request->hasFile('image')) {
+            if ($item->image_path) {
+                Storage::disk('public')->delete($item->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('items', 'public');
+        }
+
+        $item->update($data);
 
         return redirect()->route('items.index')
             ->with('success', 'Item updated successfully.');
@@ -72,8 +90,30 @@ class ItemController extends Controller
 
     public function destroy(Item $item)
     {
+        if ($item->image_path) {
+            Storage::disk('public')->delete($item->image_path);
+        }
         $item->delete();
         return redirect()->route('items.index')
             ->with('success', 'Item deleted successfully.');
+    }
+
+    public function uploadImage(Request $request, Item $item)
+    {
+        $request->validate([
+            'image' => 'required|image|max:1024', // max 1MB (1024KB)
+        ]);
+
+        if ($request->hasFile('image')) {
+            if ($item->image_path) {
+                Storage::disk('public')->delete($item->image_path);
+            }
+            $path = $request->file('image')->store('items', 'public');
+            $item->update(['image_path' => $path]);
+
+            return back()->with('success', 'Product image uploaded successfully.');
+        }
+
+        return back()->with('error', 'Failed to upload image.');
     }
 }

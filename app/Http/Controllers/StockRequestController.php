@@ -20,7 +20,7 @@ class StockRequestController extends Controller
     {
         $user = Auth::user();
 
-        $query = StockRequest::with('shop', 'requester');
+        $query = StockRequest::with(['shop', 'requester', 'items.item.category', 'items.item.mainStocks']);
 
         if ($user->isOwner()) {
             // Owner sees all
@@ -67,6 +67,28 @@ class StockRequestController extends Controller
                 'request_id' => $stockRequest->id,
                 'item_id'    => $item['item_id'],
                 'quantity'   => $item['quantity'],
+            ]);
+        }
+
+        // Notify all sellers of this shop
+        $sellers = \App\Models\User::where('shop_id', $user->shop_id)
+            ->where('role', 'seller')
+            ->get();
+        foreach ($sellers as $seller) {
+            \App\Models\Notification::create([
+                'user_id' => $seller->id,
+                'title'   => 'New Stock Request Submitted',
+                'message' => "Shop Admin has requested new stock from the main warehouse (Request #{$stockRequest->id}).",
+            ]);
+        }
+
+        // Notify all owners
+        $owners = \App\Models\User::where('role', 'owner')->get();
+        foreach ($owners as $owner) {
+            \App\Models\Notification::create([
+                'user_id' => $owner->id,
+                'title'   => 'New Stock Request Submitted',
+                'message' => "Shop Admin has requested new stock from the main warehouse (Request #{$stockRequest->id}).",
             ]);
         }
 
@@ -157,6 +179,18 @@ class StockRequestController extends Controller
             $stockRequest->update(['status' => 'approved']);
         });
 
+        // Notify shop admins and sellers of the shop
+        $shopUsers = \App\Models\User::where('shop_id', $stockRequest->shop_id)
+            ->whereIn('role', ['shop_admin', 'seller'])
+            ->get();
+        foreach ($shopUsers as $shopUser) {
+            \App\Models\Notification::create([
+                'user_id' => $shopUser->id,
+                'title'   => 'Stock Request Approved',
+                'message' => "Stock request #{$stockRequest->id} has been approved by the Owner, and stock has been transferred to your shop.",
+            ]);
+        }
+
         return redirect()->route('stock-requests.show', $stockRequest)
             ->with('success', 'Stock request approved and stock transferred successfully.');
     }
@@ -174,5 +208,26 @@ class StockRequestController extends Controller
 
         return redirect()->route('stock-requests.index')
             ->with('success', 'Stock request rejected.');
+    }
+
+    public function updateItem(Request $request, \App\Models\StockRequestItem $stockRequestItem)
+    {
+        if (!Auth::user()->isOwner()) {
+            abort(403);
+        }
+
+        if ($stockRequestItem->request->status !== 'pending') {
+            return back()->with('error', 'Only pending requests can be modified.');
+        }
+
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $stockRequestItem->update([
+            'quantity' => $request->quantity,
+        ]);
+
+        return back()->with('success', 'Requested quantity updated successfully.');
     }
 }

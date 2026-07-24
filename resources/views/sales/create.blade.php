@@ -17,12 +17,22 @@
             <div class="card-body p-0" style="max-height:600px;overflow-y:auto;">
                 <div class="row g-2 p-3" id="posProductGrid">
                     @forelse($shopStocks as $stock)
+                    @php $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null; @endphp
                     <div class="col-md-6 pos-item-card" data-name="{{ strtolower($stock->item->item_name) }}" data-brand="{{ strtolower($stock->item->brand) }}">
                         <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important;">
-                            <div>
-                                <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
-                                <div class="fw-700" style="font-size:.88rem;color:var(--text-primary);">{{ $stock->item->item_name }}</div>
-                                <div style="font-size:.75rem;color:var(--text-secondary);">{{ $stock->item->specification }}</div>
+                            <div class="d-flex gap-2">
+                                @if($stock->item->image_path)
+                                <img src="{{ asset('storage/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded border" style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;">
+                                @else
+                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted border" style="width: 55px; height: 55px; flex-shrink: 0;">
+                                    <i class="bi bi-image" style="font-size: 1.2rem;"></i>
+                                </div>
+                                @endif
+                                <div style="min-width:0;">
+                                    <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
+                                    <div class="fw-700 text-truncate" style="font-size:.88rem;color:var(--text-primary);" title="{{ $stock->item->item_name }}">{{ $stock->item->item_name }}</div>
+                                    <div class="text-truncate" style="font-size:.75rem;color:var(--text-secondary);" title="{{ $stock->item->specification }}">{{ $stock->item->specification }}</div>
+                                </div>
                             </div>
                             <div class="mt-3 d-flex align-items-center justify-content-between">
                                 <div>
@@ -35,7 +45,9 @@
                                     data-id="{{ $stock->id }}"
                                     data-name="{{ $stock->item->item_name }}"
                                     data-price="{{ $stock->selling_price }}"
-                                    data-stock="{{ $stock->remaining_quantity }}">
+                                    data-stock="{{ $stock->remaining_quantity }}"
+                                    data-price-pending="{{ $pendingPrice ? 'true' : 'false' }}"
+                                    data-pending-price="{{ $pendingPrice ?? 0 }}">
                                     <i class="bi bi-cart-plus me-1"></i> Add
                                 </button>
                             </div>
@@ -59,7 +71,7 @@
             <div class="card-body d-flex flex-column">
                 <form method="POST" action="{{ route('sales.store') }}" id="checkoutForm" class="flex-grow-1 d-flex flex-column">
                     @csrf
-                    
+
                     <div id="cartItemsList" class="flex-grow-1 mb-3" style="max-height:350px;overflow-y:auto;">
                         <div class="text-center py-5 text-muted" id="emptyCartMsg">
                             <i class="bi bi-cart-x fs-2 d-block mb-1"></i>
@@ -101,64 +113,90 @@
 
 @push('scripts')
 <script>
-const cart = {};
+    const cart = {};
 
-// Product Filter
-document.getElementById('posSearch').addEventListener('input', function(e) {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.pos-item-card').forEach(card => {
-        const name = card.dataset.name;
-        const brand = card.dataset.brand;
-        if (name.includes(term) || brand.includes(term)) {
-            card.style.display = 'block';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-});
-
-// Add to Cart
-document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const id = this.dataset.id;
-        const name = this.dataset.name;
-        const price = parseFloat(this.dataset.price);
-        const maxStock = parseInt(this.dataset.stock);
-
-        if (cart[id]) {
-            if (cart[id].qty < maxStock) {
-                cart[id].qty++;
+    // Product Filter
+    document.getElementById('posSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('.pos-item-card').forEach(card => {
+            const name = card.dataset.name;
+            const brand = card.dataset.brand;
+            if (name.includes(term) || brand.includes(term)) {
+                card.style.display = 'block';
             } else {
-                Swal.fire({icon:'warning', title:'Stock Limit Reached', text:`Only ${maxStock} units available in shop.`, background:'#161b22', color:'#e6edf3'});
+                card.style.display = 'none';
             }
-        } else {
-            cart[id] = { id, name, price, qty: 1, maxStock, negotiatedPrice: price };
-        }
-        renderCart();
+        });
     });
-});
 
-function renderCart() {
-    const list = document.getElementById('cartItemsList');
-    const keys = Object.keys(cart);
-    
-    if (keys.length === 0) {
-        list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1"></i>Cart is empty. Select products from the left.</div>`;
-        document.getElementById('cartTotalDisplay').textContent = 'TZS 0';
-        document.getElementById('checkoutBtn').disabled = true;
-        return;
-    }
+    // Add to Cart
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const price = parseFloat(this.dataset.price);
+            const maxStock = parseInt(this.dataset.stock);
+            const isPending = this.dataset.pricePending === 'true';
+            const pendingPrice = parseFloat(this.dataset.pendingPrice);
 
-    let html = '';
-    let total = 0;
-    let index = 0;
+            if (isPending) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Price Changed',
+                    text: 'Please wait for admin approval to complete the transaction!',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
 
-    keys.forEach(id => {
-        const item = cart[id];
-        const subtotal = item.qty * item.negotiatedPrice;
-        total += subtotal;
+            if (cart[id]) {
+                if (cart[id].qty < maxStock) {
+                    cart[id].qty++;
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Stock Limit Reached',
+                        text: `Only ${maxStock} units available in shop.`,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                }
+            } else {
+                cart[id] = {
+                    id,
+                    name,
+                    price,
+                    qty: 1,
+                    maxStock,
+                    negotiatedPrice: price
+                };
+            }
+            renderCart();
+        });
+    });
 
-        html += `
+    function renderCart() {
+        const list = document.getElementById('cartItemsList');
+        const keys = Object.keys(cart);
+
+        if (keys.length === 0) {
+            list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1"></i>Cart is empty. Select products from the left.</div>`;
+            document.getElementById('cartTotalDisplay').textContent = 'TZS 0';
+            document.getElementById('checkoutBtn').disabled = true;
+            return;
+        }
+
+        let html = '';
+        let total = 0;
+        let index = 0;
+
+        keys.forEach(id => {
+            const item = cart[id];
+            const subtotal = item.qty * item.negotiatedPrice;
+            total += subtotal;
+
+            html += `
             <div class="cart-item-row d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
                 <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
                 <div style="flex:1;min-width:0;" class="pe-2">
@@ -171,8 +209,8 @@ function renderCart() {
                     <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
                     
                     <div class="input-group input-group-sm ms-2" style="width:120px;">
-                        <input type="number" name="items[${index}][price]" value="${item.negotiatedPrice}" 
-                               class="form-control form-control-sm py-0 px-1" min="${item.price}" 
+                        <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
+                               class="form-control form-control-sm py-0 px-1 currency-input" min="${item.price}" 
                                onchange="updateItemPrice('${id}', this.value)" required>
                     </div>
 
@@ -180,44 +218,57 @@ function renderCart() {
                 </div>
             </div>
         `;
-        index++;
-    });
+            index++;
+        });
 
-    list.innerHTML = html;
-    document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
-    document.getElementById('checkoutBtn').disabled = false;
-}
+        list.innerHTML = html;
+        document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
+        document.getElementById('checkoutBtn').disabled = false;
+    }
 
-function updateItemPrice(id, val) {
-    if (cart[id]) {
-        const floatVal = parseFloat(val);
-        if (isNaN(floatVal) || floatVal < cart[id].price) {
-            Swal.fire({icon:'warning', title:'Invalid Price', text:`Negotiated price cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`, background:'#161b22', color:'#e6edf3'});
-            cart[id].negotiatedPrice = cart[id].price;
-        } else {
-            cart[id].negotiatedPrice = floatVal;
+    function updateItemPrice(id, val) {
+        if (cart[id]) {
+            const cleanVal = String(val).replace(/,/g, '');
+            const floatVal = parseFloat(cleanVal);
+            if (isNaN(floatVal) || floatVal < cart[id].price) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Price',
+                    text: `Negotiated price cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                cart[id].negotiatedPrice = cart[id].price;
+            } else {
+                cart[id].negotiatedPrice = floatVal;
+            }
+            renderCart();
         }
+    }
+
+    function changeQty(id, delta) {
+        if (cart[id]) {
+            const newQty = cart[id].qty + delta;
+            if (newQty <= 0) {
+                delete cart[id];
+            } else if (newQty > cart[id].maxStock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Limit Reached',
+                    text: `Only ${cart[id].maxStock} units available.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            } else {
+                cart[id].qty = newQty;
+            }
+            renderCart();
+        }
+    }
+
+    function removeItem(id) {
+        delete cart[id];
         renderCart();
     }
-}
-
-function changeQty(id, delta) {
-    if (cart[id]) {
-        const newQty = cart[id].qty + delta;
-        if (newQty <= 0) {
-            delete cart[id];
-        } else if (newQty > cart[id].maxStock) {
-            Swal.fire({icon:'warning', title:'Stock Limit Reached', text:`Only ${cart[id].maxStock} units available.`, background:'#161b22', color:'#e6edf3'});
-        } else {
-            cart[id].qty = newQty;
-        }
-        renderCart();
-    }
-}
-
-function removeItem(id) {
-    delete cart[id];
-    renderCart();
-}
 </script>
 @endpush

@@ -1,0 +1,108 @@
+@extends('layouts.app')
+@section('title', 'Sales vs Expenses')
+@section('page-title', 'Revenue vs Expenses Analysis')
+@section('breadcrumb')
+<li class="breadcrumb-item active">Sales vs Expenses</li>
+@endsection
+@section('content')
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="GET" action="{{ route('reports.sales-vs-expenses') }}" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.75rem;">Time Period</label>
+                <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Daily (Today)</option>
+                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>Monthly (This Month)</option>
+                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>Yearly (This Year)</option>
+                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+                <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Shops</option>
+                    <option value="owner" {{ request('shop_id') === 'owner' ? 'selected' : '' }}>Main Store (Owner)</option>
+                    @foreach($shops as $s)
+                    <option value="{{ $s->id }}" {{ request('shop_id') == $s->id && request('shop_id') !== 'owner' ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @if($period === 'custom')
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.75rem;">From</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.75rem;">To</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
+            </div>
+            @endif
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="stat-value" style="color:#3fb950;font-size:1.3rem;">TZS {{ number_format($totalSales, 0) }}</div>
+            <div class="stat-label">Total Sales Revenue</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-wallet2"></i></div>
+            <div class="stat-value" style="color:#e94560;font-size:1.3rem;">TZS {{ number_format($totalExpenses, 0) }}</div>
+            <div class="stat-label">Total Approved Expenses</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            @if($netProfit >= 0)
+            <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-cash-coin"></i></div>
+            <div class="stat-value text-success" style="font-size:1.3rem;">TZS {{ number_format($netProfit, 0) }}</div>
+            <div class="stat-label">Net Profit (Surplus)</div>
+            @else
+            <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-dash-circle-fill"></i></div>
+            <div class="stat-value text-danger" style="font-size:1.3rem;">TZS {{ number_format($netProfit, 0) }}</div>
+            <div class="stat-label">Net Loss (Deficit)</div>
+            @endif
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-pie-chart-fill me-2" style="color:#bc8cff;"></i>Visual Summary</div>
+    <div class="card-body py-4 text-center">
+        @php
+            $totalAmount = $totalSales + $totalExpenses;
+            $salesPercentage = $totalAmount > 0 ? ($totalSales / $totalAmount) * 100 : 50;
+            $expensesPercentage = $totalAmount > 0 ? ($totalExpenses / $totalAmount) * 100 : 50;
+        @endphp
+        
+        <h6 class="mb-3 text-secondary">Ratio: Sales vs Approved Expenses</h6>
+        <div class="progress" style="height: 25px; border-radius: 6px; overflow: hidden; background-color: var(--card-border);">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ $salesPercentage }}%" aria-valuenow="{{ $salesPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                Sales: {{ number_format($salesPercentage, 1) }}%
+            </div>
+            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ $expensesPercentage }}%" aria-valuenow="{{ $expensesPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                Expenses: {{ number_format($expensesPercentage, 1) }}%
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-6 text-end">
+                <span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#198754;"></span>
+                <span class="text-secondary small">Total Sales: <strong>TZS {{ number_format($totalSales) }}</strong></span>
+            </div>
+            <div class="col-6 text-start">
+                <span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#dc3545;"></span>
+                <span class="text-secondary small">Total Expenses: <strong>TZS {{ number_format($totalExpenses) }}</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

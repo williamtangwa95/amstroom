@@ -9,6 +9,80 @@
 @section('content')
 @php $user = auth()->user(); @endphp
 
+<style>
+    .quick-access-card {
+        transition: all 0.2s ease-in-out;
+    }
+
+    .quick-access-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border-color: var(--accent) !important;
+    }
+</style>
+
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-700 text-primary">
+            <i class="bi bi-lightning-fill me-1"></i>Quick Access Actions
+        </h6>
+    </div>
+    <div class="card-body py-3">
+        <div class="row g-3">
+            @php
+            $isSeller = $user->isSeller();
+            $colClass = $isSeller ? 'col-12 col-md-4' : 'col-6 col-md-3';
+            @endphp
+            <div class="{{ $colClass }}">
+                <a href="{{ $user->isOwner() ? route('main-stock.index') : route('shop-stock.index') }}" class="d-flex align-items-center p-3 rounded text-decoration-none transition-all quick-access-card bg-light border border-light-subtle">
+                    <div class="rounded-circle p-2 bg-primary-subtle text-primary me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                        <i class="bi bi-box-seam fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-700 text-dark" style="font-size: .88rem;">Stock Inventory</div>
+                        <small class="text-secondary" style="font-size: .72rem;">View & manage stock</small>
+                    </div>
+                </a>
+            </div>
+            @if(!$isSeller)
+            <div class="{{ $colClass }}">
+                <a href="{{ route('stock-requests.index') }}" class="d-flex align-items-center p-3 rounded text-decoration-none transition-all quick-access-card bg-light border border-light-subtle">
+                    <div class="rounded-circle p-2 bg-warning-subtle text-warning me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                        <i class="bi bi-clock-history fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-700 text-dark" style="font-size: .88rem;">Stock Requests</div>
+                        <small class="text-secondary" style="font-size: .72rem;">Request replenishment</small>
+                    </div>
+                </a>
+            </div>
+            @endif
+            <div class="{{ $colClass }}">
+                <a href="{{ route('sales.index') }}" class="d-flex align-items-center p-3 rounded text-decoration-none transition-all quick-access-card bg-light border border-light-subtle">
+                    <div class="rounded-circle p-2 bg-success-subtle text-success me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                        <i class="bi bi-receipt fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-700 text-dark" style="font-size: .88rem;">Sales History</div>
+                        <small class="text-secondary" style="font-size: .72rem;">View transactions</small>
+                    </div>
+                </a>
+            </div>
+            <div class="{{ $colClass }}">
+                <a href="{{ route('sales.create') }}" class="d-flex align-items-center p-3 rounded text-decoration-none transition-all quick-access-card bg-light border border-light-subtle">
+                    <div class="rounded-circle p-2 bg-info-subtle text-info me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                        <i class="bi bi-cart-plus fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-700 text-dark" style="font-size: .88rem;">New Sale (POS)</div>
+                        <small class="text-secondary" style="font-size: .72rem;">Checkout customer</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ── OWNER DASHBOARD ── --}}
 @if($user->isOwner())
 
@@ -152,18 +226,27 @@
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Shop</th><th>Seller</th><th>Amount</th><th>Date</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Shop</th>
+                            <th>Seller</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    @forelse($recentSales as $sale)
-                    <tr>
-                        <td><span style="font-size:.78rem;">{{ $sale->shop->shop_name ?? 'Main Store (Owner)' }}</span></td>
-                        <td><span style="font-size:.78rem;">{{ $sale->seller->name ?? 'System Owner' }}</span></td>
-                        <td><strong style="color:#3fb950;font-size:.82rem;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
-                        <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d') }}</span></td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="4" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No sales yet</td></tr>
-                    @endforelse
+                        @forelse($recentSales as $sale)
+                        <tr>
+                            <td><span style="font-size:.78rem;">{{ $sale->shop->shop_name ?? 'Main Store (Owner)' }}</span></td>
+                            <td><span style="font-size:.78rem;">{{ $sale->seller->name ?? 'System Owner' }}</span></td>
+                            <td><strong style="color:#3fb950;font-size:.82rem;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
+                            <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d') }}</span></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No sales yet</td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -177,20 +260,29 @@
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Shop</th><th>Requester</th><th>Date</th><th>Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Shop</th>
+                            <th>Requester</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    @forelse($recentRequests as $req)
-                    <tr>
-                        <td><span style="font-size:.78rem;">{{ $req->shop->shop_name }}</span></td>
-                        <td><span style="font-size:.78rem;">{{ $req->requester->name }}</span></td>
-                        <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $req->request_date->format('M d') }}</span></td>
-                        <td>
-                            <a href="{{ route('stock-requests.show', $req) }}" class="btn btn-xs btn-accent" style="font-size:.7rem;padding:.2rem .5rem;">Review</a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="4" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No pending requests</td></tr>
-                    @endforelse
+                        @forelse($recentRequests as $req)
+                        <tr>
+                            <td><span style="font-size:.78rem;">{{ $req->shop->shop_name }}</span></td>
+                            <td><span style="font-size:.78rem;">{{ $req->requester->name }}</span></td>
+                            <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $req->request_date->format('M d') }}</span></td>
+                            <td>
+                                <a href="{{ route('stock-requests.show', $req) }}" class="btn btn-xs btn-accent" style="font-size:.7rem;padding:.2rem .5rem;">Review</a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No pending requests</td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -201,28 +293,37 @@
 {{-- ── SHOP ADMIN DASHBOARD ── --}}
 @elseif($user->isShopAdmin())
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-layers-fill"></i></div>
-            <div class="stat-value" style="color:#3fb950;">{{ number_format($shopStock) }}</div>
-            <div class="stat-label">Units in Stock</div>
+            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-calendar-check-fill"></i></div>
+            <div class="stat-value" style="color:#3fb950;font-size:1.15rem;">TZS {{ number_format($todaySales, 0) }}</div>
+            <div class="stat-label">Today's Sales</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-currency-dollar"></i></div>
             <div class="stat-value" style="color:#58a6ff;font-size:1.1rem;">TZS {{ number_format($shopSales, 0) }}</div>
             <div class="stat-label">Total Shop Sales</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-4">
         <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-clock-fill"></i></div>
-            <div class="stat-value" style="color:#d29922;">{{ $pendingRequests }}</div>
+            <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-layers-fill"></i></div>
+            <div class="stat-value" style="color:#d29922;">{{ number_format($shopStock) }}</div>
+            <div class="stat-label">Units in Stock</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-clock-fill"></i></div>
+            <div class="stat-value" style="color:#bc8cff;">{{ $pendingRequests }}</div>
             <div class="stat-label">Pending Requests</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-6">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-exclamation-triangle-fill"></i></div>
             <div class="stat-value" style="color:#e94560;">{{ $lowStockCount }}</div>
@@ -242,16 +343,23 @@
             <div class="card-header"><i class="bi bi-receipt me-2" style="color:#58a6ff;"></i>Recent Sales</div>
             <div class="card-body p-0">
                 <table class="table mb-0">
-                    <thead><tr><th>Seller</th><th>Amount</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Seller</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    @forelse($recentSales as $sale)
-                    <tr>
-                        <td style="font-size:.78rem;">{{ $sale->seller->name ?? '-' }}</td>
-                        <td style="font-size:.78rem;color:#3fb950;font-weight:600;">TZS {{ number_format($sale->total_amount, 0) }}</td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="2" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No sales yet</td></tr>
-                    @endforelse
+                        @forelse($recentSales as $sale)
+                        <tr>
+                            <td style="font-size:.78rem;">{{ $sale->seller->name ?? '-' }}</td>
+                            <td style="font-size:.78rem;color:#3fb950;font-weight:600;">TZS {{ number_format($sale->total_amount, 0) }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="2" class="text-center py-3" style="color:var(--text-secondary);font-size:.8rem;">No sales yet</td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -262,28 +370,37 @@
 {{-- ── SELLER DASHBOARD ── --}}
 @else
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-cart-check-fill"></i></div>
-            <div class="stat-value" style="color:#3fb950;">{{ number_format($mySalesCount) }}</div>
-            <div class="stat-label">My Transactions</div>
+            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-calendar-check-fill"></i></div>
+            <div class="stat-value" style="color:#3fb950;font-size:1.15rem;">TZS {{ number_format($todaySales, 0) }}</div>
+            <div class="stat-label">Today's Sales</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-currency-dollar"></i></div>
             <div class="stat-value" style="color:#58a6ff;font-size:1.1rem;">TZS {{ number_format($mySales, 0) }}</div>
             <div class="stat-label">My Total Sales</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-cart-check-fill"></i></div>
+            <div class="stat-value" style="color:#bc8cff;">{{ number_format($mySalesCount) }}</div>
+            <div class="stat-label">My Transactions</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-6">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-layers-fill"></i></div>
             <div class="stat-value" style="color:#3fb950;">{{ $availableStock }}</div>
             <div class="stat-label">Products Available</div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-6">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-exclamation-triangle-fill"></i></div>
             <div class="stat-value" style="color:#e94560;">{{ $lowStockCount }}</div>
@@ -300,20 +417,31 @@
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Customer</th><th>Items</th><th>Amount</th><th>Payment</th><th>Date</th><th></th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Amount</th>
+                            <th>Payment</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    @forelse($recentSales as $sale)
-                    <tr>
-                        <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
-                        <td style="font-size:.78rem;color:var(--text-secondary);">{{ $sale->items->count() }} item(s)</td>
-                        <td><strong style="color:#3fb950;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
-                        <td style="font-size:.75rem;">{{ str_replace('_',' ',ucfirst($sale->payment_method)) }}</td>
-                        <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d, Y') }}</td>
-                        <td><a href="{{ route('sales.receipt', $sale) }}" class="btn btn-xs btn-outline-custom" style="font-size:.7rem;">Receipt</a></td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="6" class="text-center py-4" style="color:var(--text-secondary);">No sales recorded yet. <a href="{{ route('sales.create') }}" class="text-decoration-none" style="color:#e94560;">Make your first sale!</a></td></tr>
-                    @endforelse
+                        @forelse($recentSales as $sale)
+                        <tr>
+                            <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
+                            <td style="font-size:.78rem;color:var(--text-secondary);">{{ $sale->items->count() }} item(s)</td>
+                            <td><strong style="color:#3fb950;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
+                            <td style="font-size:.75rem;">{{ str_replace('_',' ',ucfirst($sale->payment_method)) }}</td>
+                            <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d, Y') }}</td>
+                            <td><a href="{{ route('sales.receipt', $sale) }}" class="btn btn-xs btn-outline-custom" style="font-size:.7rem;">Receipt</a></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-4" style="color:var(--text-secondary);">No sales recorded yet. <a href="{{ route('sales.create') }}" class="text-decoration-none" style="color:#e94560;">Make your first sale!</a></td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -326,34 +454,60 @@
 
 @push('scripts')
 <script>
-@if(isset($monthlySales) && count($monthlySales) > 0)
-const salesCtx = document.getElementById('salesChart');
-if (salesCtx) {
-    new Chart(salesCtx, {
-        type: 'bar',
-        data: {
-            labels: {!! json_encode($monthlySales->pluck('month')) !!},
-            datasets: [{
-                label: 'Revenue (TZS)',
-                data: {!! json_encode($monthlySales->pluck('total')) !!},
-                backgroundColor: 'rgba(233,69,96,.7)',
-                borderColor: '#e94560',
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { labels: { color: '#8b949e', font: { family: 'Inter' } } }
+    @if(isset($monthlySales) && count($monthlySales) > 0)
+    const salesCtx = document.getElementById('salesChart');
+    if (salesCtx) {
+        new Chart(salesCtx, {
+            type: 'bar',
+            data: {
+                labels: {
+                    !!json_encode($monthlySales - > pluck('month')) !!
+                },
+                datasets: [{
+                    label: 'Revenue (TZS)',
+                    data: {
+                        !!json_encode($monthlySales - > pluck('total')) !!
+                    },
+                    backgroundColor: 'rgba(233,69,96,.7)',
+                    borderColor: '#e94560',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
             },
-            scales: {
-                x: { ticks: { color: '#8b949e' }, grid: { color: 'rgba(255,255,255,.04)' } },
-                y: { ticks: { color: '#8b949e', callback: v => 'TZS ' + Number(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,.04)' } }
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#8b949e',
+                            font: {
+                                family: 'Inter'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#8b949e'
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,.04)'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#8b949e',
+                            callback: v => 'TZS ' + Number(v).toLocaleString()
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,.04)'
+                        }
+                    }
+                }
             }
-        }
-    });
-}
-@endif
+        });
+    }
+    @endif
 </script>
 @endpush

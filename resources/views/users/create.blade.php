@@ -42,13 +42,22 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Password *</label>
-                            <input type="password" name="password" class="form-control" required minlength="6">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                Default password is <strong>password</strong> for all employees. Employee can change password after login.
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Confirm Password *</label>
-                            <input type="password" name="password_confirmation" class="form-control" required minlength="6">
+                        <div class="d-none">
+                            <div class="col-md-6">
+                                <label class="form-label">Password *</label>
+                                <input type="password" name="password" class="form-control" value="password" required minlength="6">
+                                <small class="text-muted">Default is pre-filled: <strong>password</strong></small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm Password *</label>
+                                <input type="password" name="password_confirmation" class="form-control" value="password" required minlength="6">
+                                <small class="text-muted">Match the default password</small>
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

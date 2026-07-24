@@ -18,6 +18,8 @@ use App\Http\Controllers\StockLogController;
 use App\Http\Controllers\StockRequestController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpenseCategoryController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ Route::middleware('auth')->group(function () {
         // Stock Request Approval (owner only)
         Route::post('stock-requests/{stockRequest}/approve', [StockRequestController::class, 'approve'])->name('stock-requests.approve');
         Route::post('stock-requests/{stockRequest}/reject', [StockRequestController::class, 'reject'])->name('stock-requests.reject');
+        Route::put('stock-requests/item/{stockRequestItem}', [StockRequestController::class, 'updateItem'])->name('stock-requests.update-item');
 
         // Direct Stock Assignment to Shop (owner only)
         Route::get('stock-transfers/create', [StockTransferController::class, 'create'])->name('stock-transfers.create');
@@ -86,6 +89,8 @@ Route::middleware('auth')->group(function () {
         Route::get('reports/stock', [ReportController::class, 'stock'])->name('reports.stock');
         Route::get('reports/transfer', [ReportController::class, 'transfer'])->name('reports.transfer');
         Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
+        Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+        Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
 
         // Audit Logs
         Route::get('stock-logs', [StockLogController::class, 'index'])->name('stock-logs.index');
@@ -148,6 +153,9 @@ Route::middleware('auth')->group(function () {
         Route::get('defects/create', [DefectController::class, 'create'])->name('defects.create');
         Route::post('defects', [DefectController::class, 'store'])->name('defects.store');
 
+        // Item Image Upload
+        Route::post('items/{item}/upload-image', [ItemController::class, 'uploadImage'])->name('items.upload-image');
+
         // Shop Stock (view + alert threshold)
         Route::get('shop-stock', [ShopStockController::class, 'index'])->name('shop-stock.index');
         Route::get('shop-stock/{shopStock}', [ShopStockController::class, 'show'])->name('shop-stock.show');
@@ -157,5 +165,27 @@ Route::middleware('auth')->group(function () {
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
         Route::delete('settings/logo', [SettingController::class, 'removeLogo'])->name('settings.remove-logo');
+        Route::delete('settings/ringtone', [SettingController::class, 'removeRingtone'])->name('settings.remove-ringtone');
+
+        // Notifications
+        Route::get('notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('notifications/poll', [\App\Http\Controllers\NotificationController::class, 'poll'])->name('notifications.poll');
+        Route::post('notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::get('notifications/{notification}/go', [\App\Http\Controllers\NotificationController::class, 'readAndRedirect'])->name('notifications.go');
+        Route::post('notifications/clear', [\App\Http\Controllers\NotificationController::class, 'clearAll'])->name('notifications.clear');
+
+        // Expenses
+        Route::post('expenses/bulk-approve', [ExpenseController::class, 'bulkApprove'])->name('expenses.bulk-approve');
+        Route::resource('expenses', ExpenseController::class);
+        Route::post('expenses/{expense}/approve', [ExpenseController::class, 'approve'])->name('expenses.approve');
+        Route::post('expenses/{expense}/request-review', [ExpenseController::class, 'requestReview'])->name('expenses.request-review');
+        Route::post('expenses/{expense}/grant-edit', [ExpenseController::class, 'grantEdit'])->name('expenses.grant-edit');
+        Route::post('expenses/{expense}/revert-approval', [ExpenseController::class, 'revertApproval'])->name('expenses.revert-approval');
+    });
+
+    // ─── OWNER + ADMIN ONLY ──────────────────────────────────────────────────
+    Route::middleware('role:owner,shop_admin')->group(function () {
+        Route::resource('expense-categories', ExpenseCategoryController::class)->except(['show', 'edit']);
+        Route::post('shop-stock/{shopStock}/approve-price', [ShopStockController::class, 'approvePrice'])->name('shop-stock.approve-price');
     });
 });

@@ -91,9 +91,36 @@ class MainStockController extends Controller
             'date_received' => 'required|date',
         ]);
 
+        $newSellingPrice = floatval($request->selling_price);
+        $oldSellingPrice = floatval($mainStock->selling_price);
+
         $mainStock->update($request->only('buying_price', 'selling_price', 'date_received'));
 
+        if ($newSellingPrice != $oldSellingPrice) {
+            $itemName = $mainStock->item?->item_name ?? 'Item';
+            // Find all shop stocks for this item
+            $shopStocks = \App\Models\ShopStock::where('item_id', $mainStock->item_id)->get();
+            foreach ($shopStocks as $shopStock) {
+                $shopStock->update([
+                    'is_price_pending' => true,
+                    'pending_selling_price' => $newSellingPrice,
+                ]);
+
+                // Notify all admins of this shop
+                $admins = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                    ->where('role', 'shop_admin')
+                    ->get();
+                foreach ($admins as $admin) {
+                    \App\Models\Notification::create([
+                        'user_id' => $admin->id,
+                        'title'   => 'Main Store Price Updated',
+                        'message' => "Owner updated the selling price for \"{$itemName}\" to TZS " . number_format($newSellingPrice, 2) . ". This is pending your approval.",
+                    ]);
+                }
+            }
+        }
+
         return redirect()->route('main-stock.index')
-            ->with('success', 'Stock updated successfully.');
+            ->with('success', 'Stock updated successfully. Associated shop stock prices are now pending admin approval.');
     }
 }

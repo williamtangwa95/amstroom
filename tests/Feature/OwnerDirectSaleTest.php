@@ -281,6 +281,7 @@ class OwnerDirectSaleTest extends TestCase
     {
         $shop = \App\Models\Shop::create(['shop_name' => 'Branch Alpha', 'location' => 'Loc', 'phone' => '123', 'status' => 'active']);
         $admin = User::create(['name' => 'Admin', 'email' => 'admin_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'shop_admin', 'shop_id' => $shop->id]);
+        $owner = User::create(['name' => 'Owner', 'email' => 'owner_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'owner']);
         $category = \App\Models\Category::create(['category_name' => 'IT']);
         $item = \App\Models\Item::create(['item_name' => 'Dell Laptop', 'category_id' => $category->id]);
         $shopStock = \App\Models\ShopStock::create([
@@ -292,13 +293,32 @@ class OwnerDirectSaleTest extends TestCase
             'remaining_quantity' => 10,
         ]);
 
+        // 1. Admin updates price -> should be pending
         $response = $this->actingAs($admin)->patch(route('shop-stock.update-price', $shopStock), [
             'selling_price' => 1700
         ]);
 
         $response->assertRedirect();
         $shopStock->refresh();
-        $this->assertEquals(1700, $shopStock->selling_price);
+        $this->assertEquals(1500, $shopStock->selling_price); // Still old price
+        $this->assertTrue($shopStock->is_price_pending);
+        $this->assertEquals(1700, $shopStock->pending_selling_price);
+
+        // 2. Owner approves price -> should be approved directly
+        $responseApprove = $this->actingAs($owner)->post(route('shop-stock.approve-price', $shopStock));
+        $responseApprove->assertRedirect();
+        $shopStock->refresh();
+        $this->assertEquals(1700, $shopStock->selling_price); // Updated to approved price
+        $this->assertFalse($shopStock->is_price_pending);
+
+        // 3. Owner directly updates price -> should be approved immediately
+        $responseOwnerUpdate = $this->actingAs($owner)->patch(route('shop-stock.update-price', $shopStock), [
+            'selling_price' => 1900
+        ]);
+        $responseOwnerUpdate->assertRedirect();
+        $shopStock->refresh();
+        $this->assertEquals(1900, $shopStock->selling_price);
+        $this->assertFalse($shopStock->is_price_pending);
     }
 
     public function test_selling_price_update_cannot_be_less_than_buying_price()
@@ -323,5 +343,64 @@ class OwnerDirectSaleTest extends TestCase
         $response->assertSessionHasErrors('selling_price');
         $shopStock->refresh();
         $this->assertEquals(1500, $shopStock->selling_price);
+    }
+
+    public function test_owner_updating_main_stock_makes_related_shop_stocks_pending_approved_by_admin()
+    {
+        $shop = \App\Models\Shop::create(['shop_name' => 'Branch Alpha', 'location' => 'Loc', 'phone' => '123', 'status' => 'active']);
+        $owner = User::create(['name' => 'Owner', 'email' => 'owner_main_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'owner']);
+        $admin = User::create(['name' => 'Admin', 'email' => 'admin_main_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'shop_admin', 'shop_id' => $shop->id]);
+        $category = \App\Models\Category::create(['category_name' => 'IT']);
+        $item = \App\Models\Item::create(['item_name' => 'Dell Laptop', 'category_id' => $category->id]);
+        
+        $mainStock = \App\Models\MainStock::create([
+            'item_id' => $item->id,
+            'buying_price' => 1000,
+            'selling_price' => 1500,
+            'stocked_quantity' => 20,
+            'remaining_quantity' => 20,
+            'date_received' => now()->toDateString(),
+        ]);
+
+        $shopStock = \App\Models\ShopStock::create([
+            'shop_id' => $shop->id,
+            'item_id' => $item->id,
+            'buying_price' => 1000,
+            'selling_price' => 1500,
+            'quantity' => 10,
+            'remaining_quantity' => 10,
+            'date_received' => now()->toDateString(),
+        ]);
+
+        // 1. Owner updates price on MainStock
+        $response = $this->actingAs($owner)->put(route('main-stock.update', $mainStock), [
+            'buying_price' => 1000,
+            'selling_price' => 1800,
+            'date_received' => now()->toDateString(),
+        ]);
+
+        $response->assertRedirect();
+        
+        // 2. MainStock price should be directly updated
+        $mainStock->refresh();
+        $this->assertEquals(1800, $mainStock->selling_price);
+        $this->assertFalse($mainStock->is_price_pending);
+
+        // 3. ShopStock price should become pending Owner's new price
+        $shopStock->refresh();
+        $this->assertEquals(1500, $shopStock->selling_price);
+        $this->assertTrue($shopStock->is_price_pending);
+        $this->assertEquals(1800, $shopStock->pending_selling_price);
+
+        // 4. Shop Admin approves price update with custom selling price
+        $responseApprove = $this->actingAs($admin)->post(route('shop-stock.approve-price', $shopStock), [
+            'selling_price' => 1950
+        ]);
+        $responseApprove->assertRedirect();
+
+        // 5. ShopStock should now be approved and updated to custom price
+        $shopStock->refresh();
+        $this->assertEquals(1950, $shopStock->selling_price);
+        $this->assertFalse($shopStock->is_price_pending);
     }
 }

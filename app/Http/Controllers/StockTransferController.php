@@ -148,6 +148,18 @@ class StockTransferController extends Controller
                     'notes'            => "Direct stock assignment to {$shop->shop_name} (Transfer #{$transfer->id})",
                 ]);
             }
+
+            // Notify all shop admins of the target shop
+            $shopAdmins = \App\Models\User::where('shop_id', $shopId)
+                ->where('role', 'shop_admin')
+                ->get();
+            foreach ($shopAdmins as $admin) {
+                \App\Models\Notification::create([
+                    'user_id' => $admin->id,
+                    'title'   => 'New Stock Transfer Dispatched',
+                    'message' => "Owner has dispatched a new stock transfer #{$transfer->id} to your shop ({$shop->shop_name}). Please review and confirm receipt.",
+                ]);
+            }
         });
 
         return redirect()->route('stock-transfers.index')
@@ -209,6 +221,19 @@ class StockTransferController extends Controller
                 'date'             => now()->toDateString(),
                 'notes'            => "Item received & confirmed (Transfer #{$transfer->id})",
             ]);
+
+            // Notify all sellers of this shop
+            $sellers = \App\Models\User::where('shop_id', $transfer->to_shop)
+                ->where('role', 'seller')
+                ->get();
+            $itemName = $transferItem->item?->item_name ?? 'Item';
+            foreach ($sellers as $seller) {
+                \App\Models\Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'New Stock Added to Shop Stock',
+                    'message' => "Shop Admin has approved and received {$transferItem->quantity} units of \"{$itemName}\" into the shop stock.",
+                ]);
+            }
 
             // Update transfer status
             $this->updateTransferStatus($transfer);
@@ -274,6 +299,18 @@ class StockTransferController extends Controller
                     'performed_by'     => $user->id,
                     'date'             => now()->toDateString(),
                     'notes'            => "Bulk received & confirmed (Transfer #{$stockTransfer->id})",
+                ]);
+            }
+
+            // Notify all sellers of this shop
+            $sellers = \App\Models\User::where('shop_id', $stockTransfer->to_shop)
+                ->where('role', 'seller')
+                ->get();
+            foreach ($sellers as $seller) {
+                \App\Models\Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'New Stock Added (Bulk Approval)',
+                    'message' => "Shop Admin has bulk-approved and received stock items (Transfer #{$stockTransfer->id}) into the shop stock.",
                 ]);
             }
 

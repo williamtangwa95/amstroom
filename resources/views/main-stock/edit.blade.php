@@ -20,11 +20,11 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Buying Price (TZS) *</label>
-                            <input type="number" name="buying_price" class="form-control" value="{{ old('buying_price', $mainStock->buying_price) }}" min="0" step="0.01" required>
+                            <input type="text" name="buying_price" class="form-control currency-input" value="{{ old('buying_price', (int)$mainStock->buying_price) }}" min="0" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Selling Price (TZS) *</label>
-                            <input type="number" name="selling_price" class="form-control" value="{{ old('selling_price', $mainStock->selling_price) }}" min="0" step="0.01" required>
+                            <input type="text" name="selling_price" class="form-control currency-input" value="{{ old('selling_price', (int)$mainStock->selling_price) }}" min="0" required>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Date Received *</label>
