@@ -133,6 +133,12 @@ function addItemRow() {
         </div>
     `;
     container.appendChild(row);
+    const newSelect = row.querySelector('select');
+    if (newSelect && newSelect.options.length > 8) {
+        if (window.initSearchableSelect) {
+            window.initSearchableSelect(newSelect);
+        }
+    }
     itemIndex++;
 }
 

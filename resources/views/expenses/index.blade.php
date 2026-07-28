@@ -44,7 +44,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($expenses as $expense)
+                @foreach($expenses as $expense)
                 <tr>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
                     <td>
@@ -138,11 +138,7 @@
                         </div>
                     </td>
                 </tr>
-                @empty
-                <tr>
-                    <td colspan="{{ auth()->user()->isOwner() || auth()->user()->isShopAdmin() ? 11 : 10 }}" class="text-center py-4 text-secondary">No expenses found.</td>
-                </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>

@@ -10,16 +10,31 @@
     {{-- Left: Available Shop Products --}}
     <div class="col-lg-7">
         <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Shop Inventory</span>
-                <input type="text" id="posSearch" class="form-control form-control-sm w-50" placeholder="Search product name/brand...">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+                <span class="fw-700" style="font-size:.9rem;"><i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory</span>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="showAllProductsToggle">
+                        <label class="form-check-label small fw-600 text-nowrap" for="showAllProductsToggle" style="color:var(--text-secondary);cursor:pointer;user-select:none;">Show Out of Stock</label>
+                    </div>
+                    <input type="text" id="posSearch" class="form-control form-control-sm" placeholder="Search name/brand..." style="width:160px;">
+                </div>
             </div>
             <div class="card-body p-0" style="max-height:600px;overflow-y:auto;">
                 <div class="row g-2 p-3" id="posProductGrid">
                     @forelse($shopStocks as $stock)
-                    @php $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null; @endphp
-                    <div class="col-md-6 pos-item-card" data-name="{{ strtolower($stock->item->item_name) }}" data-brand="{{ strtolower($stock->item->brand) }}">
-                        <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important;">
+                    @php
+                        $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null;
+                        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+                        $isLocked = !auth()->user()->isOwner() && $isIndependent && !$stock->is_sellable;
+                        $hasStock = $stock->remaining_quantity > 0;
+                        $isMock = str_starts_with($stock->id, 'item_');
+                    @endphp
+                    <div class="col-md-6 pos-item-card" 
+                         data-name="{{ strtolower($stock->item->item_name) }}" 
+                         data-brand="{{ strtolower($stock->item->brand) }}"
+                         data-available="{{ ($hasStock && !$isLocked && !$isMock) ? 'true' : 'false' }}">
+                        <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important; opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
                             <div class="d-flex gap-2">
                                 @if($stock->item->image_path)
                                 <img src="{{ asset('storage/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded border" style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;">
@@ -30,6 +45,13 @@
                                 @endif
                                 <div style="min-width:0;">
                                     <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
+                                    @if($isLocked)
+                                        <div class="badge bg-danger mb-1" style="font-size:.65rem;"><i class="bi bi-lock-fill"></i> Locked</div>
+                                    @elseif($isMock)
+                                        <div class="badge bg-secondary mb-1" style="font-size:.65rem;">Catalog Only</div>
+                                    @elseif(!$hasStock)
+                                        <div class="badge bg-warning text-dark mb-1" style="font-size:.65rem;">Out of Stock</div>
+                                    @endif
                                     <div class="fw-700 text-truncate" style="font-size:.88rem;color:var(--text-primary);" title="{{ $stock->item->item_name }}">{{ $stock->item->item_name }}</div>
                                     <div class="text-truncate" style="font-size:.75rem;color:var(--text-secondary);" title="{{ $stock->item->specification }}">{{ $stock->item->specification }}</div>
                                 </div>
@@ -37,26 +59,34 @@
                             <div class="mt-3 d-flex align-items-center justify-content-between">
                                 <div>
                                     <div class="fw-800" style="color:#3fb950;font-size:.95rem;">TZS {{ number_format($stock->selling_price, 0) }}</div>
-                                    <div style="font-size:.7rem;color:{{ $stock->isLowStock() ? '#e94560' : 'var(--text-secondary)' }};">
+                                    <div style="font-size:.7rem;color:{{ ($stock->isLowStock() && !$isMock) ? '#e94560' : 'var(--text-secondary)' }};">
                                         In Stock: <strong>{{ $stock->remaining_quantity }}</strong>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-accent add-to-cart-btn"
+                                @if($isLocked)
+                                <button type="button" class="btn btn-sm btn-secondary add-to-cart-btn" disabled
+                                    data-is-sellable="false">
+                                    <i class="bi bi-lock-fill"></i> Locked
+                                </button>
+                                @else
+                                <button type="button" class="btn btn-sm {{ ($hasStock && !$isMock) ? 'btn-accent' : 'btn-outline-secondary' }} add-to-cart-btn"
                                     data-id="{{ $stock->id }}"
                                     data-name="{{ $stock->item->item_name }}"
                                     data-price="{{ $stock->selling_price }}"
                                     data-stock="{{ $stock->remaining_quantity }}"
                                     data-price-pending="{{ $pendingPrice ? 'true' : 'false' }}"
-                                    data-pending-price="{{ $pendingPrice ?? 0 }}">
+                                    data-pending-price="{{ $pendingPrice ?? 0 }}"
+                                    data-is-sellable="true">
                                     <i class="bi bi-cart-plus me-1"></i> Add
                                 </button>
+                                @endif
                             </div>
                         </div>
                     </div>
                     @empty
-                    <div class="col-12 text-center py-5" style="color:var(--text-secondary);">
+                    <div class="col-12 text-center py-5 text-muted" id="noProductsMsg">
                         <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        No stock available in this shop. Request stock from Main Store first.
+                        No available products in this shop. Check 'Show Out of Stock' to create a proforma.
                     </div>
                     @endforelse
                 </div>
@@ -100,9 +130,59 @@
                             </select>
                         </div>
 
-                        <button type="submit" class="btn btn-accent w-100 py-2 fw-700" id="checkoutBtn" disabled>
-                            <i class="bi bi-check2-circle me-1"></i> Complete Sale
-                        </button>
+                        {{-- Billing & Delivery Details Collapsible --}}
+                        <div class="mb-3">
+                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600" style="font-size:.82rem;color:var(--accent);" data-bs-toggle="collapse" href="#billingDetailsPanel" role="button">
+                                <i class="bi bi-file-earmark-text"></i> + Add Billing & Delivery Details (for Invoice/Proforma)
+                            </a>
+                            <div class="collapse mt-2" id="billingDetailsPanel">
+                                <div class="rounded p-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Customer ID</label>
+                                            <input type="text" name="customer_id" class="form-control form-control-sm" placeholder="e.g. AD-0025">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Customer P.O. Box</label>
+                                            <input type="text" name="customer_po_box" class="form-control form-control-sm" placeholder="e.g. 6858 Morogoro">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Deliver To</label>
+                                            <input type="text" name="deliver_to" class="form-control form-control-sm" placeholder="e.g. CHAMWINO STUDENT CENTER">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Delivery Date</label>
+                                            <input type="date" name="delivery_date" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Delivery Time</label>
+                                            <input type="time" name="delivery_time" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Validity Date</label>
+                                            <input type="date" name="validity_date" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Terms of Payment</label>
+                                            <input type="text" name="terms_of_payment" class="form-control form-control-sm" placeholder="e.g. 30 Days Net">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="sale_status" id="saleStatusInput" value="completed">
+
+                        <div class="d-flex flex-column gap-2">
+                            <button type="submit" class="btn btn-accent w-100 py-2 fw-700" id="checkoutBtn" disabled
+                                onclick="document.getElementById('saleStatusInput').value='completed'">
+                                <i class="bi bi-check2-circle me-1"></i> Complete Sale
+                            </button>
+                            <button type="submit" class="btn btn-outline-custom w-100 py-2 fw-600" id="proformaBtn" disabled
+                                onclick="document.getElementById('saleStatusInput').value='draft_proforma'">
+                                <i class="bi bi-file-earmark-text me-1"></i> Save as Proforma Quote
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -115,19 +195,32 @@
 <script>
     const cart = {};
 
-    // Product Filter
-    document.getElementById('posSearch').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
+    // Product Filter (Combined search & toggle)
+    function filterProducts() {
+        const term = document.getElementById('posSearch').value.toLowerCase();
+        const showAll = document.getElementById('showAllProductsToggle').checked;
+
         document.querySelectorAll('.pos-item-card').forEach(card => {
-            const name = card.dataset.name;
-            const brand = card.dataset.brand;
-            if (name.includes(term) || brand.includes(term)) {
+            const name = card.dataset.name || '';
+            const brand = card.dataset.brand || '';
+            const available = card.dataset.available === 'true';
+
+            const matchesSearch = name.includes(term) || brand.includes(term);
+            const matchesAvailability = showAll || available;
+
+            if (matchesSearch && matchesAvailability) {
                 card.style.display = 'block';
             } else {
                 card.style.display = 'none';
             }
         });
-    });
+    }
+
+    document.getElementById('posSearch').addEventListener('input', filterProducts);
+    document.getElementById('showAllProductsToggle').addEventListener('change', filterProducts);
+
+    // Initial run to hide out-of-stock / unstocked items by default
+    filterProducts();
 
     // Add to Cart
     document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
@@ -150,18 +243,20 @@
                 return;
             }
 
+            const isSellable = this.dataset.isSellable !== 'false';
+            if (!isSellable) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Item Locked',
+                    text: 'Main Store updated transfer price for this item. Please review and update Selling Price to restore sales eligibility.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
+
             if (cart[id]) {
-                if (cart[id].qty < maxStock) {
-                    cart[id].qty++;
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Stock Limit Reached',
-                        text: `Only ${maxStock} units available in shop.`,
-                        background: '#161b22',
-                        color: '#e6edf3'
-                    });
-                }
+                cart[id].qty++;
             } else {
                 cart[id] = {
                     id,
@@ -184,6 +279,7 @@
             list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1"></i>Cart is empty. Select products from the left.</div>`;
             document.getElementById('cartTotalDisplay').textContent = 'TZS 0';
             document.getElementById('checkoutBtn').disabled = true;
+            document.getElementById('proformaBtn').disabled = true;
             return;
         }
 
@@ -210,7 +306,7 @@
                     
                     <div class="input-group input-group-sm ms-2" style="width:120px;">
                         <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
-                               class="form-control form-control-sm py-0 px-1 currency-input" min="${item.price}" 
+                               class="form-control form-control-sm py-0 px-1 currency-input" min="0" 
                                onchange="updateItemPrice('${id}', this.value)" required>
                     </div>
 
@@ -224,21 +320,22 @@
         list.innerHTML = html;
         document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
         document.getElementById('checkoutBtn').disabled = false;
+        document.getElementById('proformaBtn').disabled = false;
     }
 
     function updateItemPrice(id, val) {
         if (cart[id]) {
             const cleanVal = String(val).replace(/,/g, '');
             const floatVal = parseFloat(cleanVal);
-            if (isNaN(floatVal) || floatVal < cart[id].price) {
+            if (isNaN(floatVal) || floatVal < 0) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Invalid Price',
-                    text: `Negotiated price cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`,
+                    text: `Negotiated price cannot be less than 0.`,
                     background: '#161b22',
                     color: '#e6edf3'
                 });
-                cart[id].negotiatedPrice = cart[id].price;
+                cart[id].negotiatedPrice = 0;
             } else {
                 cart[id].negotiatedPrice = floatVal;
             }
@@ -251,14 +348,6 @@
             const newQty = cart[id].qty + delta;
             if (newQty <= 0) {
                 delete cart[id];
-            } else if (newQty > cart[id].maxStock) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Stock Limit Reached',
-                    text: `Only ${cart[id].maxStock} units available.`,
-                    background: '#161b22',
-                    color: '#e6edf3'
-                });
             } else {
                 cart[id].qty = newQty;
             }
@@ -270,5 +359,70 @@
         delete cart[id];
         renderCart();
     }
+
+    let _clickedSubmitBtn = null;
+    document.getElementById('checkoutBtn').addEventListener('click', function() { _clickedSubmitBtn = 'checkout'; });
+    document.getElementById('proformaBtn').addEventListener('click', function() { _clickedSubmitBtn = 'proforma'; });
+
+    document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+        const checkoutBtn  = document.getElementById('checkoutBtn');
+        const proformaBtn  = document.getElementById('proformaBtn');
+
+        // 1. Validate prices are greater than 0
+        for (const id of Object.keys(cart)) {
+            if (cart[id].negotiatedPrice <= 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Price',
+                    text: `Please enter a valid price greater than 0 for ${cart[id].name}.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
+        }
+
+        // 2. Validate stock for completed sales
+        if (_clickedSubmitBtn === 'checkout') {
+            for (const id of Object.keys(cart)) {
+                // If it is a mock item or if qty exceeds available stock
+                if (String(id).startsWith('item_') || cart[id].qty > cart[id].maxStock) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Insufficient Stock',
+                        text: `Not enough stock to complete the sale for ${cart[id].name}. Available: ${cart[id].maxStock}`,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                    return;
+                }
+                
+                // Validate negotiable price floor for completed sales
+                if (cart[id].negotiatedPrice < cart[id].price) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Price Floor Violation',
+                        text: `Price for ${cart[id].name} cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                    return;
+                }
+            }
+        }
+
+        if (_clickedSubmitBtn === 'proforma') {
+            proformaBtn.disabled  = true;
+            checkoutBtn.disabled  = true;
+            proformaBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving Proforma...`;
+        } else {
+            checkoutBtn.disabled  = true;
+            proformaBtn.disabled  = true;
+            checkoutBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Completing Sale...`;
+        }
+    });
 </script>
 @endpush

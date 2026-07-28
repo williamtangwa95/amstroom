@@ -65,6 +65,13 @@ class Notification extends Model
             }
         }
 
+        // 5. Sales Return
+        if (stripos($this->title, 'Return') !== false || stripos($this->message, 'return') !== false) {
+            if (auth()->check()) {
+                return route('sales-returns.index');
+            }
+        }
+
         return null;
     }
 }

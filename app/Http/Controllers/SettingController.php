@@ -17,11 +17,22 @@ class SettingController extends Controller
         $logo         = '';
         $printerEnabled = Setting::get('printer_enabled_user_' . $user->id, '1');
         $notificationRingtone = Setting::get('notification_sound_user_' . $user->id);
+        $storePricingMode = Setting::get('store_pricing_mode', 'DEPENDENT');
+
+        // Company document settings (owner only)
+        $companyTin         = '';
+        $companyAddress     = '';
+        $companyBankName    = '';
+        $companyBankAccount = '';
 
         if ($user->isOwner()) {
-            $systemName = Setting::get('system_name', 'AMSTROOM');
-            $slogan     = Setting::get('slogan', 'Technology Innovations');
-            $logo       = Setting::get('logo');
+            $systemName         = Setting::get('system_name', 'AMSTROOM');
+            $slogan             = Setting::get('slogan', 'Technology Innovations');
+            $logo               = Setting::get('logo');
+            $companyTin         = Setting::get('company_tin', '');
+            $companyAddress     = Setting::get('company_address', '');
+            $companyBankName    = Setting::get('company_bank_name', '');
+            $companyBankAccount = Setting::get('company_bank_account', '');
         } elseif ($user->isShopAdmin()) {
             $shop = $user->shop;
             $systemName = $shop->shop_name;
@@ -29,7 +40,10 @@ class SettingController extends Controller
             $logo       = $shop->logo;
         }
 
-        return view('settings.index', compact('systemName', 'slogan', 'logo', 'printerEnabled', 'notificationRingtone'));
+        return view('settings.index', compact(
+            'systemName', 'slogan', 'logo', 'printerEnabled', 'notificationRingtone',
+            'storePricingMode', 'companyTin', 'companyAddress', 'companyBankName', 'companyBankAccount'
+        ));
     }
 
     public function update(Request $request)
@@ -54,15 +68,25 @@ class SettingController extends Controller
 
         if ($user->isOwner()) {
             $request->validate([
-                'system_name' => 'required|string|max:150',
-                'slogan'      => 'nullable|string|max:255',
-                'logo'        => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
-                'printer_enabled' => 'required|in:0,1',
+                'system_name'        => 'required|string|max:150',
+                'slogan'             => 'nullable|string|max:255',
+                'logo'               => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'printer_enabled'    => 'required|in:0,1',
+                'store_pricing_mode' => 'required|in:DEPENDENT,INDEPENDENT',
+                'company_tin'        => 'nullable|string|max:100',
+                'company_address'    => 'nullable|string|max:255',
+                'company_bank_name'  => 'nullable|string|max:150',
+                'company_bank_account' => 'nullable|string|max:100',
             ]);
 
             Setting::set('system_name', $request->system_name);
             Setting::set('slogan', $request->slogan);
             Setting::set('printer_enabled_user_' . $user->id, $request->printer_enabled);
+            Setting::set('store_pricing_mode', $request->store_pricing_mode);
+            Setting::set('company_tin', $request->company_tin);
+            Setting::set('company_address', $request->company_address);
+            Setting::set('company_bank_name', $request->company_bank_name);
+            Setting::set('company_bank_account', $request->company_bank_account);
 
             if ($request->hasFile('logo')) {
                 $oldLogo = Setting::get('logo');

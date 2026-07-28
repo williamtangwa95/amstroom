@@ -84,13 +84,7 @@ Route::middleware('auth')->group(function () {
         // Users
         Route::resource('users', UserController::class);
 
-        // Reports
-        Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
-        Route::get('reports/stock', [ReportController::class, 'stock'])->name('reports.stock');
-        Route::get('reports/transfer', [ReportController::class, 'transfer'])->name('reports.transfer');
-        Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
-        Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
-        Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
+
 
         // Audit Logs
         Route::get('stock-logs', [StockLogController::class, 'index'])->name('stock-logs.index');
@@ -142,6 +136,10 @@ Route::middleware('auth')->group(function () {
         Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
         Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->withTrashed();
         Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt')->withTrashed();
+        Route::get('sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
+        Route::get('sales/{sale}/proforma', [SaleController::class, 'proforma'])->name('sales.proforma');
+        Route::get('sales/{sale}/delivery-note', [SaleController::class, 'deliveryNote'])->name('sales.delivery-note');
+        Route::post('sales/{sale}/convert', [SaleController::class, 'convertToSale'])->name('sales.convert');
 
         // Sale Returns (all roles can view and request returns)
         Route::get('sales-returns', [SaleReturnController::class, 'index'])->name('sales-returns.index');
@@ -187,5 +185,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:owner,shop_admin')->group(function () {
         Route::resource('expense-categories', ExpenseCategoryController::class)->except(['show', 'edit']);
         Route::post('shop-stock/{shopStock}/approve-price', [ShopStockController::class, 'approvePrice'])->name('shop-stock.approve-price');
+
+        // Reports
+        Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
+        Route::get('reports/stock', [ReportController::class, 'stock'])->name('reports.stock');
+        Route::get('reports/transfer', [ReportController::class, 'transfer'])->name('reports.transfer');
+        Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
+        Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+        Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
     });
 });

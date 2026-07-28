@@ -123,6 +123,9 @@
                     <span class="input-group-text"><i class="bi bi-lock-fill" style="font-size:.85rem;"></i></span>
                     <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror"
                            placeholder="At least 6 characters" required autofocus>
+                    <span class="input-group-text" id="toggle-password" style="cursor: pointer; background: #f8fafc; border: 1px solid #cbd5e1; color: var(--text-secondary);">
+                        <i class="bi bi-eye-slash" style="font-size:.85rem;"></i>
+                    </span>
                 </div>
             </div>
 
@@ -132,6 +135,9 @@
                     <span class="input-group-text"><i class="bi bi-shield-lock-fill" style="font-size:.85rem;"></i></span>
                     <input type="password" id="password_confirmation" name="password_confirmation" class="form-control"
                            placeholder="Re-enter new password" required>
+                    <span class="input-group-text" id="toggle-password-confirm" style="cursor: pointer; background: #f8fafc; border: 1px solid #cbd5e1; color: var(--text-secondary);">
+                        <i class="bi bi-eye-slash" style="font-size:.85rem;"></i>
+                    </span>
                 </div>
             </div>
 
@@ -141,5 +147,47 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const togglePassword = document.querySelector('#toggle-password');
+        const passwordInput = document.querySelector('#password');
+        
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                } else {
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            });
+        }
+
+        const togglePasswordConfirm = document.querySelector('#toggle-password-confirm');
+        const passwordConfirmInput = document.querySelector('#password_confirmation');
+        
+        if (togglePasswordConfirm && passwordConfirmInput) {
+            togglePasswordConfirm.addEventListener('click', function() {
+                const type = passwordConfirmInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordConfirmInput.setAttribute('type', type);
+                
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                } else {
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>

@@ -9,10 +9,17 @@ class SaleItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sale_id', 'item_id', 'quantity', 'selling_price'];
+    protected $fillable = [
+        'sale_id', 'item_id', 'quantity', 'selling_price',
+        'owner_cost_price', 'owner_realized_sp', 'shop_cost_price', 'shop_realized_sp',
+    ];
 
     protected $casts = [
         'selling_price' => 'decimal:2',
+        'owner_cost_price' => 'decimal:2',
+        'owner_realized_sp' => 'decimal:2',
+        'shop_cost_price' => 'decimal:2',
+        'shop_realized_sp' => 'decimal:2',
     ];
 
     public function sale()

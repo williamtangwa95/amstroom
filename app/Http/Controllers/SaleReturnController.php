@@ -83,7 +83,7 @@ class SaleReturnController extends Controller
         $isAdminOrOwner = $user->isOwner() || $user->isShopAdmin();
         $status = $isAdminOrOwner ? 'approved' : 'pending';
 
-        DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner) {
+        $saleReturn = DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner) {
             $saleReturn = SaleReturn::create([
                 'sale_id'      => $sale->id,
                 'requested_by' => $user->id,
@@ -111,7 +111,22 @@ class SaleReturnController extends Controller
             if ($isAdminOrOwner) {
                 $sale->delete();
             }
+
+            return $saleReturn;
         });
+
+        if (!$isAdminOrOwner) {
+            $admins = \App\Models\User::where('shop_id', $sale->shop_id)
+                ->where('role', 'shop_admin')
+                ->get();
+            foreach ($admins as $admin) {
+                \App\Models\Notification::create([
+                    'user_id' => $admin->id,
+                    'title'   => 'New Sales Return Request',
+                    'message' => "Seller {$user->name} has submitted a return request for Sale #{$sale->id} (Return #{$saleReturn->id}).",
+                ]);
+            }
+        }
 
         $msg = $isAdminOrOwner 
             ? 'Sale return processed and approved. Shop stock updated successfully.' 

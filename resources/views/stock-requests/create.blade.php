@@ -60,10 +60,31 @@ let itemIndex = 1;
 document.getElementById('addItemBtn').addEventListener('click', function() {
     const container = document.getElementById('requestItemsContainer');
     const firstRow = container.querySelector('.request-item-row');
+    
+    // Destroy select2 on first row's select before cloning to prevent copying markup
+    const $firstSelect = $(firstRow).find('select');
+    if ($firstSelect.hasClass('select2-hidden-accessible')) {
+        $firstSelect.select2('destroy');
+    }
+    
     const newRow = firstRow.cloneNode(true);
+    
+    // Re-initialize first row's select
+    if ($firstSelect.find('option').length > 8 && window.initSearchableSelect) {
+        window.initSearchableSelect($firstSelect);
+    }
 
-    newRow.querySelector('select').name = `items[${itemIndex}][item_id]`;
-    newRow.querySelector('select').value = '';
+    const select = newRow.querySelector('select');
+    
+    // Clean up Select2 artifacts from the cloned select
+    select.classList.remove('select2-hidden-accessible');
+    const oldContainer = newRow.querySelector('.select2-container');
+    if (oldContainer) {
+        oldContainer.remove();
+    }
+
+    select.name = `items[${itemIndex}][item_id]`;
+    select.value = '';
     newRow.querySelector('input').name = `items[${itemIndex}][quantity]`;
     newRow.querySelector('input').value = '1';
     newRow.querySelector('input').removeAttribute('max');
@@ -73,6 +94,12 @@ document.getElementById('addItemBtn').addEventListener('click', function() {
     removeBtn.addEventListener('click', () => newRow.remove());
 
     container.appendChild(newRow);
+    
+    // Initialize select2 on the new row's select
+    if (select.options.length > 8 && window.initSearchableSelect) {
+        window.initSearchableSelect(select);
+    }
+    
     itemIndex++;
 });
 

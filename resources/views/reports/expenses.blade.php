@@ -103,7 +103,7 @@
 <div class="card">
     <div class="card-header"><i class="bi bi-list-check me-2" style="color:#58a6ff;"></i>Expenses Log</div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="reportsExpensesTable">
             <thead>
                 <tr>
                     <th>No</th>
@@ -116,7 +116,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($expenses as $exp)
+                @foreach($expenses as $exp)
                 <tr>
                     <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $exp->activity_date->format('M d, Y') }}</td>
@@ -126,13 +126,33 @@
                     <td style="font-size:.82rem;">{{ $exp->approver->name ?? '—' }}</td>
                     <td><strong class="text-danger">TZS {{ number_format($exp->amount, 0) }}</strong></td>
                 </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="text-center text-secondary py-3">No expenses found for the selected criteria.</td>
-                </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(() => {
+    $('#reportsExpensesTable').DataTable({
+        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                className: 'btn btn-sm btn-accent me-2',
+                text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
+                title: 'Expenses Report'
+            },
+            {
+                extend: 'pdfHtml5',
+                className: 'btn btn-sm btn-outline-custom',
+                text: '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
+                title: 'Expenses Report'
+            }
+        ]
+    });
+});
+</script>
+@endpush

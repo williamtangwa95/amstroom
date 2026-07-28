@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Defect;
+use App\Models\Item;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
@@ -17,10 +18,12 @@ class ReportController extends Controller
 {
     public function sales(Request $request)
     {
+        $user = auth()->user();
         $period = $request->get('period', 'monthly');
-        $shopId = $request->get('shop_id');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $itemId = $request->get('item_id');
 
-        $query = Sale::with('shop', 'seller');
+        $query = Sale::completed()->with('shop', 'seller');
 
         if ($shopId) {
             if ($shopId === 'owner') {
@@ -28,6 +31,12 @@ class ReportController extends Controller
             } else {
                 $query->where('shop_id', $shopId);
             }
+        }
+
+        if ($itemId) {
+            $query->whereHas('items', function ($q) use ($itemId) {
+                $q->where('item_id', $itemId);
+            });
         }
 
         if ($period === 'daily') {
@@ -41,42 +50,79 @@ class ReportController extends Controller
             if ($request->filled('date_to'))   $query->whereDate('sale_date', '<=', $request->date_to);
         }
 
-        $sales = $query->latest()->get();
-        $totalRevenue = $query->sum('total_amount');
+        $sales = $query->latest()->with('items.item')->get();
 
-        // Summary by shop
-        $salesByShop = Sale::selectRaw('shop_id, SUM(total_amount) as revenue, COUNT(*) as count')
-            ->when($shopId, function($q) use ($shopId) {
-                if ($shopId === 'owner') {
-                    return $q->whereNull('shop_id');
+        $isOwner = auth()->check() && auth()->user()->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+
+        $totalRevenue = 0;
+        $totalCost = 0;
+        $totalProfit = 0;
+
+        foreach ($sales as $sale) {
+            $filteredItems = $sale->items->when($itemId, function ($items) use ($itemId) {
+                return $items->where('item_id', $itemId);
+            });
+
+            $saleRevenue = $filteredItems->sum(function ($item) use ($isOwner, $isIndependent, $sale) {
+                if ($isOwner && $isIndependent && $sale->shop_id !== null) {
+                    return (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
                 }
-                return $q->where('shop_id', $shopId);
-            })
-            ->groupBy('shop_id')
-            ->with('shop')
-            ->get();
+                return (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+            });
 
-        $shops = Shop::all();
-
-        // Chart data: daily sales for period
-        $chartData = Sale::selectRaw('sale_date, SUM(total_amount) as total')
-            ->when($shopId, function($q) use ($shopId) {
-                if ($shopId === 'owner') {
-                    return $q->whereNull('shop_id');
+            $saleCost = $filteredItems->sum(function ($item) use ($isOwner, $sale) {
+                if ($isOwner) {
+                    return (float) ($item->owner_cost_price ?? 0) * $item->quantity;
                 }
-                return $q->where('shop_id', $shopId);
-            })
-            ->where('sale_date', '>=', now()->subDays(30))
-            ->groupBy('sale_date')
-            ->orderBy('sale_date')
-            ->get();
+                return (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
+            });
 
-        return view('reports.sales', compact('sales', 'totalRevenue', 'salesByShop', 'shops', 'period', 'chartData'));
+            $saleProfit = $saleRevenue - $saleCost;
+
+            $sale->filtered_revenue = $saleRevenue;
+            $sale->filtered_cost = $saleCost;
+            $sale->filtered_profit = $saleProfit;
+
+            $totalRevenue += $saleRevenue;
+            $totalCost += $saleCost;
+            $totalProfit += $saleProfit;
+        }
+
+        // Summary by shop computed dynamically using filtered amounts
+        $salesByShop = $sales->groupBy('shop_id')->map(function ($group, $shopId) {
+            return (object) [
+                'shop_id' => $shopId,
+                'shop' => $group->first()->shop,
+                'count' => $group->count(),
+                'revenue' => $group->sum(fn($s) => $s->filtered_revenue),
+                'profit' => $group->sum(fn($s) => $s->filtered_profit),
+            ];
+        })->values();
+
+        $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
+        $items = Item::orderBy('item_name')->get();
+
+        // Chart data computed dynamically
+        $chartData = $sales->where('sale_date', '>=', now()->subDays(30))
+            ->groupBy(fn($s) => $s->sale_date->toDateString())
+            ->map(function ($group, $date) {
+                return (object) [
+                    'sale_date' => \Carbon\Carbon::parse($date),
+                    'total' => $group->sum(fn($s) => $s->filtered_revenue),
+                ];
+            })->sortBy('sale_date')->values();
+
+        return view('reports.sales', compact('sales', 'totalRevenue', 'totalProfit', 'salesByShop', 'shops', 'items', 'period', 'chartData', 'itemId'));
     }
 
     public function stock(Request $request)
     {
+        $user = auth()->user();
         $type = $request->get('type', 'main');
+        if (!$user->isOwner()) {
+            $type = 'shop';
+        }
 
         $mainStocks = \App\Models\MainStock::with('item.category')
             ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
@@ -84,9 +130,14 @@ class ReportController extends Controller
             ->with('item.category')
             ->get();
 
-        $shopStocks = \App\Models\ShopStock::with('item.category', 'shop')
-            ->where('remaining_quantity', '>', 0)
-            ->get();
+        $shopStocksQuery = \App\Models\ShopStock::with('item.category', 'shop')
+            ->where('remaining_quantity', '>', 0);
+
+        if (!$user->isOwner()) {
+            $shopStocksQuery->where('shop_id', $user->shop_id);
+        }
+
+        $shopStocks = $shopStocksQuery->get();
 
         return view('reports.stock', compact('mainStocks', 'shopStocks', 'type'));
     }
@@ -94,8 +145,13 @@ class ReportController extends Controller
     public function transfer(Request $request)
     {
         $status = $request->get('status', 'all');
+        $user = auth()->user();
 
         $query = StockRequest::with('shop', 'requester', 'transfer');
+
+        if ($user->isShopAdmin()) {
+            $query->where('shop_id', $user->shop_id);
+        }
 
         if ($status !== 'all') {
             $query->where('status', $status);
@@ -103,9 +159,9 @@ class ReportController extends Controller
 
         $requests = $query->latest()->get();
         $stats = [
-            'pending'  => StockRequest::where('status', 'pending')->count(),
-            'approved' => StockRequest::where('status', 'approved')->count(),
-            'rejected' => StockRequest::where('status', 'rejected')->count(),
+            'pending'  => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'pending')->count(),
+            'approved' => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'approved')->count(),
+            'rejected' => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'rejected')->count(),
         ];
 
         return view('reports.transfer', compact('requests', 'stats', 'status'));
@@ -113,26 +169,30 @@ class ReportController extends Controller
 
     public function defect(Request $request)
     {
+        $user = auth()->user();
         $query = Defect::with('shop', 'item.category', 'reporter');
+
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('shop_id')) {
-            $query->where('shop_id', $request->shop_id);
+        if ($shopId) {
+            $query->where('shop_id', $shopId);
         }
 
         $defects = $query->latest()->get();
         $totalDefective = $query->sum('quantity');
-        $shops = Shop::all();
+        $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
 
         return view('reports.defect', compact('defects', 'totalDefective', 'shops'));
     }
 
     public function expenses(Request $request)
     {
+        $user = auth()->user();
         $period = $request->get('period', 'monthly');
-        $shopId = $request->get('shop_id');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
         $categoryId = $request->get('expense_category_id');
 
         $query = Expense::with('category', 'recorder', 'approver')
@@ -166,7 +226,7 @@ class ReportController extends Controller
         }
 
         $expenses = $query->latest()->get();
-        $totalAmount = $query->sum('amount');
+        $totalAmount = $expenses->sum('amount');
 
         // Summary by category
         $expensesByCategory = Expense::selectRaw('expense_category_id, SUM(amount) as total_amount, COUNT(*) as count')
@@ -185,18 +245,19 @@ class ReportController extends Controller
             ->get();
 
         $categories = ExpenseCategory::orderBy('name')->get();
-        $shops = Shop::all();
+        $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
 
         return view('reports.expenses', compact('expenses', 'totalAmount', 'expensesByCategory', 'categories', 'shops', 'period'));
     }
 
     public function salesVsExpenses(Request $request)
     {
+        $user = auth()->user();
         $period = $request->get('period', 'monthly');
-        $shopId = $request->get('shop_id');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
 
         // 1. Get Sales
-        $salesQuery = Sale::query();
+        $salesQuery = Sale::completed();
         if ($shopId) {
             if ($shopId === 'owner') {
                 $salesQuery->whereNull('shop_id');
@@ -240,11 +301,11 @@ class ReportController extends Controller
             }
         }
 
-        $totalSales = $salesQuery->sum('total_amount');
+        $totalSales = $salesQuery->with('items')->get()->sum(fn($s) => $s->report_revenue);
         $totalExpenses = $expensesQuery->sum('amount');
         $netProfit = $totalSales - $totalExpenses;
 
-        $shops = Shop::all();
+        $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
 
         return view('reports.sales_vs_expenses', compact('totalSales', 'totalExpenses', 'netProfit', 'shops', 'period'));
     }

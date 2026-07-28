@@ -239,7 +239,7 @@
                         <tr>
                             <td><span style="font-size:.78rem;">{{ $sale->shop->shop_name ?? 'Main Store (Owner)' }}</span></td>
                             <td><span style="font-size:.78rem;">{{ $sale->seller->name ?? 'System Owner' }}</span></td>
-                            <td><strong style="color:#3fb950;font-size:.82rem;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
+                            <td><strong style="color:#3fb950;font-size:.82rem;">TZS {{ number_format($sale->report_revenue, 0) }}</strong></td>
                             <td><span style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d') }}</span></td>
                         </tr>
                         @empty
@@ -353,7 +353,7 @@
                         @forelse($recentSales as $sale)
                         <tr>
                             <td style="font-size:.78rem;">{{ $sale->seller->name ?? '-' }}</td>
-                            <td style="font-size:.78rem;color:#3fb950;font-weight:600;">TZS {{ number_format($sale->total_amount, 0) }}</td>
+                             <td style="font-size:.78rem;color:#3fb950;font-weight:600;">TZS {{ number_format($sale->report_revenue, 0) }}</td>
                         </tr>
                         @empty
                         <tr>
@@ -432,7 +432,7 @@
                         <tr>
                             <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
                             <td style="font-size:.78rem;color:var(--text-secondary);">{{ $sale->items->count() }} item(s)</td>
-                            <td><strong style="color:#3fb950;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
+                             <td><strong style="color:#3fb950;">TZS {{ number_format($sale->report_revenue, 0) }}</strong></td>
                             <td style="font-size:.75rem;">{{ str_replace('_',' ',ucfirst($sale->payment_method)) }}</td>
                             <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d, Y') }}</td>
                             <td><a href="{{ route('sales.receipt', $sale) }}" class="btn btn-xs btn-outline-custom" style="font-size:.7rem;">Receipt</a></td>

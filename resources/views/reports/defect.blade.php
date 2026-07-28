@@ -58,5 +58,25 @@
 @endsection
 
 @push('scripts')
-<script>$(()=>$('#reportsDefectTable').DataTable())</script>
+<script>
+$(() => {
+    $('#reportsDefectTable').DataTable({
+        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                className: 'btn btn-sm btn-accent me-2',
+                text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
+                title: 'Defective Items Report'
+            },
+            {
+                extend: 'pdfHtml5',
+                className: 'btn btn-sm btn-outline-custom',
+                text: '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
+                title: 'Defective Items Report'
+            }
+        ]
+    });
+});
+</script>
 @endpush

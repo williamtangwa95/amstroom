@@ -121,11 +121,6 @@
             </div>
         @endif
 
-        @if(session('demo_code'))
-            <div class="alert alert-info mb-3 p-2 border border-info-subtle bg-info-subtle text-info-emphasis rounded-3" style="font-size:.82rem;">
-                <i class="bi bi-key-fill me-1"></i> Demo Code: <strong style="font-size:1.1rem;letter-spacing:.1em;" class="ms-1">{{ session('demo_code') }}</strong>
-            </div>
-        @endif
 
         @if($errors->any())
             <div class="alert alert-danger mb-3 p-2 text-danger bg-danger-subtle border border-danger-subtle rounded-3" style="font-size:.82rem;">

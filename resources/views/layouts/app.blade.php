@@ -25,6 +25,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <!-- DataTables -->
     <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
 
     <style>
         :root {
@@ -522,12 +526,33 @@
         /* ── Cart item ── */
         .cart-item-row { background: var(--input-bg); border-radius: 8px; padding: .75rem; margin-bottom: .5rem; border: 1px solid var(--input-border); }
 
-        /* ── Select2 dark override ── */
+        /* ── Select2 dark override & bootstrap-5 theme support ── */
         .select2-container--default .select2-selection--single,
-        .select2-container--default .select2-selection--multiple {
-            background: var(--input-bg) !important;
+        .select2-container--default .select2-selection--multiple,
+        .select2-container--bootstrap-5 .select2-selection {
+            background-color: var(--input-bg) !important;
             border-color: var(--input-border) !important;
             color: var(--text-primary) !important;
+        }
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            color: var(--text-primary) !important;
+        }
+        .select2-container--bootstrap-5 .select2-dropdown {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--text-primary) !important;
+        }
+        .select2-container--bootstrap-5 .select2-search__field {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--text-primary) !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option {
+            color: var(--text-primary) !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] {
+            background-color: var(--accent) !important;
+            color: #ffffff !important;
         }
     </style>
 
@@ -630,6 +655,29 @@
             </a>
         </div>
 
+        {{-- Documents collapsible --}}
+        <div class="nav-item-custom">
+            <a class="nav-link-custom {{ request()->routeIs('sales.*') ? '' : '' }} d-flex justify-content-between align-items-center"
+               data-bs-toggle="collapse" href="#docsCollapseOwner" role="button"
+               aria-expanded="false" style="cursor:pointer;">
+                <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
+                <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+            </a>
+            <div class="collapse" id="docsCollapseOwner">
+                <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark-text"></i> Invoices
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark"></i> Proforma Quotes
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-truck"></i> Delivery Notes
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-item-custom">
             <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}">
                 <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
@@ -728,6 +776,29 @@
             </a>
         </div>
 
+        {{-- Documents collapsible --}}
+        <div class="nav-item-custom">
+            <a class="nav-link-custom d-flex justify-content-between align-items-center"
+               data-bs-toggle="collapse" href="#docsCollapseAdmin" role="button"
+               aria-expanded="false" style="cursor:pointer;">
+                <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
+                <i class="bi bi-chevron-down" style="font-size:.7rem;"></i>
+            </a>
+            <div class="collapse" id="docsCollapseAdmin">
+                <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark-text"></i> Invoices
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark"></i> Proforma Quotes
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-truck"></i> Delivery Notes
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <div class="nav-item-custom">
             <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}">
                 <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
@@ -745,6 +816,42 @@
         <div class="nav-item-custom">
             <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
                 <i class="bi bi-wallet2"></i> Expenses Ledger
+            </a>
+        <div class="nav-section-label">Reports</div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}">
+                <i class="bi bi-graph-up-arrow"></i> Sales Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.stock') }}" class="nav-link-custom {{ request()->routeIs('reports.stock') ? 'active' : '' }}">
+                <i class="bi bi-bar-chart-fill"></i> Stock Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.transfer') }}" class="nav-link-custom {{ request()->routeIs('reports.transfer') ? 'active' : '' }}">
+                <i class="bi bi-arrow-left-right"></i> Transfer Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}">
+                <i class="bi bi-shield-exclamation"></i> Defect Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> Expenses Report
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
             </a>
         </div>
 
@@ -774,6 +881,29 @@
             <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') ? 'active' : '' }}">
                 <i class="bi bi-cart-check-fill"></i> My Sales
             </a>
+        </div>
+
+        {{-- Documents collapsible --}}
+        <div class="nav-item-custom">
+            <a class="nav-link-custom d-flex justify-content-between align-items-center"
+               data-bs-toggle="collapse" href="#docsCollapseSeller" role="button"
+               aria-expanded="false" style="cursor:pointer;">
+                <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
+                <i class="bi bi-chevron-down" style="font-size:.7rem;"></i>
+            </a>
+            <div class="collapse" id="docsCollapseSeller">
+                <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark-text"></i> Invoices
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-file-earmark"></i> Proforma Quotes
+                    </a>
+                    <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <i class="bi bi-truck"></i> Delivery Notes
+                    </a>
+                </div>
+            </div>
         </div>
 
         <div class="nav-item-custom">
@@ -940,12 +1070,59 @@
 <!-- DataTables -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<!-- DataTables Buttons and dependencies -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Select2 -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
+    // Global Select2 initialization
+    window.initSearchableSelect = function(element) {
+        const $el = $(element);
+        if ($el.hasClass('select2-hidden-accessible')) {
+            $el.select2('destroy');
+        }
+        const parentModal = $el.closest('.modal');
+        const config = {
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: $el.attr('placeholder') || $el.find('option:first').text() || 'Select an option',
+            allowClear: !$el.prop('required')
+        };
+        if (parentModal.length) {
+            config.dropdownParent = parentModal;
+        }
+        $el.select2(config);
+    };
+
+    $(document).ready(function() {
+        // Automatically target selects with > 8 options (excluding pagination/no-select2)
+        $('select').each(function() {
+            if ($(this).find('option').length > 8 && !$(this).hasClass('no-select2')) {
+                window.initSearchableSelect(this);
+            }
+        });
+
+        // Initialize inside modal upon display
+        $(document).on('shown.bs.modal', function(e) {
+            $(e.target).find('select').each(function() {
+                if ($(this).find('option').length > 8 && !$(this).hasClass('no-select2')) {
+                    window.initSearchableSelect(this);
+                }
+            });
+        });
+    });
+
     // Global DataTable defaults
     $.extend(true, $.fn.dataTable.defaults, {
         language: { search: '', searchPlaceholder: 'Search...' },

@@ -83,11 +83,21 @@
                     </td>
                     <td style="font-size:.8rem;color:var(--text-secondary);">{{ $st->low_stock_alert }} units</td>
                     <td style="font-size:.82rem;font-weight:600;">
-                        TZS {{ number_format($st->selling_price, 0) }}
-                        @if($st->is_price_pending)
-                        <div class="small mt-1 text-warning" title="Pending Owner Approval">
-                            <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format($st->pending_selling_price, 0) }}</strong>
-                        </div>
+                        @if(\App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' && !$st->is_sellable)
+                            <span class="text-danger">TZS {{ number_format($st->selling_price, 0) }}</span>
+                            <div class="badge bg-danger mt-1 d-block text-wrap" style="font-size:.7rem;" title="Locked pending selling price update">
+                                <i class="bi bi-lock-fill"></i> PENDING_PRICE_UPDATE
+                            </div>
+                            <div class="small mt-1 text-info" style="font-size:.7rem; font-weight:normal;">
+                                New Transfer Cost: TZS {{ number_format($st->buying_price, 0) }}
+                            </div>
+                        @else
+                            TZS {{ number_format($st->selling_price, 0) }}
+                            @if($st->is_price_pending)
+                            <div class="small mt-1 text-warning" title="Pending Owner Approval">
+                                <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format($st->pending_selling_price, 0) }}</strong>
+                            </div>
+                            @endif
                         @endif
                     </td>
                     <td>
@@ -95,11 +105,13 @@
                             @if($st->is_price_pending && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id)))
                             <button type="button" class="btn btn-xs btn-success btn-approve-price"
                                 data-url="{{ route('shop-stock.approve-price', $st) }}"
-                                data-pending-price="{{ $st->pending_selling_price }}"
+                                data-pending-price="{{ $st->pending_selling_price ?? $st->buying_price }}"
                                 data-buying-price="{{ $st->buying_price }}"
+                                data-current-selling-price="{{ $st->selling_price }}"
                                 data-item-name="{{ $st->item->item_name }}"
+                                data-mode="{{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') }}"
                                 title="Approve Price Change">
-                                <i class="bi bi-check-lg"></i> Approve
+                                <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
                             </button>
                             @endif
                             <a href="{{ route('shop-stock.show', $st) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
@@ -123,7 +135,7 @@
             <form id="approvePriceForm" method="POST" action="">
                 @csrf
                 <div class="modal-body">
-                    <p class="mb-3 text-secondary" style="font-size:0.88rem;">
+                    <p class="mb-3 text-secondary" style="font-size:0.88rem;" id="modalInstructions">
                         Assign a new selling price for <strong id="modalItemName" class="text-white"></strong>.
                         The owner proposed TZS <span id="modalProposedPrice" class="fw-bold text-success"></span>.
                     </p>
@@ -179,16 +191,36 @@
             const url = $(this).data('url');
             const pendingPrice = $(this).data('pending-price');
             const buyingPrice = $(this).data('buying-price');
+            const currentSellingPrice = $(this).data('current-selling-price');
             const itemName = $(this).data('item-name');
+            const mode = $(this).data('mode');
 
             $('#approvePriceForm').attr('action', url);
             $('#modalItemName').text(itemName);
-            $('#modalProposedPrice').text(parseFloat(pendingPrice).toLocaleString());
 
-            // Set values
-            const formattedPrice = formatNumber(pendingPrice.toString());
-            $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
-            $('#modalSellingPriceHidden').val(pendingPrice);
+            if (mode === 'INDEPENDENT') {
+                $('#approvePriceModalLabel').html('<i class="bi bi-shield-lock-fill text-warning me-2"></i>Update Selling Price');
+                $('#modalInstructions').html(
+                    'Main Store updated the transfer price for <strong class="text-white">' + itemName + '</strong>.<br>' +
+                    'New transfer cost (Buying Price): <strong class="text-success">TZS ' + parseFloat(buyingPrice).toLocaleString() + '</strong>.<br>' +
+                    'Please update your Selling Price to restore sales eligibility.'
+                );
+
+                const preFill = Math.max(parseFloat(currentSellingPrice), parseFloat(buyingPrice));
+                const formattedPrice = formatNumber(preFill.toString());
+                $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
+                $('#modalSellingPriceHidden').val(preFill);
+            } else {
+                $('#approvePriceModalLabel').html('<i class="bi bi-check-circle-fill text-success me-2"></i>Approve Price Change');
+                $('#modalInstructions').html(
+                    'Assign a new selling price for <strong class="text-white">' + itemName + '</strong>.<br>' +
+                    'The owner proposed TZS <span class="fw-bold text-success">' + parseFloat(pendingPrice).toLocaleString() + '</span>.'
+                );
+
+                const formattedPrice = formatNumber(pendingPrice.toString());
+                $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
+                $('#modalSellingPriceHidden').val(pendingPrice);
+            }
 
             $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(buyingPrice).toLocaleString());
 

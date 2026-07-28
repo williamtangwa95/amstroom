@@ -98,24 +98,47 @@ class MainStockController extends Controller
 
         if ($newSellingPrice != $oldSellingPrice) {
             $itemName = $mainStock->item?->item_name ?? 'Item';
+            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+
             // Find all shop stocks for this item
             $shopStocks = \App\Models\ShopStock::where('item_id', $mainStock->item_id)->get();
             foreach ($shopStocks as $shopStock) {
-                $shopStock->update([
-                    'is_price_pending' => true,
-                    'pending_selling_price' => $newSellingPrice,
-                ]);
-
-                // Notify all admins of this shop
-                $admins = \App\Models\User::where('shop_id', $shopStock->shop_id)
-                    ->where('role', 'shop_admin')
-                    ->get();
-                foreach ($admins as $admin) {
-                    \App\Models\Notification::create([
-                        'user_id' => $admin->id,
-                        'title'   => 'Main Store Price Updated',
-                        'message' => "Owner updated the selling price for \"{$itemName}\" to TZS " . number_format($newSellingPrice, 2) . ". This is pending your approval.",
+                if ($isIndependent) {
+                    $shopStock->update([
+                        'buying_price' => $newSellingPrice,
+                        'is_sellable' => false,
+                        'is_price_pending' => true,
+                        'pending_selling_price' => null,
                     ]);
+
+                    // Notify both shop admins and sellers
+                    $usersToNotify = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                        ->whereIn('role', ['shop_admin', 'seller'])
+                        ->get();
+                    foreach ($usersToNotify as $user) {
+                        \App\Models\Notification::create([
+                            'user_id' => $user->id,
+                            'title'   => 'Main Store Price Updated',
+                            'message' => "Main Store updated transfer price for {$itemName}. Please review and update your Selling Price to restore sales eligibility.",
+                        ]);
+                    }
+                } else {
+                    $shopStock->update([
+                        'is_price_pending' => true,
+                        'pending_selling_price' => $newSellingPrice,
+                    ]);
+
+                    // Notify all admins of this shop
+                    $admins = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                        ->where('role', 'shop_admin')
+                        ->get();
+                    foreach ($admins as $admin) {
+                        \App\Models\Notification::create([
+                            'user_id' => $admin->id,
+                            'title'   => 'Main Store Price Updated',
+                            'message' => "Owner updated the selling price for \"{$itemName}\" to TZS " . number_format($newSellingPrice, 2) . ". This is pending your approval.",
+                        ]);
+                    }
                 }
             }
         }

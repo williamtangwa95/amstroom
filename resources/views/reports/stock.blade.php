@@ -5,6 +5,7 @@
 <li class="breadcrumb-item active">Stock Report</li>
 @endsection
 @section('content')
+@if(auth()->user()->isOwner())
 <div class="card mb-4">
     <div class="card-body py-2">
         <div class="btn-group btn-group-sm">
@@ -13,6 +14,7 @@
         </div>
     </div>
 </div>
+@endif
 
 @if($type === 'main')
 <div class="card">
@@ -83,10 +85,42 @@
 <script>
 $(() => {
     if ($('#reportsMainStockTable').length) {
-        $('#reportsMainStockTable').DataTable();
+        $('#reportsMainStockTable').DataTable({
+            dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    className: 'btn btn-sm btn-accent me-2',
+                    text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
+                    title: 'Main Warehouse Stock Report'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    className: 'btn btn-sm btn-outline-custom',
+                    text: '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
+                    title: 'Main Warehouse Stock Report'
+                }
+            ]
+        });
     }
     if ($('#reportsShopStockTable').length) {
-        $('#reportsShopStockTable').DataTable();
+        $('#reportsShopStockTable').DataTable({
+            dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    className: 'btn btn-sm btn-accent me-2',
+                    text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
+                    title: 'Shop Stocks Inventory Report'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    className: 'btn btn-sm btn-outline-custom',
+                    text: '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
+                    title: 'Shop Stocks Inventory Report'
+                }
+            ]
+        });
     }
 });
 </script>

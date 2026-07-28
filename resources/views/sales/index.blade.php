@@ -7,7 +7,15 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h5 class="mb-0 fw-700">Sales Transactions</h5>
+        <h5 class="mb-0 fw-700">
+            @if(request('status') === 'draft_proforma')
+                Proforma Quotes
+            @elseif(request('status') === 'completed')
+                Completed Invoices / Sales
+            @else
+                Sales Transactions
+            @endif
+        </h5>
         <small style="color:var(--text-secondary);">Total Revenue: <strong style="color:#3fb950;">TZS {{ number_format($totalRevenue, 0) }}</strong></small>
     </div>
     <a href="{{ route('sales.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i> New Sale</a>
@@ -23,6 +31,14 @@
             <div class="col-md-3">
                 <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.75rem;">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                    <option value="draft_proforma" {{ request('status') === 'draft_proforma' ? 'selected' : '' }}>Proforma</option>
+                </select>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-sm btn-accent w-100"><i class="bi bi-filter me-1"></i> Filter</button>
@@ -47,6 +63,7 @@
                     <th>Items</th>
                     <th>Payment Method</th>
                     <th>Total Amount</th>
+                    <th>Status</th>
                     <th>Date</th>
                     <th class="no-sort">Actions</th>
                 </tr>
@@ -61,12 +78,29 @@
                     <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
                     <td><span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;">{{ $sale->items->count() }} item(s)</span></td>
                     <td style="font-size:.78rem;">{{ str_replace('_', ' ', ucfirst($sale->payment_method)) }}</td>
-                    <td><strong style="color:#3fb950;font-size:.9rem;">TZS {{ number_format($sale->total_amount, 0) }}</strong></td>
+                    <td><strong style="color:#3fb950;font-size:.9rem;">TZS {{ number_format($sale->report_revenue, 0) }}</strong></td>
+                    <td>
+                        @if($sale->status === 'draft_proforma')
+                            <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.72rem;">Proforma</span>
+                        @else
+                            <span class="badge" style="background:#d1fae5;color:#065f46;font-size:.72rem;">Completed</span>
+                        @endif
+                    </td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sale->sale_date->format('M d, Y') }}</td>
                     <td>
-                        <div class="d-flex gap-1">
+                        <div class="d-flex gap-1 flex-wrap">
                             <a href="{{ route('sales.show', $sale) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('sales.receipt', $sale) }}" class="btn btn-xs btn-accent" title="Receipt"><i class="bi bi-receipt"></i></a>
+                            @if($sale->status === 'completed')
+                                <a href="{{ route('sales.invoice', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Invoice" target="_blank"><i class="bi bi-file-earmark-text"></i></a>
+                                <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Proforma" target="_blank"><i class="bi bi-file-earmark"></i></a>
+                                <a href="{{ route('sales.delivery-note', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Delivery Note" target="_blank"><i class="bi bi-truck"></i></a>
+                                <a href="{{ route('sales.receipt', $sale) }}" class="btn btn-xs btn-accent" title="Print Receipt"><i class="bi bi-receipt"></i></a>
+                            @else
+                                <button class="btn btn-xs btn-outline-secondary" disabled title="Invoice requires a completed sale."><i class="bi bi-file-earmark-text"></i></button>
+                                <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Proforma Invoice" target="_blank"><i class="bi bi-file-earmark"></i></a>
+                                <button class="btn btn-xs btn-outline-secondary" disabled title="Delivery Note requires a completed sale."><i class="bi bi-truck"></i></button>
+                                <button class="btn btn-xs btn-outline-secondary" disabled title="Receipt requires a completed sale."><i class="bi bi-receipt"></i></button>
+                            @endif
                         </div>
                     </td>
                 </tr>

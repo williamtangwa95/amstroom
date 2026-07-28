@@ -58,9 +58,34 @@ class ShopStockController extends Controller
         ]);
 
         $itemName = $shopStock->item?->item_name ?? 'Item';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
 
         if ($user->isShopAdmin()) {
-            // Admin update is pending Owner approval
+            if ($isIndependent) {
+                // Admin price update is direct in INDEPENDENT mode, bypassing owner approval
+                $shopStock->update([
+                    'selling_price' => $request->selling_price,
+                    'is_price_pending' => false,
+                    'pending_selling_price' => null,
+                    'is_sellable' => true,
+                ]);
+
+                // Notify all sellers of this shop
+                $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                    ->where('role', 'seller')
+                    ->get();
+                foreach ($sellers as $seller) {
+                    \App\Models\Notification::create([
+                        'user_id' => $seller->id,
+                        'title'   => 'Shop Stock Price Updated',
+                        'message' => "Admin has updated the selling price for \"{$itemName}\" to: TZS " . number_format($request->selling_price, 2),
+                    ]);
+                }
+
+                return back()->with('success', 'Selling price updated and item unlocked successfully.');
+            }
+
+            // Admin update is pending Owner approval in DEPENDENT mode
             $shopStock->update([
                 'is_price_pending' => true,
                 'pending_selling_price' => $request->selling_price,
@@ -84,6 +109,7 @@ class ShopStockController extends Controller
             'selling_price' => $request->selling_price,
             'is_price_pending' => false,
             'pending_selling_price' => null,
+            'is_sellable' => true,
         ]);
 
         // Notify all sellers of this shop
@@ -123,6 +149,7 @@ class ShopStockController extends Controller
                 'selling_price' => $newPrice,
                 'is_price_pending' => false,
                 'pending_selling_price' => null,
+                'is_sellable' => true,
             ]);
 
             // Notify all sellers of this shop

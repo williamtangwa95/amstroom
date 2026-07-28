@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         // Default System Settings
         \App\Models\Setting::set('system_name', 'AMSTROOM');
         \App\Models\Setting::set('slogan', 'Technology Innovations');
+        \App\Models\Setting::set('store_pricing_mode', 'DEPENDENT');
 
         // Owner
         $owner = User::create([

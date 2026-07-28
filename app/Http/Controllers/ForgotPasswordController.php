@@ -49,10 +49,8 @@ class ForgotPasswordController extends Controller
 
         session(['reset_email' => $request->email]);
 
-        // For local development convenience, we also flash demo code notice
         return redirect()->route('password.verify-form')
-            ->with('success', "A 6-digit recovery code has been sent to {$request->email}.")
-            ->with('demo_code', $code);
+            ->with('success', "A 6-digit recovery code has been sent to {$request->email}.");
     }
 
     // Step 2: Show verify code form

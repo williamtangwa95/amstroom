@@ -98,15 +98,48 @@
                             @enderror
                         </div>
 
-                        {{-- Slogan / Tagline --}}
+                        {{-- Store Pricing Mode --}}
+                        @if(auth()->user()->isOwner())
                         <div class="mb-3">
-                            <label for="slogan" class="form-label fw-600">Slogan / Tagline</label>
-                            <input type="text" name="slogan" id="slogan" class="form-control @error('slogan') is-invalid @enderror" value="{{ old('slogan', $slogan) }}" placeholder="e.g. Technology Innovations">
-                            <div class="form-text">This subtitle will appear below your brand name.</div>
-                            @error('slogan')
+                            <label for="store_pricing_mode" class="form-label fw-600">Store Pricing Mode <span class="text-danger">*</span></label>
+                            <select name="store_pricing_mode" id="store_pricing_mode" class="form-select @error('store_pricing_mode') is-invalid @enderror" required>
+                                <option value="DEPENDENT" {{ old('store_pricing_mode', $storePricingMode) === 'DEPENDENT' ? 'selected' : '' }}>Dependent Pricing Mode (Standard Transfer)</option>
+                                <option value="INDEPENDENT" {{ old('store_pricing_mode', $storePricingMode) === 'INDEPENDENT' ? 'selected' : '' }}>Independent Pricing Mode (Role-Based Ledger & Approval Lock)</option>
+                            </select>
+                            <div class="form-text">
+                                In <strong>Independent Mode</strong>, Main Store Selling Price acts as the Sub-Store's internal Buying Price. Sub-stores set their Selling Prices independently.
+                            </div>
+                            @error('store_pricing_mode')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
+                    @endif
+
+                    {{-- Invoice & Document Settings (Owner Only) --}}
+                    @if(auth()->user()->isOwner())
+                    <div class="mb-4 border-top pt-4">
+                        <h6 class="fw-700 mb-1"><i class="bi bi-file-earmark-text me-2" style="color:#0088cc;"></i>Invoice & Document Settings</h6>
+                        <small class="text-muted d-block mb-3">These details appear on printed invoices, proforma invoices, and delivery notes.</small>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="company_tin" class="form-label fw-600 small">TIN Number</label>
+                                <input type="text" name="company_tin" id="company_tin" class="form-control" value="{{ old('company_tin', $companyTin) }}" placeholder="e.g. 100-123-456">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="company_address" class="form-label fw-600 small">Office Address / P.O. Box</label>
+                                <input type="text" name="company_address" id="company_address" class="form-control" value="{{ old('company_address', $companyAddress) }}" placeholder="e.g. P.O. Box 1234, Dar es Salaam">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="company_bank_name" class="form-label fw-600 small">Bank Name</label>
+                                <input type="text" name="company_bank_name" id="company_bank_name" class="form-control" value="{{ old('company_bank_name', $companyBankName) }}" placeholder="e.g. CRDB Bank PLC">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="company_bank_account" class="form-label fw-600 small">Bank Account Number</label>
+                                <input type="text" name="company_bank_account" id="company_bank_account" class="form-control" value="{{ old('company_bank_account', $companyBankAccount) }}" placeholder="e.g. 0150123456789">
+                            </div>
+                        </div>
+                    </div>
                     @endif
 
                     {{-- Printer Setting (Enable / Disable) --}}
