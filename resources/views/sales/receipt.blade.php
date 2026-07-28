@@ -48,7 +48,7 @@
     <tbody>
         @foreach($sale->items as $item)
         <tr>
-            <td>{{ $item->item->item_name }}</td>
+            <td>{{ $item->display_name }}</td>
             <td class="text-center">{{ $item->quantity }}</td>
             <td class="text-end">{{ number_format($item->selling_price, 0) }}</td>
         </tr>

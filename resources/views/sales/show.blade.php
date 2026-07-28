@@ -82,7 +82,7 @@
                         $displaySubtotal = $displayPrice * $item->quantity;
                     @endphp
                     <tr>
-                        <td style="font-weight:600;">{{ $item->item->item_name }}</td>
+                        <td style="font-weight:600;">{{ $item->display_name }}</td>
                         <td>{{ $item->quantity }}</td>
                         <td>TZS {{ number_format($displayPrice, 0) }}</td>
                         <td><strong style="color:#3fb950;">TZS {{ number_format($displaySubtotal, 0) }}</strong></td>

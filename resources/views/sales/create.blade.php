@@ -171,6 +171,36 @@
                             </div>
                         </div>
 
+                        {{-- Custom Off-Catalog Item Entry --}}
+                        <div class="mb-3">
+                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600" style="font-size:.82rem;color:#e3b341;" data-bs-toggle="collapse" href="#customItemPanel" role="button">
+                                <i class="bi bi-plus-circle-dotted"></i> + Add Custom Item (Proforma Only)
+                            </a>
+                            <div class="collapse mt-2" id="customItemPanel">
+                                <div class="rounded p-3" style="background:var(--input-bg);border:1px dashed #e3b341;">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Product / Service Name *</label>
+                                            <input type="text" id="customItemName" class="form-control form-control-sm" placeholder="e.g. Laptop HP Elitebook 840">
+                                        </div>
+                                        <div class="col-5">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Qty *</label>
+                                            <input type="number" id="customItemQty" class="form-control form-control-sm" value="1" min="1">
+                                        </div>
+                                        <div class="col-7">
+                                            <label class="form-label mb-0" style="font-size:.75rem;">Unit Price (TZS) *</label>
+                                            <input type="number" id="customItemPrice" class="form-control form-control-sm" placeholder="0" min="0">
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="button" class="btn btn-sm w-100 fw-600" onclick="addCustomItem()" style="background:#e3b341;color:#000;">
+                                                <i class="bi bi-cart-plus me-1"></i> Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <input type="hidden" name="sale_status" id="saleStatusInput" value="completed">
 
                         <div class="d-flex flex-column gap-2">
@@ -295,8 +325,9 @@
             html += `
             <div class="cart-item-row d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
                 <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
+                ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
                 <div style="flex:1;min-width:0;" class="pe-2">
-                    <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name}</div>
+                    <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name} ${item.isCustom ? '<span style="font-size:.6rem;background:#e3b341;color:#000;padding:1px 5px;border-radius:3px;margin-left:3px;">CUSTOM</span>' : ''}</div>
                     <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${item.price.toLocaleString()}</div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
@@ -357,6 +388,45 @@
 
     function removeItem(id) {
         delete cart[id];
+        renderCart();
+    }
+
+    // Add a completely off-catalog custom item to the proforma cart
+    function addCustomItem() {
+        const nameEl  = document.getElementById('customItemName');
+        const qtyEl   = document.getElementById('customItemQty');
+        const priceEl = document.getElementById('customItemPrice');
+
+        const name  = nameEl.value.trim();
+        const qty   = parseInt(qtyEl.value) || 1;
+        const price = parseFloat(priceEl.value) || 0;
+
+        if (!name) {
+            Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Please enter a product/service name.', background: '#161b22', color: '#e6edf3' });
+            return;
+        }
+        if (price <= 0) {
+            Swal.fire({ icon: 'warning', title: 'Price Required', text: 'Please enter a unit price greater than 0.', background: '#161b22', color: '#e6edf3' });
+            return;
+        }
+
+        // Use a unique key based on name to allow multiple entries
+        const customId = 'custom_' + Date.now();
+        cart[customId] = {
+            id: customId,
+            name,
+            price: 0,          // no floor price for custom items
+            qty,
+            maxStock: 99999,   // unlimited stock
+            negotiatedPrice: price,
+            isCustom: true,
+        };
+
+        // Reset fields
+        nameEl.value  = '';
+        qtyEl.value   = 1;
+        priceEl.value = '';
+
         renderCart();
     }
 

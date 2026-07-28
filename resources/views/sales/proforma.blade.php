@@ -73,7 +73,7 @@
         @foreach($sale->items as $index => $item)
         <tr>
             <td>{{ $index + 1 }}</td>
-            <td>{{ $item->item->item_name }}</td>
+            <td>{{ $item->display_name }}</td>
             <td class="text-center">{{ $item->quantity }}</td>
             <td class="text-right">{{ number_format($item->selling_price, 2) }}</td>
             <td class="text-right">{{ number_format($item->quantity * $item->selling_price, 2) }}</td>

@@ -109,7 +109,12 @@ class SaleController extends Controller
             'items.*.shop_stock_id' => [
                 'required',
                 function ($attribute, $value, $fail) use ($isDraftProforma, $isOwner) {
-                    if (str_starts_with($value, 'item_')) {
+                    if (str_starts_with($value, 'custom_')) {
+                        // Off-catalog custom item — only allowed in proforma
+                        if (!$isDraftProforma) {
+                            $fail('Custom off-catalog items can only be saved in proforma quotes.');
+                        }
+                    } elseif (str_starts_with($value, 'item_')) {
                         if (!$isDraftProforma) {
                             $fail('Items not in stock can only be saved in proforma quotes.');
                         }
@@ -125,6 +130,7 @@ class SaleController extends Controller
                     }
                 }
             ],
+            'items.*.custom_name' => 'nullable|string|max:255',
             'items.*.quantity'   => 'required|integer|min:1',
             'items.*.price'      => 'required|numeric|min:0',
             'customer_id'        => 'nullable|string|max:50',
@@ -142,27 +148,42 @@ class SaleController extends Controller
 
             foreach ($request->items as $cartItem) {
                 $stockId = $cartItem['shop_stock_id'];
+                $isCustom = str_starts_with($stockId, 'custom_');
+
+                if ($isCustom) {
+                    // Off-catalog custom line item (proforma only)
+                    $submittedPrice  = floatval($cartItem['price']);
+                    $subtotal        = $cartItem['quantity'] * $submittedPrice;
+                    $totalAmount    += $subtotal;
+
+                    $saleItemsData[] = [
+                        'is_custom'         => true,
+                        'custom_name'       => $cartItem['custom_name'] ?? 'Custom Item',
+                        'item_id'           => null,
+                        'stock'             => null,
+                        'quantity'          => $cartItem['quantity'],
+                        'price'             => $submittedPrice,
+                        'owner_cost_price'  => 0.0,
+                        'owner_realized_sp' => 0.0,
+                        'shop_cost_price'   => 0.0,
+                        'shop_realized_sp'  => $submittedPrice,
+                    ];
+                    continue;
+                }
 
                 if (str_starts_with($stockId, 'item_')) {
                     $itemId = substr($stockId, 5);
                     $item = \App\Models\Item::findOrFail($itemId);
 
-                    // Create mock stock record
                     if ($isOwner) {
                         $stock = new \App\Models\MainStock([
-                            'id' => $stockId,
-                            'item_id' => $item->id,
-                            'buying_price' => 0,
-                            'selling_price' => 0,
-                            'remaining_quantity' => 0,
+                            'id' => $stockId, 'item_id' => $item->id,
+                            'buying_price' => 0, 'selling_price' => 0, 'remaining_quantity' => 0,
                         ]);
                     } else {
                         $stock = new ShopStock([
-                            'id' => $stockId,
-                            'item_id' => $item->id,
-                            'buying_price' => 0,
-                            'selling_price' => 0,
-                            'remaining_quantity' => 0,
+                            'id' => $stockId, 'item_id' => $item->id,
+                            'buying_price' => 0, 'selling_price' => 0, 'remaining_quantity' => 0,
                             'is_sellable' => true,
                         ]);
                     }
@@ -178,55 +199,44 @@ class SaleController extends Controller
                     }
                 }
 
-                // Skip quantity checks for draft proformas
                 if (!$isDraftProforma && $cartItem['quantity'] > $stock->remaining_quantity) {
                     throw new \Exception("Insufficient stock for: {$stock->item->item_name}. Available: {$stock->remaining_quantity}");
                 }
 
-                // Negotiable price check (skipped for draft proformas)
                 $submittedPrice = floatval($cartItem['price']);
                 if (!$isDraftProforma && $submittedPrice < floatval($stock->selling_price)) {
                     throw new \Exception("Price for {$stock->item->item_name} cannot be less than dedicated selling price TZS " . number_format($stock->selling_price, 0));
                 }
 
-                // Determine pricing fields
-                $ownerCostPrice = 0.0;
-                $ownerRealizedSp = 0.0;
-                $shopCostPrice = 0.0;
-                $shopRealizedSp = $submittedPrice;
+                $ownerCostPrice = 0.0; $ownerRealizedSp = 0.0;
+                $shopCostPrice  = 0.0; $shopRealizedSp  = $submittedPrice;
 
-                // Lookup latest main stock details if available to estimate pricing
                 $latestMainStock = \App\Models\MainStock::where('item_id', $stock->item_id)
-                    ->orderByDesc('date_received')
-                    ->first();
+                    ->orderByDesc('date_received')->first();
 
                 if (!str_starts_with($stockId, 'item_')) {
                     if ($isOwner) {
                         $ownerCostPrice = floatval($stock->buying_price);
                         $ownerRealizedSp = $submittedPrice;
-                        $shopCostPrice = floatval($stock->buying_price);
+                        $shopCostPrice   = floatval($stock->buying_price);
                     } else {
-                        $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                        $ownerCostPrice  = floatval($latestMainStock?->buying_price ?? 0);
                         $ownerRealizedSp = floatval($latestMainStock?->selling_price ?? 0);
-                        $shopCostPrice = floatval($stock->buying_price);
+                        $shopCostPrice   = floatval($stock->buying_price);
                     }
                 } else {
-                    $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                    $ownerCostPrice  = floatval($latestMainStock?->buying_price ?? 0);
                     $ownerRealizedSp = floatval($latestMainStock?->selling_price ?? 0);
-                    if ($isOwner) {
-                        $shopCostPrice = $ownerCostPrice;
-                    } else {
-                        $anyShopStock = ShopStock::where('item_id', $stock->item_id)
-                            ->where('shop_id', $user->shop_id)
-                            ->first();
-                        $shopCostPrice = floatval($anyShopStock?->buying_price ?? $ownerRealizedSp);
-                    }
+                    $shopCostPrice   = $isOwner ? $ownerCostPrice
+                        : floatval(ShopStock::where('item_id', $stock->item_id)->where('shop_id', $user->shop_id)->first()?->buying_price ?? $ownerRealizedSp);
                 }
 
-                $subtotal = $cartItem['quantity'] * $submittedPrice;
-                $totalAmount += $subtotal;
+                $totalAmount += $cartItem['quantity'] * $submittedPrice;
 
                 $saleItemsData[] = [
+                    'is_custom'         => false,
+                    'custom_name'       => null,
+                    'item_id'           => $stock->item_id,
                     'stock'             => $stock,
                     'quantity'          => $cartItem['quantity'],
                     'price'             => $submittedPrice,
@@ -257,7 +267,8 @@ class SaleController extends Controller
             foreach ($saleItemsData as $data) {
                 SaleItem::create([
                     'sale_id'           => $sale->id,
-                    'item_id'           => $data['stock']->item_id,
+                    'item_id'           => $data['item_id'],
+                    'custom_name'       => $data['custom_name'],
                     'quantity'          => $data['quantity'],
                     'selling_price'     => $data['price'],
                     'owner_cost_price'  => $data['owner_cost_price'],
@@ -266,11 +277,12 @@ class SaleController extends Controller
                     'shop_realized_sp'  => $data['shop_realized_sp'],
                 ]);
 
-                if (!$isDraftProforma) {
+                // Custom items have no stock to decrement; real items do
+                if (!$isDraftProforma && !$data['is_custom']) {
                     $data['stock']->decrement('remaining_quantity', $data['quantity']);
 
                     StockLog::create([
-                        'item_id'          => $data['stock']->item_id,
+                        'item_id'          => $data['item_id'],
                         'from_location'    => $isOwner ? 'Main Store' : $data['stock']->shop->shop_name,
                         'to_location'      => $request->customer_name ?? 'Walk-in Customer',
                         'quantity'         => $data['quantity'],
@@ -376,36 +388,122 @@ class SaleController extends Controller
         $user = Auth::user();
         $isOwner = $user->isOwner();
 
-        DB::transaction(function () use ($sale, $user, $isOwner) {
-            foreach ($sale->items as $saleItem) {
-                if ($isOwner) {
-                    $stock = \App\Models\MainStock::where('item_id', $saleItem->item_id)->first();
-                } else {
-                    $stock = \App\Models\ShopStock::where('item_id', $saleItem->item_id)
-                        ->where('shop_id', $user->shop_id)->first();
+        try {
+            DB::transaction(function () use ($sale, $user, $isOwner) {
+                foreach ($sale->items as $saleItem) {
+                    // 1. If it's a custom off-catalog item, register it first
+                    if (!$saleItem->item_id) {
+                        $category = \App\Models\Category::firstOrCreate(['category_name' => 'General']);
+                        $item = \App\Models\Item::create([
+                            'item_name' => $saleItem->custom_name ?? 'Custom Item',
+                            'category_id' => $category->id,
+                        ]);
+                        $saleItem->update(['item_id' => $item->id]);
+                    }
+
+                    // 2. Resolve and auto-receive/stock any missing quantities
+                    if ($isOwner) {
+                        $stock = \App\Models\MainStock::where('item_id', $saleItem->item_id)->first();
+
+                        if (!$stock) {
+                            $stock = \App\Models\MainStock::create([
+                                'item_id' => $saleItem->item_id,
+                                'buying_price' => 0,
+                                'selling_price' => $saleItem->selling_price,
+                                'stocked_quantity' => $saleItem->quantity,
+                                'remaining_quantity' => $saleItem->quantity,
+                                'date_received' => now()->toDateString(),
+                            ]);
+                            StockLog::create([
+                                'item_id' => $saleItem->item_id,
+                                'from_location' => 'Supplier (Auto-Stock for Proforma)',
+                                'to_location' => 'Main Warehouse',
+                                'quantity' => $saleItem->quantity,
+                                'transaction_type' => 'STOCK_RECEIVED',
+                                'performed_by' => $user->id,
+                                'date' => now()->toDateString(),
+                                'notes' => "Auto-stocked for Proforma #{$sale->id} conversion",
+                            ]);
+                        } elseif ($stock->remaining_quantity < $saleItem->quantity) {
+                            $diff = $saleItem->quantity - $stock->remaining_quantity;
+                            $stock->increment('stocked_quantity', $diff);
+                            $stock->increment('remaining_quantity', $diff);
+                            StockLog::create([
+                                'item_id' => $saleItem->item_id,
+                                'from_location' => 'Supplier (Auto-Stock for Proforma)',
+                                'to_location' => 'Main Warehouse',
+                                'quantity' => $diff,
+                                'transaction_type' => 'STOCK_RECEIVED',
+                                'performed_by' => $user->id,
+                                'date' => now()->toDateString(),
+                                'notes' => "Auto-stocked for Proforma #{$sale->id} conversion",
+                            ]);
+                        }
+                    } else {
+                        $stock = \App\Models\ShopStock::where('item_id', $saleItem->item_id)
+                            ->where('shop_id', $user->shop_id)->first();
+
+                        if (!$stock) {
+                            $shopName = $user->shop->shop_name ?? 'Shop';
+                            $stock = \App\Models\ShopStock::create([
+                                'shop_id' => $user->shop_id,
+                                'item_id' => $saleItem->item_id,
+                                'buying_price' => 0,
+                                'selling_price' => $saleItem->selling_price,
+                                'quantity' => $saleItem->quantity,
+                                'remaining_quantity' => $saleItem->quantity,
+                                'is_sellable' => true,
+                                'date_received' => now()->toDateString(),
+                            ]);
+                            StockLog::create([
+                                'item_id' => $saleItem->item_id,
+                                'from_location' => 'Supplier (Auto-Stock for Proforma)',
+                                'to_location' => $shopName,
+                                'quantity' => $saleItem->quantity,
+                                'transaction_type' => 'STOCK_RECEIVED',
+                                'performed_by' => $user->id,
+                                'date' => now()->toDateString(),
+                                'notes' => "Auto-stocked for Proforma #{$sale->id} conversion",
+                            ]);
+                        } elseif ($stock->remaining_quantity < $saleItem->quantity) {
+                            $diff = $saleItem->quantity - $stock->remaining_quantity;
+                            $shopName = $stock->shop->shop_name ?? $user->shop->shop_name ?? 'Shop';
+                            $stock->increment('quantity', $diff);
+                            $stock->increment('remaining_quantity', $diff);
+                            StockLog::create([
+                                'item_id' => $saleItem->item_id,
+                                'from_location' => 'Supplier (Auto-Stock for Proforma)',
+                                'to_location' => $shopName,
+                                'quantity' => $diff,
+                                'transaction_type' => 'STOCK_RECEIVED',
+                                'performed_by' => $user->id,
+                                'date' => now()->toDateString(),
+                                'notes' => "Auto-stocked for Proforma #{$sale->id} conversion",
+                            ]);
+                        }
+                    }
+
+                    // 3. Deduct stock for completed sale
+                    $stock->decrement('remaining_quantity', $saleItem->quantity);
+
+                    StockLog::create([
+                        'item_id'          => $saleItem->item_id,
+                        'from_location'    => $isOwner ? 'Main Store' : ($stock->shop->shop_name ?? 'Shop'),
+                        'to_location'      => $sale->customer_name ?? 'Walk-in Customer',
+                        'quantity'         => $saleItem->quantity,
+                        'transaction_type' => 'SALE',
+                        'performed_by'     => $user->id,
+                        'date'             => now()->toDateString(),
+                        'notes'            => "Sale #{$sale->id} (Converted from Proforma)",
+                    ]);
                 }
 
-                if (!$stock || $stock->remaining_quantity < $saleItem->quantity) {
-                    throw new \Exception("Insufficient stock for: {$saleItem->item->item_name}.");
-                }
+                $sale->update(['status' => 'completed', 'sale_date' => now()->toDateString()]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to convert proforma to sale: ' . $e->getMessage());
+        }
 
-                $stock->decrement('remaining_quantity', $saleItem->quantity);
-
-                StockLog::create([
-                    'item_id'          => $saleItem->item_id,
-                    'from_location'    => $isOwner ? 'Main Store' : $stock->shop->shop_name,
-                    'to_location'      => $sale->customer_name ?? 'Walk-in Customer',
-                    'quantity'         => $saleItem->quantity,
-                    'transaction_type' => 'SALE',
-                    'performed_by'     => $user->id,
-                    'date'             => now()->toDateString(),
-                    'notes'            => "Sale #{$sale->id} (Converted from Proforma)",
-                ]);
-            }
-
-            $sale->update(['status' => 'completed', 'sale_date' => now()->toDateString()]);
-        });
-
-        return redirect()->route('sales.show', $sale)->with('success', 'Proforma converted to a completed sale. Stock has been deducted.');
+        return redirect()->route('sales.show', $sale)->with('success', 'Proforma converted to a completed sale. Stock has been auto-received and committed.');
     }
 }
