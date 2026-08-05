@@ -60,20 +60,234 @@
 @push('scripts')
 <script>
 $(() => {
+    @php
+        $hName    = $reportHeader['name']    ?? 'Defective Items Report';
+        $hSlogan  = $reportHeader['slogan']  ?? '';
+        $hAddress = $reportHeader['address'] ?? '';
+        $hTin     = $reportHeader['tin']     ?? '';
+        $hPhone   = $reportHeader['phone']   ?? '';
+    @endphp
+
+    const headerName     = @json($hName);
+    const headerSlogan   = @json($hSlogan);
+    const headerAddress  = @json($hAddress);
+    const headerTin      = @json($hTin);
+    const headerPhone    = @json($hPhone);
+    const totalDefective = {{ (int) $totalDefective }};
+
+    function nowEAT() {
+        return new Date().toLocaleString('en-TZ', {
+            timeZone: 'Africa/Dar_es_Salaam',
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    function excelTitle() {
+        let parts = [headerName];
+        if (headerSlogan)  parts.push(headerSlogan);
+        if (headerAddress) parts.push(headerAddress);
+        let row = [];
+        if (headerTin)   row.push('TIN: ' + headerTin);
+        if (headerPhone) row.push('Tel: ' + headerPhone);
+        if (row.length)  parts.push(row.join('   |   '));
+        parts.push('DEFECTIVE ITEMS REPORT');
+        parts.push('Generated: ' + nowEAT());
+        return parts.join('\n');
+    }
+
+    function customizeExcel(xlsx, reportTitleText, hasTotals) {
+        var sheet = xlsx.xl.worksheets['sheet1.xml'];
+        var titleLines = [headerName];
+        if (headerSlogan) titleLines.push(headerSlogan);
+        if (headerAddress) titleLines.push(headerAddress);
+        var details = [];
+        if (headerTin) details.push('TIN: ' + headerTin);
+        if (headerPhone) details.push('Tel: ' + headerPhone);
+        if (details.length) titleLines.push(details.join('   |   '));
+        titleLines.push(reportTitleText);
+        titleLines.push('Generated: ' + nowEAT());
+
+        var titleRowCount = titleLines.length;
+
+        $('row', sheet).each(function(rowIndex) {
+            var row = $(this);
+            var cells = row.find('c');
+
+            if (rowIndex < titleRowCount) {
+                cells.each(function() {
+                    if (rowIndex === 0) {
+                        $(this).attr('s', '2'); // Bold
+                    } else if (rowIndex === titleRowCount - 2) {
+                        $(this).attr('s', '2'); // Bold
+                    } else {
+                        $(this).attr('s', '3'); // Italic
+                    }
+                });
+            } else if (rowIndex === titleRowCount) {
+                cells.each(function() {
+                    $(this).attr('s', '22'); // Blue header
+                });
+            } else {
+                var isLastRow = (rowIndex === $('row', sheet).length - 1);
+                if (isLastRow && hasTotals) {
+                    cells.each(function() {
+                        $(this).attr('s', '62'); // Bold double underline
+                    });
+                }
+            }
+        });
+    }
+
     $('#reportsDefectTable').DataTable({
         dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
         buttons: [
+            /* ── Excel ── */
             {
-                extend: 'excelHtml5',
+                extend:    'excelHtml5',
                 className: 'btn btn-sm btn-accent me-2',
-                text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
-                title: 'Defective Items Report'
+                text:      '<i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel',
+                title:     excelTitle(),
+                customize: function(xlsx) {
+                    customizeExcel(xlsx, 'DEFECTIVE ITEMS REPORT', true);
+                }
             },
+
+            /* ── PDF ── */
             {
-                extend: 'pdfHtml5',
-                className: 'btn btn-sm btn-outline-custom',
-                text: '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
-                title: 'Defective Items Report'
+                extend:      'pdfHtml5',
+                className:   'btn btn-sm btn-outline-custom',
+                text:        '<i class="bi bi-file-earmark-pdf me-1"></i> PDF',
+                title:       '',
+                orientation: 'landscape',
+                pageSize:    'A4',
+                customize:   function(doc) {
+                    var BLUE = '#0088cc';
+                    doc.pageMargins = [30, 30, 30, 40];
+
+                    /* Strip DataTables empty title */
+                    while (doc.content.length && doc.content[0].text === '') {
+                        doc.content.shift();
+                    }
+
+                    /* ── Blue banner ── */
+                    var banner = {
+                        canvas: [{ type: 'rect', x: 0, y: 0, w: 782, h: 60, r: 3, color: BLUE }],
+                        margin: [0, 0, 0, 0]
+                    };
+
+                    /* ── Company name ── */
+                    var brandName = {
+                        text: headerName,
+                        fontSize: 19, bold: true, color: '#ffffff',
+                        alignment: 'center',
+                        margin: [0, -54, 0, 0]
+                    };
+
+                    /* ── Slogan ── */
+                    var brandSlogan = headerSlogan ? {
+                        text: headerSlogan,
+                        fontSize: 8, color: '#cce9ff', alignment: 'center',
+                        margin: [0, 3, 0, 0]
+                    } : null;
+
+                    /* ── Info row ── */
+                    var infoParts = [];
+                    if (headerAddress) infoParts.push(headerAddress);
+                    if (headerTin)     infoParts.push('TIN: ' + headerTin);
+                    if (headerPhone)   infoParts.push('Tel: ' + headerPhone);
+                    var infoRow = infoParts.length ? {
+                        text: infoParts.join('   \u2022   '),
+                        fontSize: 7.5, color: '#555', alignment: 'center',
+                        margin: [0, 10, 0, 0]
+                    } : null;
+
+                    /* ── Blue separator ── */
+                    var separator = {
+                        canvas: [{ type: 'line', x1: 0, y1: 0, x2: 782, y2: 0, lineWidth: 1, lineColor: BLUE }],
+                        margin: [0, 7, 0, 0]
+                    };
+
+                    /* ── Title row ── */
+                    var titleRow = {
+                        columns: [
+                            { text: 'DEFECTIVE ITEMS REPORT', fontSize: 10, bold: true, color: BLUE, width: '*' },
+                            { text: 'Generated: ' + nowEAT(), fontSize: 7, color: '#888', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
+                        ],
+                        margin: [0, 7, 0, 9]
+                    };
+
+                    /* ── Prepend header ── */
+                    var headerBlock = [banner, brandName];
+                    if (brandSlogan) headerBlock.push(brandSlogan);
+                    if (infoRow)     headerBlock.push(infoRow);
+                    headerBlock.push(separator);
+                    headerBlock.push(titleRow);
+                    doc.content.unshift(...headerBlock);
+
+                    /* ── Table header style ── */
+                    doc.styles.tableHeader = {
+                        fillColor: BLUE, color: '#ffffff',
+                        bold: true, fontSize: 8, alignment: 'center'
+                    };
+                    doc.defaultStyle.fontSize = 7.5;
+
+                    /* ── Zebra-stripe data rows + full-width columns ── */
+                    var tblNode = null;
+                    for (var ci = doc.content.length - 1; ci >= 0; ci--) {
+                        if (doc.content[ci] && doc.content[ci].table) { tblNode = doc.content[ci]; break; }
+                    }
+                    if (tblNode && tblNode.table && tblNode.table.body) {
+                        /* Cols: No | Date | Shop | Product | Qty Defective | Reason | Reported By | Status (8 cols) */
+                        var colCount = tblNode.table.body[0] ? tblNode.table.body[0].length : 0;
+                        if (colCount === 8) {
+                            tblNode.table.widths = ['auto', 55, '*', '*', 65, '*', '*', 50];
+                        } else {
+                            tblNode.table.widths = Array(colCount).fill('*');
+                        }
+                        tblNode.table.dontBreakRows = true;
+
+                        tblNode.table.body.forEach(function(row, i) {
+                            if (i === 0) return;
+                            row.forEach(function(cell) {
+                                if (typeof cell === 'object') {
+                                    cell.fillColor = (i % 2 === 0) ? '#eef6ff' : '#ffffff';
+                                    cell.margin = [3, 3, 3, 3];
+                                }
+                            });
+                        });
+
+                        /* ── TOTALS row ── */
+                        function boldCell(txt, align) {
+                            return { text: txt, bold: true, fontSize: 8, color: '#ffffff',
+                                     fillColor: '#005f99', alignment: align || 'left', margin: [4, 4, 4, 4] };
+                        }
+                        var colCount2 = tblNode.table.body[0] ? tblNode.table.body[0].length : 8;
+                        var totalsRow = [];
+                        for (var tc = 0; tc < colCount2; tc++) {
+                            if (tc === 0) {
+                                totalsRow.push(boldCell('TOTAL', 'center'));
+                            } else if (tc === 4) {
+                                /* Qty Defective column (5th column, index 4) */
+                                totalsRow.push(boldCell(totalDefective.toLocaleString('en-TZ'), 'right'));
+                            } else {
+                                totalsRow.push(boldCell('', 'left'));
+                            }
+                        }
+                        tblNode.table.body.push(totalsRow);
+                    }
+
+                    /* ── Footer ── */
+                    doc.footer = function(currentPage, pageCount) {
+                        return {
+                            margin: [30, 8, 30, 0],
+                            columns: [
+                                { text: headerName + ' \u2014 Confidential', fontSize: 6.5, color: '#aaa' },
+                                { text: 'Page ' + currentPage + ' of ' + pageCount, alignment: 'right', fontSize: 6.5, color: '#aaa' }
+                            ]
+                        };
+                    };
+                }
             }
         ]
     });

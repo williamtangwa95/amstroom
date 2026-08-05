@@ -37,7 +37,12 @@
                         <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important; opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
                             <div class="d-flex gap-2">
                                 @if($stock->item->image_path)
-                                <img src="{{ asset('storage/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded border" style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;">
+                                <img src="{{ asset('storage/' . $stock->item->image_path) }}"
+                                     alt="{{ $stock->item->item_name }}"
+                                     class="rounded border img-lightbox"
+                                     style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;"
+                                     onclick="openLightbox(this.src, '{{ addslashes($stock->item->item_name) }}')"
+                                     title="Click to enlarge">
                                 @else
                                 <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted border" style="width: 55px; height: 55px; flex-shrink: 0;">
                                     <i class="bi bi-image" style="font-size: 1.2rem;"></i>
@@ -45,6 +50,9 @@
                                 @endif
                                 <div style="min-width:0;">
                                     <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
+                                    @if(isset($stock->is_admin_stock) && $stock->is_admin_stock)
+                                        <div class="badge bg-info text-dark mb-1" style="font-size:.65rem;font-weight:600;"><i class="bi bi-person-fill-lock"></i> Admin Stock</div>
+                                    @endif
                                     @if($isLocked)
                                         <div class="badge bg-danger mb-1" style="font-size:.65rem;"><i class="bi bi-lock-fill"></i> Locked</div>
                                     @elseif($isMock)
@@ -76,7 +84,8 @@
                                     data-stock="{{ $stock->remaining_quantity }}"
                                     data-price-pending="{{ $pendingPrice ? 'true' : 'false' }}"
                                     data-pending-price="{{ $pendingPrice ?? 0 }}"
-                                    data-is-sellable="true">
+                                    data-is-sellable="true"
+                                    data-is-admin-stock="{{ (isset($stock->is_admin_stock) && $stock->is_admin_stock) ? 'true' : 'false' }}">
                                     <i class="bi bi-cart-plus me-1"></i> Add
                                 </button>
                                 @endif
@@ -285,6 +294,8 @@
                 return;
             }
 
+            const isAdminStock = this.dataset.isAdminStock === 'true';
+
             if (cart[id]) {
                 cart[id].qty++;
             } else {
@@ -294,7 +305,8 @@
                     price,
                     qty: 1,
                     maxStock,
-                    negotiatedPrice: price
+                    negotiatedPrice: price,
+                    isAdminStock: isAdminStock
                 };
             }
             renderCart();

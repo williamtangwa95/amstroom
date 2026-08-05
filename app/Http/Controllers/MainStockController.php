@@ -24,7 +24,7 @@ class MainStockController extends Controller
 
     public function create()
     {
-        $items = Item::with('category')->orderBy('item_name')->get();
+        $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
         return view('main-stock.create', compact('items'));
     }
 
@@ -79,7 +79,7 @@ class MainStockController extends Controller
 
     public function edit(MainStock $mainStock)
     {
-        $items = Item::with('category')->orderBy('item_name')->get();
+        $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
         return view('main-stock.edit', compact('mainStock', 'items'));
     }
 

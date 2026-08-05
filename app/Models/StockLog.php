@@ -11,11 +11,12 @@ class StockLog extends Model
 
     protected $fillable = [
         'item_id', 'from_location', 'to_location', 'quantity',
-        'transaction_type', 'performed_by', 'date', 'notes',
+        'transaction_type', 'performed_by', 'date', 'notes', 'is_admin_stock',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'is_admin_stock' => 'boolean',
     ];
 
     public function item()

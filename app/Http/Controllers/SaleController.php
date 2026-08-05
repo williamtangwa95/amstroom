@@ -19,7 +19,9 @@ class SaleController extends Controller
 
         $query = Sale::with('shop', 'seller', 'items.item');
 
-        if (!$user->isOwner()) {
+        if ($user->isOwner()) {
+            $query->where('is_admin_stock', false);
+        } else {
             $query->where('shop_id', $user->shop_id);
         }
 
@@ -45,8 +47,21 @@ class SaleController extends Controller
         $user = Auth::user();
         $isOwner = $user->isOwner();
 
-        // Retrieve all items in the system with their categories
-        $items = Item::with('category')->orderBy('item_name')->get();
+        // Retrieve all items in the system with their categories based on role and shop
+        if ($isOwner) {
+            $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
+        } else {
+            $items = Item::with('category')
+                ->where(function ($q) use ($user) {
+                    $q->where('is_admin_item', false)
+                      ->orWhere(function ($sq) use ($user) {
+                          $sq->where('is_admin_item', true)
+                             ->where('shop_id', $user->shop_id);
+                      });
+                })
+                ->orderBy('item_name')
+                ->get();
+        }
 
         // Fetch all active stock records (both in stock and out of stock)
         if ($isOwner) {
@@ -143,6 +158,30 @@ class SaleController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $user, $isOwner, $isDraftProforma) {
+            $hasAdminStock = false;
+            $hasNormalStock = false;
+
+            if (!$isOwner) {
+                foreach ($request->items as $cartItem) {
+                    $stockId = $cartItem['shop_stock_id'];
+                    $isCustom = str_starts_with($stockId, 'custom_');
+                    $isMock = str_starts_with($stockId, 'item_');
+
+                    if (!$isCustom && !$isMock) {
+                        $stockRow = ShopStock::find($stockId);
+                        if ($stockRow && $stockRow->is_admin_stock) {
+                            $hasAdminStock = true;
+                        } else {
+                            $hasNormalStock = true;
+                        }
+                    } else {
+                        $hasNormalStock = true;
+                    }
+                }
+            }
+
+            $isSaleAdminStock = $hasAdminStock && !$hasNormalStock;
+
             $totalAmount = 0;
             $saleItemsData = [];
 
@@ -167,6 +206,7 @@ class SaleController extends Controller
                         'owner_realized_sp' => 0.0,
                         'shop_cost_price'   => 0.0,
                         'shop_realized_sp'  => $submittedPrice,
+                        'is_admin_stock'    => false,
                     ];
                     continue;
                 }
@@ -210,6 +250,7 @@ class SaleController extends Controller
 
                 $ownerCostPrice = 0.0; $ownerRealizedSp = 0.0;
                 $shopCostPrice  = 0.0; $shopRealizedSp  = $submittedPrice;
+                $itemIsAdminStock = false;
 
                 $latestMainStock = \App\Models\MainStock::where('item_id', $stock->item_id)
                     ->orderByDesc('date_received')->first();
@@ -220,8 +261,14 @@ class SaleController extends Controller
                         $ownerRealizedSp = $submittedPrice;
                         $shopCostPrice   = floatval($stock->buying_price);
                     } else {
-                        $ownerCostPrice  = floatval($latestMainStock?->buying_price ?? 0);
-                        $ownerRealizedSp = floatval($latestMainStock?->selling_price ?? 0);
+                        $itemIsAdminStock = (bool) ($stock->is_admin_stock ?? false);
+                        if ($itemIsAdminStock) {
+                            $ownerCostPrice  = floatval($stock->buying_price);
+                            $ownerRealizedSp = floatval($stock->selling_price);
+                        } else {
+                            $ownerCostPrice  = floatval($latestMainStock?->buying_price ?? 0);
+                            $ownerRealizedSp = floatval($latestMainStock?->selling_price ?? 0);
+                        }
                         $shopCostPrice   = floatval($stock->buying_price);
                     }
                 } else {
@@ -244,6 +291,7 @@ class SaleController extends Controller
                     'owner_realized_sp' => $ownerRealizedSp,
                     'shop_cost_price'   => $shopCostPrice,
                     'shop_realized_sp'  => $shopRealizedSp,
+                    'is_admin_stock'    => $itemIsAdminStock,
                 ];
             }
 
@@ -262,6 +310,7 @@ class SaleController extends Controller
                 'delivery_time'     => $request->delivery_time,
                 'validity_date'     => $request->validity_date,
                 'terms_of_payment'  => $request->terms_of_payment,
+                'is_admin_stock'    => $isSaleAdminStock,
             ]);
 
             foreach ($saleItemsData as $data) {
@@ -275,6 +324,7 @@ class SaleController extends Controller
                     'owner_realized_sp' => $data['owner_realized_sp'],
                     'shop_cost_price'   => $data['shop_cost_price'],
                     'shop_realized_sp'  => $data['shop_realized_sp'],
+                    'is_admin_stock'    => $data['is_admin_stock'],
                 ]);
 
                 // Custom items have no stock to decrement; real items do
@@ -290,6 +340,7 @@ class SaleController extends Controller
                         'performed_by'     => $user->id,
                         'date'             => now()->toDateString(),
                         'notes'            => "Sale #{$sale->id}" . ($isOwner ? " (Direct Sale from Main Store)" : ""),
+                        'is_admin_stock'   => $data['is_admin_stock'],
                     ]);
                 }
             }
@@ -334,14 +385,15 @@ class SaleController extends Controller
         }
 
         $sale->load('shop', 'seller', 'items.item.category');
+        $shop = $sale->shop;
         $company = [
-            'name'         => \App\Models\Setting::get('system_name', 'AMSTROOM'),
-            'slogan'       => \App\Models\Setting::get('slogan', ''),
-            'tin'          => \App\Models\Setting::get('company_tin', ''),
-            'address'      => \App\Models\Setting::get('company_address', ''),
-            'bank_name'    => \App\Models\Setting::get('company_bank_name', ''),
-            'bank_account' => \App\Models\Setting::get('company_bank_account', ''),
-            'logo'         => \App\Models\Setting::get('logo'),
+            'name'         => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan'       => $shop ? ($shop->slogan ?: \App\Models\Setting::get('slogan', '')) : \App\Models\Setting::get('slogan', ''),
+            'tin'          => $shop ? ($shop->tin_number ?: \App\Models\Setting::get('company_tin', '')) : \App\Models\Setting::get('company_tin', ''),
+            'address'      => $shop ? ($shop->address ?: \App\Models\Setting::get('company_address', '')) : \App\Models\Setting::get('company_address', ''),
+            'bank_name'    => $shop ? ($shop->bank_name ?: \App\Models\Setting::get('company_bank_name', '')) : \App\Models\Setting::get('company_bank_name', ''),
+            'bank_account' => $shop ? ($shop->bank_account ?: \App\Models\Setting::get('company_bank_account', '')) : \App\Models\Setting::get('company_bank_account', ''),
+            'logo'         => $shop ? ($shop->logo ?: \App\Models\Setting::get('logo')) : \App\Models\Setting::get('logo'),
         ];
         return view('sales.invoice', compact('sale', 'company'));
     }
@@ -349,14 +401,15 @@ class SaleController extends Controller
     public function proforma(Sale $sale)
     {
         $sale->load('shop', 'seller', 'items.item.category');
+        $shop = $sale->shop;
         $company = [
-            'name'         => \App\Models\Setting::get('system_name', 'AMSTROOM'),
-            'slogan'       => \App\Models\Setting::get('slogan', ''),
-            'tin'          => \App\Models\Setting::get('company_tin', ''),
-            'address'      => \App\Models\Setting::get('company_address', ''),
-            'bank_name'    => \App\Models\Setting::get('company_bank_name', ''),
-            'bank_account' => \App\Models\Setting::get('company_bank_account', ''),
-            'logo'         => \App\Models\Setting::get('logo'),
+            'name'         => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan'       => $shop ? ($shop->slogan ?: \App\Models\Setting::get('slogan', '')) : \App\Models\Setting::get('slogan', ''),
+            'tin'          => $shop ? ($shop->tin_number ?: \App\Models\Setting::get('company_tin', '')) : \App\Models\Setting::get('company_tin', ''),
+            'address'      => $shop ? ($shop->address ?: \App\Models\Setting::get('company_address', '')) : \App\Models\Setting::get('company_address', ''),
+            'bank_name'    => $shop ? ($shop->bank_name ?: \App\Models\Setting::get('company_bank_name', '')) : \App\Models\Setting::get('company_bank_name', ''),
+            'bank_account' => $shop ? ($shop->bank_account ?: \App\Models\Setting::get('company_bank_account', '')) : \App\Models\Setting::get('company_bank_account', ''),
+            'logo'         => $shop ? ($shop->logo ?: \App\Models\Setting::get('logo')) : \App\Models\Setting::get('logo'),
         ];
         return view('sales.proforma', compact('sale', 'company'));
     }
@@ -369,12 +422,13 @@ class SaleController extends Controller
         }
 
         $sale->load('shop', 'seller', 'items.item.category');
+        $shop = $sale->shop;
         $company = [
-            'name'         => \App\Models\Setting::get('system_name', 'AMSTROOM'),
-            'slogan'       => \App\Models\Setting::get('slogan', ''),
-            'tin'          => \App\Models\Setting::get('company_tin', ''),
-            'address'      => \App\Models\Setting::get('company_address', ''),
-            'logo'         => \App\Models\Setting::get('logo'),
+            'name'    => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan'  => $shop ? ($shop->slogan ?: \App\Models\Setting::get('slogan', '')) : \App\Models\Setting::get('slogan', ''),
+            'tin'     => $shop ? ($shop->tin_number ?: \App\Models\Setting::get('company_tin', '')) : \App\Models\Setting::get('company_tin', ''),
+            'address' => $shop ? ($shop->address ?: \App\Models\Setting::get('company_address', '')) : \App\Models\Setting::get('company_address', ''),
+            'logo'    => $shop ? ($shop->logo ?: \App\Models\Setting::get('logo')) : \App\Models\Setting::get('logo'),
         ];
         return view('sales.delivery_note', compact('sale', 'company'));
     }

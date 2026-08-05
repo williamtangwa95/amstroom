@@ -36,14 +36,14 @@ class DashboardController extends Controller
     {
         $totalShops     = Shop::count();
         $totalEmployees = User::where('role', '!=', 'owner')->count();
-        $totalItems     = Item::count();
-        $totalCategories= Category::count();
+        $totalItems     = Item::where('is_admin_item', false)->count();
+        $totalCategories= Category::where('is_admin_category', false)->count();
 
         $mainStockValue     = MainStock::selectRaw('SUM(remaining_quantity * buying_price)')->value(DB::raw('SUM(remaining_quantity * buying_price)')) ?? 0;
         $mainStockSellValue = MainStock::selectRaw('SUM(remaining_quantity * selling_price)')->value(DB::raw('SUM(remaining_quantity * selling_price)')) ?? 0;
-        $shopStockValue     = ShopStock::selectRaw('SUM(remaining_quantity * buying_price)')->value(DB::raw('SUM(remaining_quantity * buying_price)')) ?? 0;
+        $shopStockValue     = ShopStock::where('is_admin_stock', false)->selectRaw('SUM(remaining_quantity * buying_price)')->value(DB::raw('SUM(remaining_quantity * buying_price)')) ?? 0;
 
-        $allSales = Sale::completed()->with('items')->get();
+        $allSales = Sale::completed()->where('is_admin_stock', false)->with('items')->get();
         $totalSales = $allSales->sum(fn($s) => $s->report_revenue);
         $totalSalesCount = $allSales->count();
         $profit = $allSales->sum(fn($s) => $s->report_profit);
@@ -62,7 +62,7 @@ class DashboardController extends Controller
                 ];
             })->sortKeys()->values();
 
-        $recentSales = Sale::completed()->with('shop', 'seller', 'items.item')->latest()->take(5)->get();
+        $recentSales = Sale::completed()->where('is_admin_stock', false)->with('shop', 'seller', 'items.item')->latest()->take(5)->get();
         $recentRequests = StockRequest::with('shop', 'requester')->where('status', 'pending')->latest()->take(5)->get();
 
         $shopsSummary = Shop::all()->map(function ($shop) use ($allSales) {
@@ -89,8 +89,25 @@ class DashboardController extends Controller
         $shopStock = ShopStock::where('shop_id', $user->shop_id)->sum('remaining_quantity');
         
         $shopSalesList = Sale::completed()->with('items')->where('shop_id', $user->shop_id)->get();
-        $shopSales = $shopSalesList->sum(fn($s) => $s->report_revenue);
+        $shopSales = $shopSalesList->filter(function ($s) {
+            return $s->sale_date->year === now()->year && $s->sale_date->month === now()->month;
+        })->sum(fn($s) => $s->report_revenue);
         $todaySales = $shopSalesList->where('sale_date', today())->sum(fn($s) => $s->report_revenue);
+
+        $adminStockSales = 0.0;
+        $normalStockSales = 0.0;
+        foreach ($shopSalesList as $sale) {
+            if ($sale->sale_date->toDateString() === today()->toDateString()) {
+                foreach ($sale->items as $item) {
+                    $subtotal = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+                    if ($item->is_admin_stock) {
+                        $adminStockSales += $subtotal;
+                    } else {
+                        $normalStockSales += $subtotal;
+                    }
+                }
+            }
+        }
         
         $pendingRequests = StockRequest::where('shop_id', $user->shop_id)->where('status', 'pending')->count();
         $lowStockCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
@@ -108,7 +125,8 @@ class DashboardController extends Controller
 
         return view('dashboard.index', compact(
             'shop', 'shopStock', 'shopSales', 'todaySales', 'pendingRequests',
-            'lowStockCount', 'defectsCount', 'recentSales', 'monthlySales'
+            'lowStockCount', 'defectsCount', 'recentSales', 'monthlySales',
+            'adminStockSales', 'normalStockSales'
         ));
     }
 

@@ -116,8 +116,8 @@
                         @endif
                     @endif
 
-                    {{-- Invoice & Document Settings (Owner Only) --}}
-                    @if(auth()->user()->isOwner())
+                    {{-- Invoice & Document Settings --}}
+                    @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
                     <div class="mb-4 border-top pt-4">
                         <h6 class="fw-700 mb-1"><i class="bi bi-file-earmark-text me-2" style="color:#0088cc;"></i>Invoice & Document Settings</h6>
                         <small class="text-muted d-block mb-3">These details appear on printed invoices, proforma invoices, and delivery notes.</small>
@@ -137,6 +137,42 @@
                             <div class="col-md-6">
                                 <label for="company_bank_account" class="form-label fw-600 small">Bank Account Number</label>
                                 <input type="text" name="company_bank_account" id="company_bank_account" class="form-control" value="{{ old('company_bank_account', $companyBankAccount) }}" placeholder="e.g. 0150123456789">
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Email Summary Settings --}}
+                    @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+                    <div class="mb-4 border-top pt-4">
+                        <h6 class="fw-700 mb-1"><i class="bi bi-envelope-at me-2" style="color:#e94560;"></i>Email Summary Settings</h6>
+                        <small class="text-muted d-block mb-3">Configure which email addresses will receive reports and summaries of sales, expenses, and stock. Your own email is mandatory and must be included in the list.</small>
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label for="summary_emails" class="form-label fw-600 small">Recipients Email Addresses (Comma-separated) <span class="text-danger">*</span></label>
+                                <textarea name="summary_emails" id="summary_emails" class="form-control @error('summary_emails') is-invalid @enderror" rows="2" placeholder="e.g. {{ auth()->user()->email }}, partner@example.com" required>{{ old('summary_emails', $summaryEmails) }}</textarea>
+                                @error('summary_emails')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">
+                                    Multiple email addresses must be separated by commas. Your email address <strong>({{ auth()->user()->email }})</strong> must be present.
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="summary_time" class="form-label fw-600 small">Daily Send Time <span class="text-danger">*</span></label>
+                                <input type="time" name="summary_time" id="summary_time" class="form-control @error('summary_time') is-invalid @enderror" value="{{ old('summary_time', $summaryTime) }}" required>
+                                @error('summary_time')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text">
+                                    The time of day (EAT / local) when this report summary will be emailed daily.
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <button type="button" id="btn-send-summary" class="btn btn-outline-custom btn-sm">
+                                    <i class="bi bi-send me-1"></i> Send Summary Report Now
+                                </button>
+                                <span id="summary-send-status" class="ms-2 small fw-600"></span>
                             </div>
                         </div>
                     </div>
@@ -271,6 +307,46 @@
             console.error('Web Audio API error: ', e);
         }
     }
+
+    document.getElementById('btn-send-summary')?.addEventListener('click', function() {
+        const btn = this;
+        const status = document.getElementById('summary-send-status');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...';
+        status.textContent = '';
+        status.className = 'ms-2 small fw-600';
+        
+        fetch("{{ route('settings.send-summary') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': "{{ csrf_token() }}"
+            }
+        })
+        .then(response => {
+            return response.json()
+                .then(data => ({ status: response.status, body: data }))
+                .catch(() => response.text().then(text => ({ status: response.status, body: { message: text.substring(0, 100) + '...' } })));
+        })
+        .then(res => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i> Send Summary Report Now';
+            if (res.status === 200) {
+                status.classList.add('text-success');
+                status.textContent = 'Summary email sent successfully!';
+            } else {
+                status.classList.add('text-danger');
+                status.textContent = res.body.message || 'Error occurred while sending.';
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i> Send Summary Report Now';
+            status.classList.add('text-danger');
+            status.textContent = 'Failed to make request: ' + error.message;
+        });
+    });
 </script>
 @endpush
 @endsection

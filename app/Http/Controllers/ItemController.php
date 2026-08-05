@@ -11,13 +11,13 @@ class ItemController extends Controller
 {
     public function index()
     {
-        $items = Item::with('category')->latest()->get();
+        $items = Item::with('category')->where('is_admin_item', false)->latest()->get();
         return view('items.index', compact('items'));
     }
 
     public function create()
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
         return view('items.create', compact('categories'));
     }
 
@@ -55,7 +55,7 @@ class ItemController extends Controller
 
     public function edit(Item $item)
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
         return view('items.edit', compact('item', 'categories'));
     }
 

@@ -293,20 +293,36 @@
 {{-- ── SHOP ADMIN DASHBOARD ── --}}
 @elseif($user->isShopAdmin())
 <div class="row g-3 mb-4">
-    <div class="col-12 col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-calendar-check-fill"></i></div>
             <div class="stat-value" style="color:#3fb950;font-size:1.15rem;">TZS {{ number_format($todaySales, 0) }}</div>
             <div class="stat-label">Today's Sales</div>
         </div>
     </div>
-    <div class="col-6 col-md-4">
+    <div class="col-6 col-md-3">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-currency-dollar"></i></div>
             <div class="stat-value" style="color:#58a6ff;font-size:1.1rem;">TZS {{ number_format($shopSales, 0) }}</div>
-            <div class="stat-label">Total Shop Sales</div>
+            <div class="stat-label">This Month's Sales</div>
         </div>
     </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-person-badge-fill"></i></div>
+            <div class="stat-value" style="color:#bc8cff;font-size:1.1rem;">TZS {{ number_format($adminStockSales, 0) }}</div>
+            <div class="stat-label">Today's Admin Sales</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-shop-window"></i></div>
+            <div class="stat-value" style="color:#d29922;font-size:1.1rem;">TZS {{ number_format($normalStockSales, 0) }}</div>
+            <div class="stat-label">Today's Normal Sales</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
     <div class="col-6 col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-layers-fill"></i></div>
@@ -314,16 +330,14 @@
             <div class="stat-label">Units in Stock</div>
         </div>
     </div>
-</div>
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-6">
+    <div class="col-6 col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-clock-fill"></i></div>
             <div class="stat-value" style="color:#bc8cff;">{{ $pendingRequests }}</div>
             <div class="stat-label">Pending Requests</div>
         </div>
     </div>
-    <div class="col-6 col-md-6">
+    <div class="col-12 col-md-4">
         <div class="stat-card">
             <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-exclamation-triangle-fill"></i></div>
             <div class="stat-value" style="color:#e94560;">{{ $lowStockCount }}</div>
@@ -453,6 +467,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     @if(isset($monthlySales) && count($monthlySales) > 0)
     const salesCtx = document.getElementById('salesChart');
@@ -460,14 +475,10 @@
         new Chart(salesCtx, {
             type: 'bar',
             data: {
-                labels: {
-                    !!json_encode($monthlySales - > pluck('month')) !!
-                },
+                labels: {!! json_encode($monthlySales->pluck('month')) !!},
                 datasets: [{
                     label: 'Revenue (TZS)',
-                    data: {
-                        !!json_encode($monthlySales - > pluck('total')) !!
-                    },
+                    data: {!! json_encode($monthlySales->pluck('total')) !!},
                     backgroundColor: 'rgba(233,69,96,.7)',
                     borderColor: '#e94560',
                     borderWidth: 2,

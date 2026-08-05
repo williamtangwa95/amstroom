@@ -37,7 +37,7 @@ class StockRequestController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $items = Item::with('category')->orderBy('item_name')->get();
+        $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
         $shop = $user->shop;
 
         return view('stock-requests.create', compact('items', 'shop'));

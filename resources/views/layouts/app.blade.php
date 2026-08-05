@@ -326,11 +326,18 @@
             border-radius: 8px;
             font-weight: 600;
             font-size: .83rem;
+            padding: .4rem .85rem;
             transition: all .15s;
             box-shadow: 0 4px 12px rgba(0, 136, 204, 0.25);
         }
 
         .btn-accent:hover { background: linear-gradient(135deg, #0077b6, #004d73); color: #fff; transform: translateY(-1px); }
+
+        /* Fix DataTables buttons stripping inner padding via generated <span> */
+        .dt-buttons .btn { padding: .4rem .85rem !important; }
+        .dt-buttons .btn.btn-sm { padding: .3rem .7rem !important; }
+        .dt-buttons .btn span { pointer-events: none; }
+
 
         .btn-gold {
             background: linear-gradient(135deg, #ffb700, #d97706);
@@ -517,6 +524,29 @@
             #sidebar.show { transform: translateX(0); }
             #sidebar.show ~ .sidebar-backdrop { display: block; }
             #main-content { margin-left: 0; }
+
+            /* Responsive Navbar adjustments */
+            #top-navbar {
+                padding: .5rem .75rem !important;
+                gap: .4rem !important;
+            }
+            .page-title {
+                font-size: .92rem !important;
+                line-height: 1.1;
+            }
+            .user-badge {
+                padding: .3rem .5rem !important;
+                gap: .3rem !important;
+            }
+
+            /* Global Responsive Tables: prevent column collapsing, force scroll within card */
+            .table {
+                min-width: 800px !important;
+            }
+            .card-body, .table-responsive, .dataTables_wrapper {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
         }
 
         /* ── Animations ── */
@@ -971,13 +1001,16 @@
             <i class="bi bi-list"></i>
         </button>
 
-        <div>
+        <div class="d-none d-sm-block">
             <div class="page-title">@yield('page-title', 'Dashboard')</div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     @yield('breadcrumb')
                 </ol>
             </nav>
+        </div>
+        <div class="d-block d-sm-none">
+            <div class="page-title" style="font-size: .85rem;">@yield('page-title', 'Dashboard')</div>
         </div>
 
         <div class="ms-auto d-flex align-items-center gap-2">
@@ -1006,26 +1039,26 @@
             </div>
 
             @if(auth()->user()->shop)
-            <div class="user-badge">
+            <div class="user-badge" title="{{ auth()->user()->shop->shop_name }}">
                 <i class="bi bi-shop text-primary"></i>
-                <span class="fw-600">{{ auth()->user()->shop->shop_name }}</span>
+                <span class="fw-600 d-none d-md-inline">{{ auth()->user()->shop->shop_name }}</span>
             </div>
             @endif
 
-            <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none" title="Manage Profile">
+            <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none" title="Manage Profile: {{ auth()->user()->name }}">
                 @if(auth()->user()->avatar_path)
                     <img src="{{ asset('storage/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent);">
                 @else
                     <i class="bi bi-person-circle text-primary"></i>
                 @endif
-                <span class="fw-600 text-dark">{{ auth()->user()->name }}</span>
-                <span class="role-pill role-{{ auth()->user()->role }}">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
+                <span class="fw-600 text-dark d-none d-md-inline">{{ auth()->user()->name }}</span>
+                <span class="role-pill role-{{ auth()->user()->role }} d-none d-lg-inline">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
             </a>
 
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-custom" title="Logout">
-                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                    <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span>
                 </button>
             </form>
         </div>
@@ -1062,6 +1095,66 @@
         @yield('content')
     </div>
 </div>
+
+{{-- ── Global Image Lightbox ── --}}
+<div id="imgLightbox" style="
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.88); backdrop-filter:blur(6px);
+    align-items:center; justify-content:center; cursor:zoom-out;
+    animation: lbFadeIn .18s ease;
+" onclick="closeLightbox()">
+    <button onclick="closeLightbox(event)" style="
+        position:absolute; top:18px; right:22px;
+        background:rgba(255,255,255,.12); border:none; border-radius:50%;
+        width:40px; height:40px; color:#fff; font-size:1.3rem;
+        display:flex; align-items:center; justify-content:center; cursor:pointer;
+        transition: background .15s;
+    " onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">
+        <i class="bi bi-x-lg"></i>
+    </button>
+    <img id="imgLightboxImg" src="" alt="Product Image" style="
+        max-width:90vw; max-height:88vh;
+        object-fit:contain; border-radius:12px;
+        box-shadow:0 24px 60px rgba(0,0,0,0.5);
+        cursor:default;
+        animation: lbZoomIn .2s ease;
+    " onclick="event.stopPropagation()">
+    <div id="imgLightboxCaption" style="
+        position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+        background:rgba(0,0,0,0.6); color:#fff; font-size:.82rem; font-weight:600;
+        padding:.4rem 1rem; border-radius:20px; white-space:nowrap;
+        letter-spacing:.02em; max-width:80vw; overflow:hidden; text-overflow:ellipsis;
+    "></div>
+</div>
+<style>
+@keyframes lbFadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes lbZoomIn { from { transform:scale(.88); } to { transform:scale(1); } }
+.img-lightbox {
+    cursor: zoom-in !important;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.img-lightbox:hover {
+    transform: scale(1.06);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
+}
+</style>
+<script>
+function openLightbox(src, caption) {
+    var lb = document.getElementById('imgLightbox');
+    document.getElementById('imgLightboxImg').src = src;
+    document.getElementById('imgLightboxCaption').textContent = caption || '';
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox(e) {
+    if (e) e.stopPropagation();
+    document.getElementById('imgLightbox').style.display = 'none';
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

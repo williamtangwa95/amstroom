@@ -39,9 +39,9 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
             margin: 0;
-            padding: 1rem 0;
+            padding: 1rem;
         }
 
         /* Ambient soft background glow orbs */
@@ -211,6 +211,51 @@
 
         .alert { border-radius: 10px; font-size: .83rem; border: none; }
         .alert-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            body {
+                padding: .75rem;
+                align-items: flex-start;
+                padding-top: 1.5rem;
+            }
+            .login-wrapper {
+                padding: 0;
+            }
+            .login-brand {
+                margin-bottom: 1.25rem;
+            }
+            .brand-logo {
+                width: 56px; height: 56px;
+                border-radius: 16px;
+                margin-bottom: .75rem;
+            }
+            .brand-logo i { font-size: 1.6rem; }
+            .brand-name { font-size: 1.25rem; }
+
+            .login-card {
+                padding: 1.5rem 1.25rem;
+                border-radius: 16px;
+            }
+            .login-card h4 { font-size: 1.05rem; }
+            .login-card p.sub { margin-bottom: 1.25rem; }
+
+            .demo-accounts {
+                margin-top: 1.1rem;
+                padding: .85rem .9rem;
+            }
+            .demo-item {
+                font-size: .74rem;
+                flex-wrap: wrap;
+                gap: .25rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            body { padding: .5rem; padding-top: 1rem; }
+            .login-card { padding: 1.25rem 1rem; }
+            .brand-name { font-size: 1.1rem; }
+        }
     </style>
 </head>
 <body>

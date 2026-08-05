@@ -53,7 +53,7 @@
                         @csrf @method('PATCH')
                         <label class="form-label fw-600">Update Low Stock Alert Threshold</label>
                         <div class="input-group">
-                            <input type="number" name="low_stock_alert" class="form-control" value="{{ $shopStock->low_stock_alert }}" min="0" required>
+                            <input type="number" name="low_stock_alert" class="form-control" value="{{ $shopStock->low_stock_alert }}" min="1" required>
                             <button type="submit" class="btn btn-accent">Save</button>
                         </div>
                     </form>

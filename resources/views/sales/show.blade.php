@@ -77,6 +77,9 @@
                         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
                     @endphp
                     @foreach($sale->items as $item)
+                    @if($isOwner && $item->is_admin_stock)
+                        @continue
+                    @endif
                     @php
                         $displayPrice = ($isOwner && $isIndependent && $sale->shop_id !== null) ? ($item->owner_realized_sp ?? $item->selling_price) : ($item->shop_realized_sp ?? $item->selling_price);
                         $displaySubtotal = $displayPrice * $item->quantity;

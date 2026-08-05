@@ -43,9 +43,14 @@ class ShopController extends Controller
 
     public function show(Shop $shop)
     {
-        $shop->load('users', 'shopStocks.item.category');
-        $sales_total = $shop->sales()->sum('total_amount');
-        $stock_count = $shop->shopStocks()->sum('remaining_quantity');
+        $shop->load([
+            'users',
+            'shopStocks' => function ($q) {
+                $q->where('is_admin_stock', false)->with('item.category');
+            }
+        ]);
+        $sales_total = $shop->sales()->where('is_admin_stock', false)->sum('total_amount');
+        $stock_count = $shop->shopStocks()->where('is_admin_stock', false)->sum('remaining_quantity');
         return view('shops.show', compact('shop', 'sales_total', 'stock_count'));
     }
 

@@ -10,11 +10,18 @@
         <h5 class="mb-0 fw-700">Shop Inventory</h5>
         <small style="color:var(--text-secondary);">Available products in retail shops</small>
     </div>
-    @if($lowStockItems > 0)
-    <div class="alert alert-warning py-1 px-3 mb-0" style="font-size:.8rem;">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ $lowStockItems }} item(s) low in stock!
+    <div class="d-flex align-items-center gap-2">
+        @if(auth()->user()->isShopAdmin())
+        <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Admin Stock
+        </button>
+        @endif
+        @if($lowStockItems > 0)
+        <div class="alert alert-warning py-1 px-3 mb-0" style="font-size:.8rem;">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ $lowStockItems }} item(s) low in stock!
+        </div>
+        @endif
     </div>
-    @endif
 </div>
 
 @if(auth()->user()->isOwner())
@@ -59,7 +66,12 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             @if($st->item->image_path)
-                            <img src="{{ asset('storage/' . $st->item->image_path) }}" alt="{{ $st->item->item_name }}" class="rounded" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);">
+                            <img src="{{ asset('storage/' . $st->item->image_path) }}"
+                                 alt="{{ $st->item->item_name }}"
+                                 class="rounded img-lightbox"
+                                 style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);"
+                                 onclick="openLightbox(this.src, '{{ addslashes($st->item->item_name) }}')"
+                                 title="Click to enlarge">
                             @else
                             <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 32px; height: 32px; border: 1px solid var(--card-border);">
                                 <i class="bi bi-image" style="font-size: 0.8rem;"></i>
@@ -67,7 +79,12 @@
                             @endif
                             <div>
                                 <div style="font-weight:600;font-size:.83rem;">{{ $st->item->item_name }}</div>
-                                <div style="font-size:.7rem;color:var(--text-secondary);">{{ $st->item->brand }}</div>
+                                <div style="font-size:.7rem;color:var(--text-secondary);">
+                                    {{ $st->item->brand }}
+                                    @if($st->is_admin_stock)
+                                    <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -154,6 +171,102 @@
         </div>
     </div>
 </div>
+
+@if(auth()->user()->isShopAdmin())
+<!-- Add Admin Stock Modal -->
+<div class="modal fade" id="addAdminStockModal" tabindex="-1" aria-labelledby="addAdminStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="addAdminStockModalLabel"><i class="bi bi-plus-circle text-accent me-2"></i>Add Admin Stock</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('shop-stock.store-admin-stock') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="createNewProductToggle" name="create_new_product" value="1">
+                        <label class="form-check-label small fw-600" for="createNewProductToggle">Create a new product instead</label>
+                    </div>
+
+                    <div id="existingProductGroup">
+                        <div class="mb-3">
+                            <label for="item_id" class="form-label" style="font-size:0.8rem;">Select Product *</label>
+                            <select name="item_id" id="item_id" class="form-select form-select-sm" required>
+                                <option value="">-- Choose Product --</option>
+                                @foreach($items as $item)
+                                <option value="{{ $item->id }}">{{ $item->item_name }} ({{ $item->brand }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="newProductGroup" style="display: none;">
+                        <div class="mb-3">
+                            <label for="new_item_name" class="form-label" style="font-size:0.8rem;">Product Name *</label>
+                            <input type="text" name="new_item_name" id="new_item_name" class="form-control form-control-sm" placeholder="e.g. Wireless Keyboard K120">
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="createNewCategoryToggle" name="create_new_category" value="1">
+                            <label class="form-check-label small fw-600" for="createNewCategoryToggle">Create a new category instead</label>
+                        </div>
+
+                        <div id="existingCategoryGroup" class="mb-3">
+                            <label for="category_id" class="form-label" style="font-size:0.8rem;">Category *</label>
+                            <select name="category_id" id="category_id" class="form-select form-select-sm">
+                                <option value="">-- Choose Category --</option>
+                                @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="newCategoryGroup" class="mb-3" style="display: none;">
+                            <label for="new_category_name" class="form-label" style="font-size:0.8rem;">Category Name *</label>
+                            <input type="text" name="new_category_name" id="new_category_name" class="form-control form-control-sm" placeholder="e.g. Gaming Gear">
+                        </div>
+                        <div class="mb-3">
+                            <label for="brand" class="form-label" style="font-size:0.8rem;">Brand</label>
+                            <input type="text" name="brand" id="brand" class="form-control form-control-sm" placeholder="e.g. Logitech">
+                        </div>
+                        <div class="mb-3">
+                            <label for="model" class="form-label" style="font-size:0.8rem;">Model</label>
+                            <input type="text" name="model" id="model" class="form-control form-control-sm" placeholder="e.g. K120">
+                        </div>
+                        <div class="mb-3">
+                            <label for="specification" class="form-label" style="font-size:0.8rem;">Specification</label>
+                            <input type="text" name="specification" id="specification" class="form-control form-control-sm" placeholder="e.g. USB connection, spill-resistant">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity_display" class="form-label" style="font-size:0.8rem;">Quantity *</label>
+                        <input type="text" id="quantity_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 10">
+                        <input type="hidden" name="quantity" id="quantity">
+                    </div>
+                    <div class="mb-3">
+                        <label for="buying_price_display" class="form-label" style="font-size:0.8rem;">Buying Price (TZS) *</label>
+                        <input type="text" id="buying_price_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 1,000">
+                        <input type="hidden" name="buying_price" id="buying_price">
+                    </div>
+                    <div class="mb-3">
+                        <label for="selling_price_display" class="form-label" style="font-size:0.8rem;">Selling Price (TZS) *</label>
+                        <input type="text" id="selling_price_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 1,500">
+                        <input type="hidden" name="selling_price" id="selling_price">
+                    </div>
+                    <div class="mb-3">
+                        <label for="date_received" class="form-label" style="font-size:0.8rem;">Date Received *</label>
+                        <input type="date" name="date_received" id="date_received" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-accent">Add Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
@@ -186,6 +299,54 @@
             let newLength = this.value.length;
             this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
         });
+
+        @if(auth()->user()->isShopAdmin())
+        // Auto-comma formatter for Add Admin Stock Modal
+        $('#quantity_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9]/g, '');
+            this.value = formatNumber(cleanVal);
+            $('#quantity').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+        });
+
+        $('#buying_price_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            }
+            this.value = formatNumber(cleanVal);
+            $('#buying_price').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+        });
+
+        $('#selling_price_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            }
+            this.value = formatNumber(cleanVal);
+            $('#selling_price').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+        });
+
+        $('#addAdminStockModal').on('hidden.bs.modal', function() {
+            $(this).find('form')[0].reset();
+            $('#quantity').val('');
+            $('#buying_price').val('');
+            $('#selling_price').val('');
+        });
+        @endif
 
         $('.btn-approve-price').on('click', function() {
             const url = $(this).data('url');
@@ -244,6 +405,69 @@
                 });
             }
         });
+
+        @if(auth()->user()->isShopAdmin())
+        function updateCategoryFields() {
+            const isNewProduct = $('#createNewProductToggle').is(':checked');
+            const isNewCategory = $('#createNewCategoryToggle').is(':checked');
+
+            if (isNewProduct) {
+                if (isNewCategory) {
+                    $('#existingCategoryGroup').hide();
+                    $('#category_id').val('').prop('required', false);
+                    $('#newCategoryGroup').show();
+                    $('#new_category_name').prop('required', true);
+                } else {
+                    $('#newCategoryGroup').hide();
+                    $('#new_category_name').val('').prop('required', false);
+                    $('#existingCategoryGroup').show();
+                    $('#category_id').prop('required', true);
+                }
+            } else {
+                $('#category_id').prop('required', false);
+                $('#new_category_name').prop('required', false);
+            }
+        }
+
+        // Toggle new product inputs vs select product dropdown
+        $('#createNewProductToggle').on('change', function() {
+            if (this.checked) {
+                $('#existingProductGroup').hide();
+                $('#item_id').val('').prop('required', false);
+                $('#newProductGroup').show();
+                $('#new_item_name').prop('required', true);
+                updateCategoryFields();
+            } else {
+                $('#newProductGroup').hide();
+                $('#new_item_name').val('').prop('required', false);
+                $('#existingProductGroup').show();
+                $('#item_id').prop('required', true);
+                updateCategoryFields();
+            }
+        });
+
+        // Toggle new category input vs category select dropdown
+        $('#createNewCategoryToggle').on('change', function() {
+            updateCategoryFields();
+        });
+
+        // Add Admin Stock Form validation
+        $('#addAdminStockModal form').on('submit', function(e) {
+            const buyingPrice = parseFloat($('#buying_price').val()) || 0;
+            const sellingPrice = parseFloat($('#selling_price').val()) || 0;
+
+            if (sellingPrice < buyingPrice) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Price Too Low',
+                    text: 'Selling price cannot be less than the buying price TZS ' + buyingPrice.toLocaleString() + '.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            }
+        });
+        @endif
     });
 </script>
 @endpush

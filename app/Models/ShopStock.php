@@ -12,7 +12,7 @@ class ShopStock extends Model
     protected $fillable = [
         'shop_id', 'item_id', 'buying_price', 'selling_price',
         'quantity', 'remaining_quantity', 'low_stock_alert', 'date_received',
-        'is_price_pending', 'pending_selling_price', 'is_sellable',
+        'is_price_pending', 'pending_selling_price', 'is_sellable', 'is_admin_stock',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class ShopStock extends Model
         'is_price_pending' => 'boolean',
         'pending_selling_price' => 'decimal:2',
         'is_sellable' => 'boolean',
+        'is_admin_stock' => 'boolean',
     ];
 
     public function shop()

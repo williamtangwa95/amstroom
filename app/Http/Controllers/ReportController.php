@@ -22,8 +22,31 @@ class ReportController extends Controller
         $period = $request->get('period', 'monthly');
         $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
         $itemId = $request->get('item_id');
+        $stockType = $request->get('stock_type');
+
+        if ($user->isOwner()) {
+            $stockType = 'normal';
+        }
 
         $query = Sale::completed()->with('shop', 'seller');
+
+        if ($stockType === 'admin') {
+            $query->where(function ($q) {
+                $q->where('is_admin_stock', true)
+                  ->orWhereHas('items', function ($sq) {
+                      $sq->where('is_admin_stock', true);
+                  });
+            });
+        } elseif ($stockType === 'normal') {
+            $query->where('is_admin_stock', false);
+        } elseif ($stockType === 'all') {
+            // No constraint on is_admin_stock
+        } else {
+            // Default behavior
+            if ($user->isOwner()) {
+                $query->where('is_admin_stock', false);
+            }
+        }
 
         if ($shopId) {
             if ($shopId === 'owner') {
@@ -59,24 +82,55 @@ class ReportController extends Controller
         $totalCost = 0;
         $totalProfit = 0;
 
+        $totalAdminRevenue = 0;
+        $totalAdminProfit = 0;
+        $totalNormalRevenue = 0;
+        $totalNormalProfit = 0;
+
         foreach ($sales as $sale) {
-            $filteredItems = $sale->items->when($itemId, function ($items) use ($itemId) {
-                return $items->where('item_id', $itemId);
-            });
+            $filteredItems = $sale->items
+                ->when($itemId, function ($items) use ($itemId) {
+                    return $items->where('item_id', $itemId);
+                })
+                ->when($stockType === 'admin', function ($items) {
+                    return $items->where('is_admin_stock', true);
+                })
+                ->when($stockType === 'normal', function ($items) {
+                    return $items->where('is_admin_stock', false);
+                })
+                ->when(empty($stockType) && auth()->user()->isOwner(), function ($items) {
+                    return $items->where('is_admin_stock', false);
+                });
 
-            $saleRevenue = $filteredItems->sum(function ($item) use ($isOwner, $isIndependent, $sale) {
+            $saleRevenue = 0;
+            $saleCost = 0;
+
+            foreach ($filteredItems as $item) {
                 if ($isOwner && $isIndependent && $sale->shop_id !== null) {
-                    return (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
+                    $itemRevenue = (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
+                } else {
+                    $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
                 }
-                return (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
-            });
 
-            $saleCost = $filteredItems->sum(function ($item) use ($isOwner, $sale) {
                 if ($isOwner) {
-                    return (float) ($item->owner_cost_price ?? 0) * $item->quantity;
+                    $itemCost = (float) ($item->owner_cost_price ?? 0) * $item->quantity;
+                } else {
+                    $itemCost = (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
                 }
-                return (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
-            });
+
+                $itemProfit = $itemRevenue - $itemCost;
+
+                $saleRevenue += $itemRevenue;
+                $saleCost += $itemCost;
+
+                if ($item->is_admin_stock) {
+                    $totalAdminRevenue += $itemRevenue;
+                    $totalAdminProfit += $itemProfit;
+                } else {
+                    $totalNormalRevenue += $itemRevenue;
+                    $totalNormalProfit += $itemProfit;
+                }
+            }
 
             $saleProfit = $saleRevenue - $saleCost;
 
@@ -101,7 +155,16 @@ class ReportController extends Controller
         })->values();
 
         $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
-        $items = Item::orderBy('item_name')->get();
+        $items = Item::when($user->isOwner(), fn($q) => $q->where('is_admin_item', false))
+            ->when(!$user->isOwner(), fn($q) => $q->where(function ($sq) use ($user) {
+                $sq->where('is_admin_item', false)
+                  ->orWhere(function ($ssq) use ($user) {
+                      $ssq->where('is_admin_item', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            }))
+            ->orderBy('item_name')
+            ->get();
 
         // Chart data computed dynamically
         $chartData = $sales->where('sale_date', '>=', now()->subDays(30))
@@ -113,7 +176,36 @@ class ReportController extends Controller
                 ];
             })->sortBy('sale_date')->values();
 
-        return view('reports.sales', compact('sales', 'totalRevenue', 'totalProfit', 'salesByShop', 'shops', 'items', 'period', 'chartData', 'itemId'));
+        // Build header info for Excel/PDF exports
+        $reportHeader = [];
+        if ($user->isOwner()) {
+            $reportHeader = [
+                'name'    => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+                'slogan'  => \App\Models\Setting::get('slogan', ''),
+                'address' => \App\Models\Setting::get('company_address', ''),
+                'tin'     => \App\Models\Setting::get('company_tin', ''),
+                'phone'   => '',
+                'type'    => 'owner',
+            ];
+        } elseif ($user->isShopAdmin()) {
+            $shop = $user->shop;
+            $reportHeader = [
+                'name'    => $shop?->shop_name ?? 'My Shop',
+                'slogan'  => $shop?->slogan ?? '',
+                'address' => $shop?->address ?? '',
+                'tin'     => $shop?->tin_number ?? '',
+                'phone'   => $shop?->phone ?? '',
+                'type'    => 'admin',
+            ];
+        }
+
+        return view('reports.sales', compact(
+            'sales', 'totalRevenue', 'totalProfit', 'salesByShop', 'shops', 'items',
+            'period', 'chartData', 'itemId', 'reportHeader',
+            'totalAdminRevenue', 'totalAdminProfit', 'totalNormalRevenue', 'totalNormalProfit',
+            'stockType'
+        ));
+
     }
 
     public function stock(Request $request)
@@ -135,11 +227,49 @@ class ReportController extends Controller
 
         if (!$user->isOwner()) {
             $shopStocksQuery->where('shop_id', $user->shop_id);
+        } else {
+            $shopStocksQuery->where('is_admin_stock', false);
         }
 
         $shopStocks = $shopStocksQuery->get();
 
-        return view('reports.stock', compact('mainStocks', 'shopStocks', 'type'));
+        // Report header (same pattern as sales)
+        $reportHeader = [];
+        if ($user->isOwner()) {
+            $reportHeader = [
+                'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+                'slogan' => \App\Models\Setting::get('slogan', ''),
+                'address'=> \App\Models\Setting::get('company_address', ''),
+                'tin'    => \App\Models\Setting::get('company_tin', ''),
+                'phone'  => '',
+                'type'   => 'owner',
+            ];
+        } elseif ($user->isShopAdmin()) {
+            $shop = $user->shop;
+            $reportHeader = [
+                'name'   => $shop?->shop_name ?? 'My Shop',
+                'slogan' => $shop?->slogan ?? '',
+                'address'=> $shop?->address ?? '',
+                'tin'    => $shop?->tin_number ?? '',
+                'phone'  => $shop?->phone ?? '',
+                'type'   => 'admin',
+            ];
+        }
+
+        // Totals for PDF footer rows
+        $mainTotalQty       = $mainStocks->sum('qty');
+        $mainTotalValue     = $mainStocks->sum('value');
+        $mainTotalSellValue = $mainStocks->sum('sell_value');
+
+        $shopTotalQty       = $shopStocks->sum('remaining_quantity');
+        $shopTotalValuation = $shopStocks->sum(fn($s) => $s->remaining_quantity * $s->selling_price);
+
+        return view('reports.stock', compact(
+            'mainStocks', 'shopStocks', 'type', 'reportHeader',
+            'mainTotalQty', 'mainTotalValue', 'mainTotalSellValue',
+            'shopTotalQty', 'shopTotalValuation'
+        ));
+
     }
 
     public function transfer(Request $request)
@@ -185,7 +315,30 @@ class ReportController extends Controller
         $totalDefective = $query->sum('quantity');
         $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
 
-        return view('reports.defect', compact('defects', 'totalDefective', 'shops'));
+        // Report header (same pattern as sales, stock, and expenses)
+        $reportHeader = [];
+        if ($user->isOwner()) {
+            $reportHeader = [
+                'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+                'slogan' => \App\Models\Setting::get('slogan', ''),
+                'address'=> \App\Models\Setting::get('company_address', ''),
+                'tin'    => \App\Models\Setting::get('company_tin', ''),
+                'phone'  => '',
+                'type'   => 'owner',
+            ];
+        } elseif ($user->isShopAdmin()) {
+            $shop = $user->shop;
+            $reportHeader = [
+                'name'   => $shop?->shop_name ?? 'My Shop',
+                'slogan' => $shop?->slogan ?? '',
+                'address'=> $shop?->address ?? '',
+                'tin'    => $shop?->tin_number ?? '',
+                'phone'  => $shop?->phone ?? '',
+                'type'   => 'admin',
+            ];
+        }
+
+        return view('reports.defect', compact('defects', 'totalDefective', 'shops', 'reportHeader'));
     }
 
     public function expenses(Request $request)
@@ -247,7 +400,30 @@ class ReportController extends Controller
         $categories = ExpenseCategory::orderBy('name')->get();
         $shops = $user->isOwner() ? Shop::all() : Shop::where('id', $user->shop_id)->get();
 
-        return view('reports.expenses', compact('expenses', 'totalAmount', 'expensesByCategory', 'categories', 'shops', 'period'));
+        // Report header (same pattern as sales and stock)
+        $reportHeader = [];
+        if ($user->isOwner()) {
+            $reportHeader = [
+                'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+                'slogan' => \App\Models\Setting::get('slogan', ''),
+                'address'=> \App\Models\Setting::get('company_address', ''),
+                'tin'    => \App\Models\Setting::get('company_tin', ''),
+                'phone'  => '',
+                'type'   => 'owner',
+            ];
+        } elseif ($user->isShopAdmin()) {
+            $shop = $user->shop;
+            $reportHeader = [
+                'name'   => $shop?->shop_name ?? 'My Shop',
+                'slogan' => $shop?->slogan ?? '',
+                'address'=> $shop?->address ?? '',
+                'tin'    => $shop?->tin_number ?? '',
+                'phone'  => $shop?->phone ?? '',
+                'type'   => 'admin',
+            ];
+        }
+
+        return view('reports.expenses', compact('expenses', 'totalAmount', 'expensesByCategory', 'categories', 'shops', 'period', 'reportHeader'));
     }
 
     public function salesVsExpenses(Request $request)
@@ -258,6 +434,9 @@ class ReportController extends Controller
 
         // 1. Get Sales
         $salesQuery = Sale::completed();
+        if ($user->isOwner()) {
+            $salesQuery->where('is_admin_stock', false);
+        }
         if ($shopId) {
             if ($shopId === 'owner') {
                 $salesQuery->whereNull('shop_id');

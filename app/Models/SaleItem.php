@@ -11,7 +11,7 @@ class SaleItem extends Model
 
     protected $fillable = [
         'sale_id', 'item_id', 'custom_name', 'quantity', 'selling_price',
-        'owner_cost_price', 'owner_realized_sp', 'shop_cost_price', 'shop_realized_sp',
+        'owner_cost_price', 'owner_realized_sp', 'shop_cost_price', 'shop_realized_sp', 'is_admin_stock',
     ];
 
     protected $casts = [
@@ -20,6 +20,7 @@ class SaleItem extends Model
         'owner_realized_sp' => 'decimal:2',
         'shop_cost_price'   => 'decimal:2',
         'shop_realized_sp'  => 'decimal:2',
+        'is_admin_stock'    => 'boolean',
     ];
 
     public function sale()

@@ -42,7 +42,7 @@ class StockTransferController extends Controller
     {
         $stockTransfer->load('shop', 'approver', 'request', 'items.item.category', 'items.receiver', 'items.rejecter');
 
-        $items = Item::with('category')->orderBy('item_name')->get();
+        $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
 
         $availableStock = MainStock::select('item_id', DB::raw('SUM(remaining_quantity) as total_available'))
             ->where('remaining_quantity', '>', 0)
@@ -60,7 +60,7 @@ class StockTransferController extends Controller
         $shops = Shop::orderBy('shop_name')->get();
 
         // Get items that have remaining stock in main warehouse
-        $items = Item::whereHas('mainStocks', function ($q) {
+        $items = Item::where('is_admin_item', false)->whereHas('mainStocks', function ($q) {
             $q->where('remaining_quantity', '>', 0);
         })->with('category')->orderBy('item_name')->get();
 

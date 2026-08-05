@@ -11,6 +11,7 @@ class Shop extends Model
 
     protected $fillable = [
         'shop_name', 'location', 'phone', 'email', 'logo', 'slogan', 'status',
+        'tin_number', 'address', 'bank_name', 'bank_account', 'summary_emails', 'summary_time',
     ];
 
     public function users()

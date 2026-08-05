@@ -11,6 +11,11 @@ class Item extends Model
 
     protected $fillable = [
         'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period', 'image_path',
+        'is_admin_item', 'shop_id',
+    ];
+
+    protected $casts = [
+        'is_admin_item' => 'boolean',
     ];
 
     public function category()

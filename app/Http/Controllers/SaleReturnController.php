@@ -22,7 +22,11 @@ class SaleReturnController extends Controller
         $user = Auth::user();
         $query = SaleReturn::with('sale.shop', 'requester', 'approver', 'items.item');
 
-        if (!$user->isOwner()) {
+        if ($user->isOwner()) {
+            $query->whereHas('sale', function ($q) {
+                $q->where('is_admin_stock', false);
+            });
+        } else {
             $query->whereHas('sale', function ($q) use ($user) {
                 $q->where('shop_id', $user->shop_id);
             });
@@ -243,16 +247,18 @@ class SaleReturnController extends Controller
      */
     private function stabilizeStock($shopId, $itemId, $quantity, Sale $sale)
     {
+        $saleItem = SaleItem::where('sale_id', $sale->id)->where('item_id', $itemId)->first();
+        $itemIsAdminStock = $saleItem ? (bool) $saleItem->is_admin_stock : (bool) $sale->is_admin_stock;
+
         $shopStock = ShopStock::where('shop_id', $shopId)
             ->where('item_id', $itemId)
+            ->where('is_admin_stock', $itemIsAdminStock)
             ->first();
 
         if ($shopStock) {
             $shopStock->increment('remaining_quantity', $quantity);
         } else {
             // In case stock record doesn't exist (edge case), create one
-            $saleItem = SaleItem::where('sale_id', $sale->id)->where('item_id', $itemId)->first();
-            
             ShopStock::create([
                 'shop_id'            => $shopId,
                 'item_id'            => $itemId,
@@ -261,6 +267,7 @@ class SaleReturnController extends Controller
                 'quantity'           => $quantity,
                 'remaining_quantity' => $quantity,
                 'date_received'      => now()->toDateString(),
+                'is_admin_stock'     => $itemIsAdminStock,
             ]);
         }
 
@@ -274,6 +281,7 @@ class SaleReturnController extends Controller
             'performed_by'     => Auth::id(),
             'date'             => now()->toDateString(),
             'notes'            => "Customer Sale Return (Sale #{$sale->id})",
+            'is_admin_stock'   => $itemIsAdminStock,
         ]);
     }
 }

@@ -9,7 +9,7 @@ class StockLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StockLog::with('item.category', 'performer');
+        $query = StockLog::with('item.category', 'performer')->where('is_admin_stock', false);
 
         if ($request->filled('type')) {
             $query->where('transaction_type', $request->type);

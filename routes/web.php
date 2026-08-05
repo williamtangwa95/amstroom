@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
 
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
+        Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
     });
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────
@@ -162,6 +163,7 @@ Route::middleware('auth')->group(function () {
         // Branding & Settings (all roles can access with customized permissions)
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('settings/send-summary', [SettingController::class, 'sendSummaryEmail'])->name('settings.send-summary');
         Route::delete('settings/logo', [SettingController::class, 'removeLogo'])->name('settings.remove-logo');
         Route::delete('settings/ringtone', [SettingController::class, 'removeRingtone'])->name('settings.remove-ringtone');
 

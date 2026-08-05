@@ -31,7 +31,17 @@ class DefectController extends Controller
     public function create()
     {
         $user = Auth::user();
-        $items = Item::with('category')->orderBy('item_name')->get();
+        $items = Item::with('category')
+            ->when($user->isOwner(), fn($q) => $q->where('is_admin_item', false))
+            ->when(!$user->isOwner(), fn($q) => $q->where(function ($sq) use ($user) {
+                $sq->where('is_admin_item', false)
+                  ->orWhere(function ($ssq) use ($user) {
+                      $ssq->where('is_admin_item', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            }))
+            ->orderBy('item_name')
+            ->get();
         $isMainStore = $user->isOwner() && request()->boolean('main_store');
 
         return view('defects.create', compact('items', 'isMainStore'));
@@ -49,6 +59,21 @@ class DefectController extends Controller
         $user = Auth::user();
         $isMainStore = $request->boolean('is_main_store') && $user->isOwner();
         $shopId = $isMainStore ? null : $user->shop_id;
+
+        if ($isMainStore) {
+            $available = (int) MainStock::where('item_id', $request->item_id)->sum('remaining_quantity');
+            if ($request->quantity > $available) {
+                return back()->withErrors(['quantity' => "Defect quantity exceeds available Main Warehouse stock (Available: {$available})."])->withInput();
+            }
+        } else {
+            $shopStock = ShopStock::where('shop_id', $shopId)
+                ->where('item_id', $request->item_id)
+                ->first();
+            $available = $shopStock ? (int) $shopStock->remaining_quantity : 0;
+            if ($request->quantity > $available) {
+                return back()->withErrors(['quantity' => "Defect quantity exceeds available shop stock (Available: {$available})."])->withInput();
+            }
+        }
 
         DB::transaction(function () use ($request, $user, $shopId, $isMainStore) {
             if ($isMainStore) {
@@ -80,10 +105,6 @@ class DefectController extends Controller
                 $shopStock = ShopStock::where('shop_id', $shopId)
                     ->where('item_id', $request->item_id)
                     ->firstOrFail();
-
-                if ($request->quantity > $shopStock->remaining_quantity) {
-                    throw new \Exception("Defect quantity exceeds available stock.");
-                }
 
                 $shopStock->decrement('remaining_quantity', $request->quantity);
 
