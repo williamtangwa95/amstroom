@@ -108,7 +108,9 @@ class StockRequestController extends Controller
             return back()->with('error', 'This request has already been processed.');
         }
 
-        DB::transaction(function () use ($stockRequest) {
+        $transfer = null;
+
+        DB::transaction(function () use ($stockRequest, &$transfer) {
             // Create transfer record
             $transfer = StockTransfer::create([
                 'from_store'    => 'Main Warehouse',
@@ -116,6 +118,7 @@ class StockRequestController extends Controller
                 'approved_by'   => Auth::id(),
                 'request_id'    => $stockRequest->id,
                 'transfer_date' => now()->toDateString(),
+                'status'        => 'pending_receipt',
             ]);
 
             foreach ($stockRequest->items as $requestItem) {
@@ -142,25 +145,14 @@ class StockRequestController extends Controller
                     $remaining -= $deduct;
                 }
 
-                // Upsert shop stock
-                $shopStock = ShopStock::firstOrNew([
-                    'shop_id' => $stockRequest->shop_id,
-                    'item_id' => $item->id,
-                ]);
-                $shopStock->quantity           = ($shopStock->quantity ?? 0) + $qty;
-                $shopStock->remaining_quantity = ($shopStock->remaining_quantity ?? 0) + $qty;
-                $shopStock->buying_price       = $mainStock?->buying_price ?? 0;
-                $shopStock->selling_price      = $mainStock?->selling_price ?? 0;
-                $shopStock->date_received      = now()->toDateString();
-                $shopStock->save();
-
-                // Transfer item record
+                // Transfer item record - created in pending status, NOT added to shop stock immediately
                 StockTransferItem::create([
                     'transfer_id'  => $transfer->id,
                     'item_id'      => $item->id,
                     'quantity'     => $qty,
                     'buying_price' => $mainStock?->buying_price ?? 0,
                     'selling_price'=> $mainStock?->selling_price ?? 0,
+                    'status'       => 'pending',
                 ]);
 
                 // Audit log
@@ -179,20 +171,20 @@ class StockRequestController extends Controller
             $stockRequest->update(['status' => 'approved']);
         });
 
-        // Notify shop admins and sellers of the shop
-        $shopUsers = \App\Models\User::where('shop_id', $stockRequest->shop_id)
-            ->whereIn('role', ['shop_admin', 'seller'])
+        // Notify shop admins of the shop (sellers are NOT notified until admin approves receipt)
+        $shopAdmins = \App\Models\User::where('shop_id', $stockRequest->shop_id)
+            ->where('role', 'shop_admin')
             ->get();
-        foreach ($shopUsers as $shopUser) {
+        foreach ($shopAdmins as $admin) {
             \App\Models\Notification::create([
-                'user_id' => $shopUser->id,
-                'title'   => 'Stock Request Approved',
-                'message' => "Stock request #{$stockRequest->id} has been approved by the Owner, and stock has been transferred to your shop.",
+                'user_id' => $admin->id,
+                'title'   => 'Stock Request Approved (Pending Receipt)',
+                'message' => "Stock request #{$stockRequest->id} has been approved by the Owner. A new pending stock transfer #{$transfer->id} is awaiting your receipt confirmation.",
             ]);
         }
 
         return redirect()->route('stock-requests.show', $stockRequest)
-            ->with('success', 'Stock request approved and stock transferred successfully.');
+            ->with('success', 'Stock request approved. A pending stock transfer has been created for the shop admin to confirm receipt.');
     }
 
     public function reject(Request $request, StockRequest $stockRequest)

@@ -464,6 +464,18 @@
 </div>
 @endif
 
+<!-- Floating Live Chat Quick Access Icon -->
+<a href="{{ route('chats.index') }}" class="btn rounded-circle d-flex align-items-center justify-content-center shadow-lg position-fixed"
+   style="bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 1050; background: linear-gradient(135deg, #0088cc, #005f9e); color: #ffffff; border: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 25px rgba(0, 136, 204, 0.4) !important;"
+   onmouseover="this.style.transform='scale(1.15) translateY(-3px)'; this.style.boxShadow='0 15px 30px rgba(0, 136, 204, 0.5) !important';"
+   onmouseout="this.style.transform='scale(1) translateY(0)'; this.style.boxShadow='0 10px 25px rgba(0, 136, 204, 0.4) !important';"
+   title="Open Live Chat">
+    <i class="bi bi-chat-dots-fill fs-3"></i>
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="dashboardChatBadge" style="font-size: 0.65rem; padding: 0.35em 0.55em; border: 2px solid #ffffff;">
+        0
+    </span>
+</a>
+
 @endsection
 
 @push('scripts')

@@ -20,6 +20,7 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -173,6 +174,18 @@ Route::middleware('auth')->group(function () {
         Route::post('notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::get('notifications/{notification}/go', [\App\Http\Controllers\NotificationController::class, 'readAndRedirect'])->name('notifications.go');
         Route::post('notifications/clear', [\App\Http\Controllers\NotificationController::class, 'clearAll'])->name('notifications.clear');
+
+        // Live Chat Routes
+        Route::prefix('chats')->name('chats.')->group(function () {
+            Route::get('/', [ChatController::class, 'index'])->name('index');
+            Route::get('/messages', [ChatController::class, 'fetchMessages'])->name('messages');
+            Route::post('/messages', [ChatController::class, 'sendMessage'])->name('send');
+            Route::post('/messages/bulk', [ChatController::class, 'sendBulkMessage'])->name('send-bulk');
+            Route::get('/items/search', [ChatController::class, 'searchItems'])->name('items.search');
+            Route::post('/inquire', [ChatController::class, 'inquireProduct'])->name('inquire');
+            Route::post('/send-sms', [ChatController::class, 'sendSMS'])->name('send-sms');
+            Route::get('/unread-badge', [ChatController::class, 'getUnreadBadge'])->name('unread-badge');
+        });
 
         // Expenses
         Route::post('expenses/bulk-approve', [ExpenseController::class, 'bulkApprove'])->name('expenses.bulk-approve');

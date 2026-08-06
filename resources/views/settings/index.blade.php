@@ -240,6 +240,62 @@
                         </div>
                     </div>
 
+                    {{-- SMS Gateway Settings --}}
+                    @if(auth()->user()->isOwner())
+                    <div class="mb-4 border-top pt-4">
+                        <h6 class="fw-700 mb-1"><i class="bi bi-chat-left-text me-2" style="color:var(--accent-purple);"></i>SMS Gateway Settings</h6>
+                        <small class="text-muted d-block mb-3">Configure your SMS API gateway for sending customer notifications and announcements. If disabled or unconfigured, messages will be logged in the database for sandbox testing.</small>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="sms_enabled" class="form-label fw-600 small">SMS Broadcasting Status <span class="text-danger">*</span></label>
+                                <select name="sms_enabled" id="sms_enabled" class="form-select" required>
+                                    <option value="0" {{ old('sms_enabled', $smsEnabled) == '0' ? 'selected' : '' }}>Disabled (Sandbox Mode / Log to Database)</option>
+                                    <option value="1" {{ old('sms_enabled', $smsEnabled) == '1' ? 'selected' : '' }}>Enabled (Dispatch HTTP SMS)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="sms_provider" class="form-label fw-600 small">SMS Gateway Provider <span class="text-danger">*</span></label>
+                                <select name="sms_provider" id="sms_provider" class="form-select" required>
+                                    <option value="generic_http" {{ old('sms_provider', $smsProvider) == 'generic_http' ? 'selected' : '' }}>Generic HTTP API (POST/GET)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="sms_api_url" class="form-label fw-600 small">API Endpoint URL</label>
+                                <input type="text" name="sms_api_url" id="sms_api_url" class="form-control @error('sms_api_url') is-invalid @enderror" value="{{ old('sms_api_url', $smsApiUrl) }}" placeholder="e.g. https://api.smsprovider.com/v1/send">
+                                @error('sms_api_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="sms_api_key" class="form-label fw-600 small">API Secret / Authorization Token</label>
+                                <input type="password" name="sms_api_key" id="sms_api_key" class="form-control" value="{{ old('sms_api_key', $smsApiKey) }}" placeholder="Your API token or password">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="sms_sender_id" class="form-label fw-600 small">Sender ID / Mask Name</label>
+                                <input type="text" name="sms_sender_id" id="sms_sender_id" class="form-control" value="{{ old('sms_sender_id', $smsSenderId) }}" placeholder="e.g. AMSTROOM">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="sms_phone_field" class="form-label fw-600 small">Phone Parameter Name</label>
+                                <input type="text" name="sms_phone_field" id="sms_phone_field" class="form-control" value="{{ old('sms_phone_field', $smsPhoneField) }}" placeholder="e.g. to, recipient, phone">
+                                <div class="form-text text-muted small">Field name expected by your SMS API for recipient.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="sms_message_field" class="form-label fw-600 small">Message Parameter Name</label>
+                                <input type="text" name="sms_message_field" id="sms_message_field" class="form-control" value="{{ old('sms_message_field', $smsMessageField) }}" placeholder="e.g. text, message, msg">
+                                <div class="form-text text-muted small">Field name expected by your SMS API for message text.</div>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="sms_extra_params" class="form-label fw-600 small">Extra Payload Parameters (JSON Format)</label>
+                                <textarea name="sms_extra_params" id="sms_extra_params" class="form-control @error('sms_extra_params') is-invalid @enderror" rows="2" placeholder='e.g. {"username": "my_user", "route": "premium"}'>{{ old('sms_extra_params', $smsExtraParams) }}</textarea>
+                                @error('sms_extra_params')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <div class="form-text text-muted small">Specify any additional static query/body params expected by the provider API.</div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="d-flex justify-content-end gap-2 pt-2 border-top">
                         <button type="submit" class="btn btn-accent px-4 py-2">
                             <i class="bi bi-check-circle-fill me-1"></i> Save Settings

@@ -72,6 +72,13 @@ class Notification extends Model
             }
         }
 
+        // 6. Chat and SMS
+        if (stripos($this->title, 'Chat') !== false || stripos($this->title, 'Inquiry') !== false || stripos($this->title, 'SMS') !== false) {
+            if (auth()->check()) {
+                return route('chats.index');
+            }
+        }
+
         return null;
     }
 }

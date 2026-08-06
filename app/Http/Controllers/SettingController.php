@@ -30,6 +30,15 @@ class SettingController extends Controller
         $summaryEmails      = '';
         $summaryTime        = '';
 
+        $smsEnabled   = '0';
+        $smsApiUrl    = '';
+        $smsApiKey    = '';
+        $smsSenderId  = '';
+        $smsProvider  = 'generic_http';
+        $smsPhoneField = 'phone_number';
+        $smsMessageField = 'message';
+        $smsExtraParams = '';
+
         if ($user->isOwner()) {
             $systemName         = Setting::get('system_name', 'AMSTROOM');
             $slogan             = Setting::get('slogan', 'Technology Innovations');
@@ -40,6 +49,15 @@ class SettingController extends Controller
             $companyBankAccount = Setting::get('company_bank_account', '');
             $summaryEmails      = Setting::get('summary_report_emails', $user->email);
             $summaryTime        = Setting::get('summary_report_time', '22:00');
+
+            $smsEnabled   = Setting::get('sms_enabled', '0');
+            $smsApiUrl    = Setting::get('sms_api_url', '');
+            $smsApiKey    = Setting::get('sms_api_key', '');
+            $smsSenderId  = Setting::get('sms_sender_id', '');
+            $smsProvider  = Setting::get('sms_provider', 'generic_http');
+            $smsPhoneField = Setting::get('sms_phone_field', 'phone_number');
+            $smsMessageField = Setting::get('sms_message_field', 'message');
+            $smsExtraParams = Setting::get('sms_extra_params', '');
         } elseif ($user->isShopAdmin()) {
             $shop = $user->shop;
             $systemName = $shop->shop_name;
@@ -55,7 +73,8 @@ class SettingController extends Controller
 
         return view('settings.index', compact(
             'systemName', 'slogan', 'logo', 'printerEnabled', 'notificationRingtone',
-            'storePricingMode', 'companyTin', 'companyAddress', 'companyBankName', 'companyBankAccount', 'summaryEmails', 'summaryTime'
+            'storePricingMode', 'companyTin', 'companyAddress', 'companyBankName', 'companyBankAccount', 'summaryEmails', 'summaryTime',
+            'smsEnabled', 'smsApiUrl', 'smsApiKey', 'smsSenderId', 'smsProvider', 'smsPhoneField', 'smsMessageField', 'smsExtraParams'
         ));
     }
 
@@ -92,7 +111,22 @@ class SettingController extends Controller
                 'company_bank_account' => 'nullable|string|max:100',
                 'summary_emails'     => 'nullable|string',
                 'summary_time'       => 'nullable|date_format:H:i',
+                'sms_enabled'        => 'nullable|in:0,1',
+                'sms_provider'       => 'nullable|string|max:50',
+                'sms_api_url'        => 'nullable|string|max:500',
+                'sms_api_key'        => 'nullable|string|max:255',
+                'sms_sender_id'      => 'nullable|string|max:50',
+                'sms_phone_field'    => 'nullable|string|max:50',
+                'sms_message_field'  => 'nullable|string|max:50',
+                'sms_extra_params'   => 'nullable|string',
             ]);
+
+            if ($request->filled('sms_extra_params')) {
+                json_decode($request->input('sms_extra_params'));
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return back()->withErrors(['sms_extra_params' => 'The Extra Parameters must be a valid JSON string.'])->withInput();
+                }
+            }
 
             $emailsStr = $request->input('summary_emails', Setting::get('summary_report_emails', $user->email));
             if ($emailsStr === null || trim($emailsStr) === '') {
@@ -119,6 +153,28 @@ class SettingController extends Controller
             Setting::set('company_bank_account', $request->company_bank_account);
             Setting::set('summary_report_emails', implode(', ', $emailsArray));
             Setting::set('summary_report_time', $request->input('summary_time', '22:00') ?: '22:00');
+
+            Setting::set('sms_enabled', $request->input('sms_enabled', Setting::get('sms_enabled', '0')));
+            Setting::set('sms_provider', $request->input('sms_provider', Setting::get('sms_provider', 'generic_http')));
+
+            if ($request->has('sms_api_url')) {
+                Setting::set('sms_api_url', $request->sms_api_url);
+            }
+            if ($request->has('sms_api_key')) {
+                Setting::set('sms_api_key', $request->sms_api_key);
+            }
+            if ($request->has('sms_sender_id')) {
+                Setting::set('sms_sender_id', $request->sms_sender_id);
+            }
+            if ($request->has('sms_phone_field')) {
+                Setting::set('sms_phone_field', $request->sms_phone_field ?: 'phone_number');
+            }
+            if ($request->has('sms_message_field')) {
+                Setting::set('sms_message_field', $request->sms_message_field ?: 'message');
+            }
+            if ($request->has('sms_extra_params')) {
+                Setting::set('sms_extra_params', $request->sms_extra_params);
+            }
 
             if ($request->hasFile('logo')) {
                 $oldLogo = Setting::get('logo');

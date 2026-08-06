@@ -218,4 +218,63 @@ class StockTransferRejectionAndOwnerModificationTest extends TestCase
         // Main stock for item2 should drop from 30 to 25
         $this->assertEquals(25, $this->item2->mainStocks()->first()->remaining_quantity);
     }
+
+    public function test_stock_request_approval_does_not_notify_seller_or_add_shop_stock()
+    {
+        // 1. Create a seller user
+        $seller = User::create([
+            'name'     => 'Seller User',
+            'email'    => 'seller@example.com',
+            'password' => bcrypt('password'),
+            'role'     => 'seller',
+            'shop_id'  => $this->shop->id,
+        ]);
+
+        // 2. Create a pending StockRequest
+        $stockRequest = \App\Models\StockRequest::create([
+            'shop_id'      => $this->shop->id,
+            'requested_by' => $this->shopAdmin->id,
+            'request_date' => now()->toDateString(),
+            'status'       => 'pending',
+        ]);
+
+        $requestItem = \App\Models\StockRequestItem::create([
+            'request_id' => $stockRequest->id,
+            'item_id'    => $this->item1->id,
+            'quantity'   => 10,
+        ]);
+
+        // Clear existing notifications to start clean
+        \App\Models\Notification::truncate();
+
+        // 3. Approve the stock request as Owner
+        $response = $this->actingAs($this->owner)
+            ->post(route('stock-requests.approve', $stockRequest));
+
+        $response->assertRedirect();
+
+        // 4. Verify request status is approved, and transfer record exists
+        $stockRequest->refresh();
+        $this->assertEquals('approved', $stockRequest->status);
+
+        $transfer = StockTransfer::where('request_id', $stockRequest->id)->first();
+        $this->assertNotNull($transfer);
+        $this->assertEquals('pending_receipt', $transfer->status);
+
+        // 5. Verify shop stock is NOT added yet
+        $shopStock = ShopStock::where('shop_id', $this->shop->id)
+            ->where('item_id', $this->item1->id)
+            ->first();
+        $this->assertNull($shopStock);
+
+        // 6. Verify seller is NOT notified, but admin IS notified
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $seller->id,
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->shopAdmin->id,
+            'title'   => 'Stock Request Approved (Pending Receipt)',
+        ]);
+    }
 }

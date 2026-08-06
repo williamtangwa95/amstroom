@@ -71,7 +71,7 @@
             border-right: 1px solid var(--sidebar-border);
             position: fixed;
             top: 0; left: 0; bottom: 0;
-            z-index: 1000;
+            z-index: 1040;
             display: flex;
             flex-direction: column;
             transition: transform .3s ease;
@@ -192,7 +192,7 @@
             gap: 1rem;
             position: sticky;
             top: 0;
-            z-index: 999;
+            z-index: 1030;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
         }
 
@@ -613,6 +613,13 @@
         <div class="nav-item-custom">
             <a href="{{ route('dashboard') }}" class="nav-link-custom {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('chats.index') }}" class="nav-link-custom {{ request()->routeIs('chats.*') ? 'active' : '' }}">
+                <i class="bi bi-chat-dots-fill text-warning"></i> Live Chat
+                <span class="nav-badge bg-danger text-white d-none" id="chatGlobalBadge" style="background-color: var(--accent-red) !important; color: #fff !important;">0</span>
             </a>
         </div>
 
@@ -1342,10 +1349,57 @@ document.addEventListener('keydown', function(e) {
         });
     };
 
+    window.pollUnreadChatCount = function() {
+        $.ajax({
+            url: "{{ route('chats.unread-badge') }}",
+            type: 'GET',
+            success: function(response) {
+                const badge = $('#chatGlobalBadge');
+                if (response.unread > 0) {
+                    badge.removeClass('d-none').text(response.unread);
+                } else {
+                    badge.addClass('d-none');
+                }
+
+                // Update dashboard floating badge if it exists
+                const dashBadge = $('#dashboardChatBadge');
+                if (dashBadge.length > 0) {
+                    if (response.unread > 0) {
+                        dashBadge.removeClass('d-none').text(response.unread);
+                    } else {
+                        dashBadge.addClass('d-none');
+                    }
+                }
+
+                // Update individual contact badges in the chat sidebar if available
+                if (typeof response.unread_by_sender !== 'undefined') {
+                    $('.chat-unread-badge-container').addClass('d-none').text('0');
+                    for (const [senderId, data] of Object.entries(response.unread_by_sender)) {
+                        const userBadge = $(`.chat-target[data-id="${senderId}"][data-type="individual"] .chat-unread-badge-container`);
+                        if (userBadge.length > 0 && data.count > 0) {
+                            userBadge.removeClass('d-none').text(data.count);
+                        }
+                    }
+
+                    // Call sidebar sorter if defined
+                    if (typeof window.sortSidebarUsers === 'function') {
+                        window.sortSidebarUsers(response.unread_by_sender);
+                    }
+                }
+            },
+            error: function(xhr) {
+                console.error('Chat unread badge poll failed: ', xhr);
+            }
+        });
+    };
+
     // Run poll on load and every 10 seconds
     $(document).ready(function() {
         window.pollNotifications();
         setInterval(window.pollNotifications, 10000);
+
+        window.pollUnreadChatCount();
+        setInterval(window.pollUnreadChatCount, 8000);
     });
 
     window.formatCurrencyValue = function(val) {
