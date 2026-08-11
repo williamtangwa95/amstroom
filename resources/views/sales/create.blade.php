@@ -85,7 +85,9 @@
                                     data-price-pending="{{ $pendingPrice ? 'true' : 'false' }}"
                                     data-pending-price="{{ $pendingPrice ?? 0 }}"
                                     data-is-sellable="true"
-                                    data-is-admin-stock="{{ (isset($stock->is_admin_stock) && $stock->is_admin_stock) ? 'true' : 'false' }}">
+                                    data-is-admin-stock="{{ (isset($stock->is_admin_stock) && $stock->is_admin_stock) ? 'true' : 'false' }}"
+                                    data-allow-components="{{ $stock->allow_components ? 'true' : 'false' }}"
+                                    data-components="{{ json_encode($stock->item->components->map(fn($c) => ['item_id' => $c->component_item_id, 'item_name' => $c->childItem->item_name, 'quantity' => $c->quantity])) }}">
                                     <i class="bi bi-cart-plus me-1"></i> Add
                                 </button>
                                 @endif
@@ -296,6 +298,17 @@
 
             const isAdminStock = this.dataset.isAdminStock === 'true';
 
+            let components = [];
+            if (this.dataset.components) {
+                try {
+                    components = JSON.parse(this.dataset.components);
+                } catch(e) {
+                    console.error("Error parsing components", e);
+                }
+            }
+
+            const allowComponents = this.dataset.allowComponents === 'true';
+
             if (cart[id]) {
                 cart[id].qty++;
             } else {
@@ -306,7 +319,9 @@
                     qty: 1,
                     maxStock,
                     negotiatedPrice: price,
-                    isAdminStock: isAdminStock
+                    isAdminStock: isAdminStock,
+                    components: components,
+                    allowComponents: allowComponents
                 };
             }
             renderCart();
@@ -334,29 +349,79 @@
             const subtotal = item.qty * item.negotiatedPrice;
             total += subtotal;
 
-            html += `
-            <div class="cart-item-row d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
-                <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
-                ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
-                <div style="flex:1;min-width:0;" class="pe-2">
-                    <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name} ${item.isCustom ? '<span style="font-size:.6rem;background:#e3b341;color:#000;padding:1px 5px;border-radius:3px;margin-left:3px;">CUSTOM</span>' : ''}</div>
-                    <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${item.price.toLocaleString()}</div>
-                </div>
-                <div class="d-flex align-items-center gap-1">
-                    <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
-                    <input type="number" name="items[${index}][quantity]" value="${item.qty}" readonly style="width:40px;text-align:center;" class="form-control form-control-sm py-0 px-1">
-                    <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
-                    
-                    <div class="input-group input-group-sm ms-2" style="width:120px;">
-                        <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
-                               class="form-control form-control-sm py-0 px-1 currency-input" min="0" 
-                               onchange="updateItemPrice('${id}', this.value)" required>
+            let compHtml = '';
+            if (item.components && item.components.length > 0) {
+                compHtml += `<div class="mt-2 pt-1 border-top" style="font-size:.72rem; border-color:var(--card-border) !important; padding-left:10px;">`;
+                item.components.forEach((comp, cIdx) => {
+                    compHtml += `
+                    <div class="d-flex align-items-center justify-content-between mb-1 text-muted" style="font-size:.72rem;">
+                        <input type="hidden" name="items[${index}][components][${cIdx}][item_id]" value="${comp.item_id}">
+                        <span class="text-truncate" style="max-width:180px;"><span class="text-muted">└─</span> ${comp.item_name}</span>
+                        <div class="d-flex align-items-center gap-1">
+                            ${item.allowComponents ? `
+                                <button type="button" class="btn btn-xs py-0 px-1 btn-outline-secondary" onclick="changeComponentQty('${id}', ${cIdx}, -1)">-</button>
+                            ` : ''}
+                            <input type="number" name="items[${index}][components][${cIdx}][quantity]" value="${comp.quantity}" readonly class="form-control form-control-sm py-0 px-1" style="width:30px; text-align:center; font-size:.65rem; height:18px;">
+                            ${item.allowComponents ? `
+                                <button type="button" class="btn btn-xs py-0 px-1 btn-outline-secondary" onclick="changeComponentQty('${id}', ${cIdx}, 1)">+</button>
+                                <button type="button" class="btn btn-xs text-danger py-0 px-1 ms-1" onclick="removeComponentFromCartItem('${id}', ${cIdx})"><i class="bi bi-trash" style="font-size:.7rem;"></i></button>
+                            ` : ''}
+                        </div>
                     </div>
+                    `;
+                });
+                compHtml += `</div>`;
+            }
 
-                    <button type="button" class="btn btn-xs text-danger ms-1" onclick="removeItem('${id}')"><i class="bi bi-x-lg"></i></button>
+            if (!item.isCustom && item.allowComponents) {
+                compHtml += `
+                <div class="mt-2" style="padding-left:10px; max-width:400px;">
+                    <button type="button" class="btn btn-link text-decoration-none p-0 text-accent fw-600" style="font-size:.72rem;" onclick="showAddComponentDropdown('${id}')">
+                        <i class="bi bi-plus-circle-fill"></i> Add component
+                    </button>
+                    <div id="comp-select-container-${id}" class="d-none mt-2 p-2 rounded" style="background: var(--body-bg); border: 1px solid var(--card-border);">
+                        <label class="form-label mb-1" style="font-size:.7rem; font-weight:600; color:var(--text-secondary);">Select Component to Add</label>
+                        <div class="mb-2">
+                            <select id="comp-select-${id}" class="form-select form-select-sm" style="width:100%;">
+                                <option value="" disabled selected>Search / select item...</option>
+                                ${window.availableComponentsOptions || ''}
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-end gap-1">
+                            <button type="button" class="btn btn-xs btn-outline-secondary px-2 py-1" onclick="hideAddComponentDropdown('${id}')" style="font-size:.7rem;">Cancel</button>
+                            <button type="button" class="btn btn-xs btn-accent px-2 py-1" onclick="addComponentToCartItem('${id}')" style="font-size:.7rem;">Add to Bundle</button>
+                        </div>
+                    </div>
                 </div>
+                `;
+            }
+
+            html += `
+            <div class="cart-item-row d-flex flex-column pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
+                    ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
+                    <div style="flex:1;min-width:0;" class="pe-2">
+                        <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name} ${item.isCustom ? '<span style="font-size:.6rem;background:#e3b341;color:#000;padding:1px 5px;border-radius:3px;margin-left:3px;">CUSTOM</span>' : ''}</div>
+                        <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${item.price.toLocaleString()}</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
+                        <input type="number" name="items[${index}][quantity]" value="${item.qty}" readonly style="width:40px;text-align:center;" class="form-control form-control-sm py-0 px-1">
+                        <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
+                        
+                        <div class="input-group input-group-sm ms-2" style="width:120px;">
+                            <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
+                                   class="form-control form-control-sm py-0 px-1 currency-input" min="0" 
+                                   onchange="updateItemPrice('${id}', this.value)" required>
+                        </div>
+
+                        <button type="button" class="btn btn-xs text-danger ms-1" onclick="removeItem('${id}')"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </div>
+                ${compHtml}
             </div>
-        `;
+            `;
             index++;
         });
 
@@ -506,5 +571,85 @@
             checkoutBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Completing Sale...`;
         }
     });
+
+    window.availableComponentsOptions = `
+        @foreach($shopStocks as $ss)
+            @if(!str_starts_with($ss->id, 'item_') && $ss->remaining_quantity > 0)
+                <option value="{{ $ss->item_id }}" data-name="{{ addslashes($ss->item->item_name) }}">
+                    {{ $ss->item->item_name }} ({{ $ss->item->brand ?: '—' }}) [Stock: {{ $ss->remaining_quantity }}]
+                </option>
+            @endif
+        @endforeach
+    `;
+
+    function addComponentToCartItem(cartItemId) {
+        const select = document.getElementById('comp-select-' + cartItemId);
+        const selectedOpt = select.options[select.selectedIndex];
+        if (!selectedOpt || select.value === '') return;
+
+        const itemId = parseInt(select.value);
+        const itemName = selectedOpt.dataset.name;
+
+        if (!cart[cartItemId].components) {
+            cart[cartItemId].components = [];
+        }
+
+        const existsIdx = cart[cartItemId].components.findIndex(c => c.item_id === itemId);
+        if (existsIdx !== -1) {
+            cart[cartItemId].components[existsIdx].quantity++;
+        } else {
+            cart[cartItemId].components.push({
+                item_id: itemId,
+                item_name: itemName,
+                quantity: 1
+            });
+        }
+
+        hideAddComponentDropdown(cartItemId);
+        renderCart();
+    }
+
+    function showAddComponentDropdown(cartItemId) {
+        const container = document.getElementById('comp-select-container-' + cartItemId);
+        container.classList.remove('d-none');
+        
+        // Initialize Select2 search select on the dropdown
+        const $select = $('#comp-select-' + cartItemId);
+        $select.select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $(container),
+            width: '100%'
+        });
+    }
+
+    function hideAddComponentDropdown(cartItemId) {
+        const container = document.getElementById('comp-select-container-' + cartItemId);
+        container.classList.add('d-none');
+        
+        const $select = $('#comp-select-' + cartItemId);
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+        $select.val('');
+    }
+
+    function changeComponentQty(cartItemId, compIndex, delta) {
+        if (cart[cartItemId] && cart[cartItemId].components && cart[cartItemId].components[compIndex]) {
+            const newQty = cart[cartItemId].components[compIndex].quantity + delta;
+            if (newQty <= 0) {
+                cart[cartItemId].components.splice(compIndex, 1);
+            } else {
+                cart[cartItemId].components[compIndex].quantity = newQty;
+            }
+            renderCart();
+        }
+    }
+
+    function removeComponentFromCartItem(cartItemId, compIndex) {
+        if (cart[cartItemId] && cart[cartItemId].components) {
+            cart[cartItemId].components.splice(compIndex, 1);
+            renderCart();
+        }
+    }
 </script>
 @endpush

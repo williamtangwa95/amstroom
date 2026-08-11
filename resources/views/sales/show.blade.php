@@ -76,7 +76,7 @@
                         $isOwner = auth()->check() && auth()->user()->isOwner();
                         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
                     @endphp
-                    @foreach($sale->items as $item)
+                    @foreach($sale->items->where('parent_id', null) as $item)
                     @if($isOwner && $item->is_admin_stock)
                         @continue
                     @endif
@@ -90,6 +90,24 @@
                         <td>TZS {{ number_format($displayPrice, 0) }}</td>
                         <td><strong style="color:#3fb950;">TZS {{ number_format($displaySubtotal, 0) }}</strong></td>
                     </tr>
+                    @if($item->components->isNotEmpty())
+                        @foreach($item->components as $component)
+                            <tr style="background-color: rgba(0,0,0,0.015);">
+                                <td style="font-size:.8rem; padding-left: 1.5rem; color: var(--text-secondary);">
+                                    <span class="text-muted">└─</span> {{ $component->display_name }}
+                                </td>
+                                <td style="font-size:.8rem; color: var(--text-secondary);">
+                                    {{ $component->quantity }}
+                                </td>
+                                <td style="font-size:.8rem; color: var(--text-secondary); font-style: italic;">
+                                    Included
+                                </td>
+                                <td style="font-size:.8rem; color: var(--text-secondary); font-style: italic;">
+                                    Included
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
                     @endforeach
                     </tbody>
                     <tfoot>

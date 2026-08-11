@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\ShopStock;
+use App\Models\MainStock;
 use App\Models\StockLog;
 use App\Models\Item;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class SaleController extends Controller
     {
         $user = Auth::user();
 
-        $query = Sale::with('shop', 'seller', 'items.item');
+        $query = Sale::with('shop', 'seller', 'items.item.components.childItem');
 
         if ($user->isOwner()) {
             $query->where('is_admin_stock', false);
@@ -49,9 +50,9 @@ class SaleController extends Controller
 
         // Retrieve all items in the system with their categories based on role and shop
         if ($isOwner) {
-            $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
+            $items = Item::with('category', 'components.childItem')->where('is_admin_item', false)->orderBy('item_name')->get();
         } else {
-            $items = Item::with('category')
+            $items = Item::with('category', 'components.childItem')
                 ->where(function ($q) use ($user) {
                     $q->where('is_admin_item', false)
                       ->orWhere(function ($sq) use ($user) {
@@ -313,8 +314,10 @@ class SaleController extends Controller
                 'is_admin_stock'    => $isSaleAdminStock,
             ]);
 
-            foreach ($saleItemsData as $data) {
-                SaleItem::create([
+            foreach ($request->items as $index => $cartItem) {
+                $data = $saleItemsData[$index];
+
+                $parentSaleItem = SaleItem::create([
                     'sale_id'           => $sale->id,
                     'item_id'           => $data['item_id'],
                     'custom_name'       => $data['custom_name'],
@@ -327,21 +330,130 @@ class SaleController extends Controller
                     'is_admin_stock'    => $data['is_admin_stock'],
                 ]);
 
-                // Custom items have no stock to decrement; real items do
-                if (!$isDraftProforma && !$data['is_custom']) {
-                    $data['stock']->decrement('remaining_quantity', $data['quantity']);
+                if (!$data['is_custom']) {
+                    // Check if customized components were submitted in the request
+                    if (isset($cartItem['components']) && is_array($cartItem['components'])) {
+                        foreach ($cartItem['components'] as $componentData) {
+                            $childItem = Item::findOrFail($componentData['item_id']);
+                            $childQty = intval($componentData['quantity']);
 
-                    StockLog::create([
-                        'item_id'          => $data['item_id'],
-                        'from_location'    => $isOwner ? 'Main Store' : $data['stock']->shop->shop_name,
-                        'to_location'      => $request->customer_name ?? 'Walk-in Customer',
-                        'quantity'         => $data['quantity'],
-                        'transaction_type' => 'SALE',
-                        'performed_by'     => $user->id,
-                        'date'             => now()->toDateString(),
-                        'notes'            => "Sale #{$sale->id}" . ($isOwner ? " (Direct Sale from Main Store)" : ""),
-                        'is_admin_stock'   => $data['is_admin_stock'],
-                    ]);
+                            // Calculate prices for the component (selling price is 0 since it is included)
+                            $ownerCostPrice = 0.0;
+                            $shopCostPrice = 0.0;
+
+                            if ($isOwner) {
+                                $latestMainStock = MainStock::where('item_id', $childItem->id)
+                                    ->orderByDesc('date_received')->first();
+                                $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                                $shopCostPrice = $ownerCostPrice;
+                            } else {
+                                $stockRow = ShopStock::where('shop_id', $user->shop_id)
+                                    ->where('item_id', $childItem->id)
+                                    ->where('is_admin_stock', $data['is_admin_stock'])
+                                    ->first();
+                                $shopCostPrice = floatval($stockRow?->buying_price ?? 0);
+
+                                $latestMainStock = MainStock::where('item_id', $childItem->id)
+                                    ->orderByDesc('date_received')->first();
+                                $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                            }
+
+                            // Save as a child sale item
+                            SaleItem::create([
+                                'sale_id'           => $sale->id,
+                                'parent_id'         => $parentSaleItem->id,
+                                'item_id'           => $childItem->id,
+                                'quantity'          => $childQty,
+                                'selling_price'     => 0.0,
+                                'owner_cost_price'  => $ownerCostPrice,
+                                'owner_realized_sp' => 0.0,
+                                'shop_cost_price'   => $shopCostPrice,
+                                'shop_realized_sp'  => 0.0,
+                                'is_admin_stock'    => $data['is_admin_stock'],
+                            ]);
+
+                            // Deduct component stock
+                            if (!$isDraftProforma) {
+                                $childItem->deductStock(
+                                    $isOwner ? null : $user->shop_id,
+                                    $childQty,
+                                    $user->id,
+                                    $sale->id,
+                                    (bool) $data['is_admin_stock'],
+                                    $request->customer_name ?? 'Walk-in Customer',
+                                    $parentSaleItem->item
+                                );
+                            }
+                        }
+                    } else {
+                        // No custom components submitted - check if this item has default components in DB
+                        if ($parentSaleItem->item && $parentSaleItem->item->components()->exists()) {
+                            foreach ($parentSaleItem->item->components as $component) {
+                                $childItem = $component->childItem;
+                                if (!$childItem) continue;
+
+                                $childQty = $parentSaleItem->quantity * $component->quantity;
+
+                                // Resolve prices
+                                $ownerCostPrice = 0.0;
+                                $shopCostPrice = 0.0;
+
+                                if ($isOwner) {
+                                    $latestMainStock = MainStock::where('item_id', $childItem->id)
+                                        ->orderByDesc('date_received')->first();
+                                    $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                                    $shopCostPrice = $ownerCostPrice;
+                                } else {
+                                    $stockRow = ShopStock::where('shop_id', $user->shop_id)
+                                        ->where('item_id', $childItem->id)
+                                        ->where('is_admin_stock', $data['is_admin_stock'])
+                                        ->first();
+                                    $shopCostPrice = floatval($stockRow?->buying_price ?? 0);
+
+                                    $latestMainStock = MainStock::where('item_id', $childItem->id)
+                                        ->orderByDesc('date_received')->first();
+                                    $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+                                }
+
+                                SaleItem::create([
+                                    'sale_id'           => $sale->id,
+                                    'parent_id'         => $parentSaleItem->id,
+                                    'item_id'           => $childItem->id,
+                                    'quantity'          => $childQty,
+                                    'selling_price'     => 0.0,
+                                    'owner_cost_price'  => $ownerCostPrice,
+                                    'owner_realized_sp' => 0.0,
+                                    'shop_cost_price'   => $shopCostPrice,
+                                    'shop_realized_sp'  => 0.0,
+                                    'is_admin_stock'    => $data['is_admin_stock'],
+                                ]);
+
+                                if (!$isDraftProforma) {
+                                    $childItem->deductStock(
+                                        $isOwner ? null : $user->shop_id,
+                                        $childQty,
+                                        $user->id,
+                                        $sale->id,
+                                        (bool) $data['is_admin_stock'],
+                                        $request->customer_name ?? 'Walk-in Customer',
+                                        $parentSaleItem->item
+                                    );
+                                }
+                            }
+                        } else {
+                            // Regular leaf item - deduct its own stock
+                            if (!$isDraftProforma) {
+                                $parentSaleItem->item->deductStock(
+                                    $isOwner ? null : $user->shop_id,
+                                    $parentSaleItem->quantity,
+                                    $user->id,
+                                    $sale->id,
+                                    (bool) $data['is_admin_stock'],
+                                    $request->customer_name ?? 'Walk-in Customer'
+                                );
+                            }
+                        }
+                    }
                 }
             }
 
@@ -367,13 +479,13 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load('shop', 'seller', 'items.item.category');
+        $sale->load('shop', 'seller', 'items.item.category', 'items.item.components.childItem');
         return view('sales.show', compact('sale'));
     }
 
     public function receipt(Sale $sale)
     {
-        $sale->load('shop', 'seller', 'items.item');
+        $sale->load('shop', 'seller', 'items.item', 'items.components');
         return view('sales.receipt', compact('sale'));
     }
 
@@ -384,7 +496,7 @@ class SaleController extends Controller
                 ->with('error', 'An Invoice can only be printed for a completed sale. Convert this proforma to a sale first.');
         }
 
-        $sale->load('shop', 'seller', 'items.item.category');
+        $sale->load('shop', 'seller', 'items.item.category', 'items.components');
         $shop = $sale->shop;
         $company = [
             'name'         => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
@@ -400,7 +512,7 @@ class SaleController extends Controller
 
     public function proforma(Sale $sale)
     {
-        $sale->load('shop', 'seller', 'items.item.category');
+        $sale->load('shop', 'seller', 'items.item.category', 'items.components');
         $shop = $sale->shop;
         $company = [
             'name'         => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
@@ -421,7 +533,7 @@ class SaleController extends Controller
                 ->with('error', 'A Delivery Note can only be printed for a completed sale. Stock must be committed before goods can be dispatched.');
         }
 
-        $sale->load('shop', 'seller', 'items.item.category');
+        $sale->load('shop', 'seller', 'items.item.category', 'items.components');
         $shop = $sale->shop;
         $company = [
             'name'    => $shop ? ($shop->shop_name ?: \App\Models\Setting::get('system_name', 'AMSTROOM')) : \App\Models\Setting::get('system_name', 'AMSTROOM'),
@@ -538,18 +650,19 @@ class SaleController extends Controller
                     }
 
                     // 3. Deduct stock for completed sale
-                    $stock->decrement('remaining_quantity', $saleItem->quantity);
-
-                    StockLog::create([
-                        'item_id'          => $saleItem->item_id,
-                        'from_location'    => $isOwner ? 'Main Store' : ($stock->shop->shop_name ?? 'Shop'),
-                        'to_location'      => $sale->customer_name ?? 'Walk-in Customer',
-                        'quantity'         => $saleItem->quantity,
-                        'transaction_type' => 'SALE',
-                        'performed_by'     => $user->id,
-                        'date'             => now()->toDateString(),
-                        'notes'            => "Sale #{$sale->id} (Converted from Proforma)",
-                    ]);
+                    // If the parent sale item has explicit components saved in the database,
+                    // we don't deduct stock for the parent itself. The explicit components will be deducted when the loop reaches them.
+                    $hasExplicitComponents = $saleItem->components()->exists();
+                    if (!$hasExplicitComponents) {
+                        $saleItem->item->deductStock(
+                            $isOwner ? null : $user->shop_id,
+                            $saleItem->quantity,
+                            $user->id,
+                            $sale->id,
+                            (bool) ($saleItem->is_admin_stock ?? false),
+                            $sale->customer_name ?? 'Walk-in Customer'
+                        );
+                    }
                 }
 
                 $sale->update(['status' => 'completed', 'sale_date' => now()->toDateString()]);

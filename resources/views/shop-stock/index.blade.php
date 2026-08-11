@@ -42,11 +42,23 @@
 </div>
 @endif
 
+<div class="d-flex align-items-center justify-content-between mb-3 px-3 py-2 rounded border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-check2-square text-accent fs-5"></i>
+        <span class="fw-600 small" id="selectedCountText" style="color:var(--text-primary);">0 items selected</span>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-xs btn-accent px-3 py-1" id="bulkEnableBtn" style="font-size: .75rem;">Enable Custom Components</button>
+        <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
         <table class="table table-hover mb-0" id="shopStockTable">
             <thead>
                 <tr>
+                    <th style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
                     <th>No</th>
                     <th>Shop</th>
                     <th>Product</th>
@@ -61,6 +73,13 @@
             <tbody>
                 @foreach($stocks as $st)
                 <tr class="{{ $st->isLowStock() ? 'low-stock-row' : '' }}">
+                    <td>
+                        @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
+                            <input type="checkbox" class="stock-checkbox" data-id="{{ $st->id }}" style="cursor:pointer;">
+                        @else
+                            <input type="checkbox" disabled style="cursor:not-allowed; opacity: 0.5;">
+                        @endif
+                    </td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $loop->iteration }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $st->shop->shop_name }}</td>
                     <td>
@@ -118,7 +137,7 @@
                         @endif
                     </td>
                     <td>
-                        <div class="d-flex gap-1">
+                        <div class="d-flex align-items-center gap-2">
                             @if($st->is_price_pending && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id)))
                             <button type="button" class="btn btn-xs btn-success btn-approve-price"
                                 data-url="{{ route('shop-stock.approve-price', $st) }}"
@@ -132,6 +151,12 @@
                             </button>
                             @endif
                             <a href="{{ route('shop-stock.show', $st) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
+                            @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
+                            <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
+                                <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $st->id }}" style="cursor:pointer; width: 30px; height: 16px;" 
+                                    {{ $st->allow_components ? 'checked' : '' }} title="Toggle custom components capability">
+                            </div>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -467,6 +492,120 @@
                 });
             }
         });
+        // Toggle shop components POS visibility per product
+        $('.toggle-components-btn').on('change', function() {
+            const isChecked = $(this).is(':checked');
+            const shopStockId = $(this).data('id');
+            const self = $(this);
+            
+            $.post("{{ route('settings.toggle-components') }}", {
+                _token: "{{ csrf_token() }}",
+                shop_stock_id: shopStockId,
+                enabled: isChecked ? 1 : 0
+            })
+            .done(function(res) {
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Saved',
+                        text: isChecked ? 'Manual components enabled for this product.' : 'Manual components disabled for this product.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                }
+            })
+            .fail(function(err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to update setting. Please try again.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                self.prop('checked', !isChecked);
+            });
+        });
+
+        function updateBulkActionsBar() {
+            const checkedIds = [];
+            $('.stock-checkbox:checked').each(function() {
+                checkedIds.push($(this).data('id'));
+            });
+            
+            const count = checkedIds.length;
+            if (count > 0) {
+                $('#selectedCountText').html(`<strong>${count}</strong> item(s) selected`);
+                $('#bulkActionsBar').removeClass('d-none');
+            } else {
+                $('#bulkActionsBar').addClass('d-none');
+            }
+        }
+
+        $('#checkAllStocks').on('change', function() {
+            const isChecked = $(this).is(':checked');
+            $('.stock-checkbox:not(:disabled)').prop('checked', isChecked);
+            updateBulkActionsBar();
+        });
+
+        $(document).on('change', '.stock-checkbox', function() {
+            updateBulkActionsBar();
+            if (!$(this).is(':checked')) {
+                $('#checkAllStocks').prop('checked', false);
+            }
+        });
+
+        function sendBulkUpdate(enabled) {
+            const checkedIds = [];
+            $('.stock-checkbox:checked').each(function() {
+                checkedIds.push($(this).data('id'));
+            });
+            
+            if (checkedIds.length === 0) return;
+            
+            Swal.fire({
+                title: 'Please wait...',
+                html: 'Updating selected products components capability...',
+                allowOutsideClick: false,
+                background: '#161b22',
+                color: '#e6edf3',
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            $.post("{{ route('settings.toggle-components') }}", {
+                _token: "{{ csrf_token() }}",
+                shop_stock_ids: checkedIds,
+                enabled: enabled ? 1 : 0
+            })
+            .done(function(res) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved',
+                    text: 'Products updated successfully!',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                }).then(() => {
+                    location.reload();
+                });
+            })
+            .fail(function(err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to perform bulk update. Please try again.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            });
+        }
+
+        $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
+        $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
         @endif
     });
 </script>

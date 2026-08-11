@@ -231,12 +231,29 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($sale->items as $item)
+            @foreach($sale->items->where('parent_id', null) as $item)
             <tr>
                 <td style="font-weight: 500;">{{ $item->display_name }}</td>
                 <td class="text-center">{{ $item->quantity }}</td>
-                <td class="text-end">{{ number_format($item->selling_price, 0) }}</td>
+                <td class="text-end">
+                    @if($item->selling_price == 0)
+                        Included
+                    @else
+                        {{ number_format($item->selling_price, 0) }}
+                    @endif
+                </td>
             </tr>
+            @if($item->components->isNotEmpty())
+                @foreach($item->components as $component)
+                <tr>
+                    <td style="padding-left: 12px; color: #718096; font-size: 11px;">
+                        <span style="color: #CBD5E0; margin-right: 2px;">└─</span> {{ $component->display_name }}
+                    </td>
+                    <td class="text-center" style="color: #718096; font-size: 11px;">{{ $component->quantity }}</td>
+                    <td class="text-end" style="color: #718096; font-size: 11px; font-style: italic;">Included</td>
+                </tr>
+                @endforeach
+            @endif
             @endforeach
         </tbody>
     </table>

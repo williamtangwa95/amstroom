@@ -49,8 +49,16 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
-        $item->load('category', 'mainStocks', 'shopStocks.shop');
-        return view('items.show', compact('item'));
+        $item->load('category', 'mainStocks', 'shopStocks.shop', 'components.childItem');
+        
+        $currentComponentsIds = $item->components->pluck('component_item_id')->toArray();
+        $allItems = Item::where('is_admin_item', false)
+            ->where('id', '!=', $item->id)
+            ->whereNotIn('id', $currentComponentsIds)
+            ->orderBy('item_name')
+            ->get();
+
+        return view('items.show', compact('item', 'allItems'));
     }
 
     public function edit(Item $item)
@@ -115,5 +123,45 @@ class ItemController extends Controller
         }
 
         return back()->with('error', 'Failed to upload image.');
+    }
+
+    public function addComponent(Request $request, Item $item)
+    {
+        $request->validate([
+            'component_item_id' => 'required|exists:items,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $componentId = $request->component_item_id;
+        if ($componentId == $item->id) {
+            return back()->with('error', 'An item cannot be a component of itself.');
+        }
+
+        $exists = \App\Models\ItemComponent::where('parent_item_id', $item->id)
+            ->where('component_item_id', $componentId)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'This item is already a component.');
+        }
+
+        \App\Models\ItemComponent::create([
+            'parent_item_id' => $item->id,
+            'component_item_id' => $componentId,
+            'quantity' => $request->quantity,
+        ]);
+
+        return back()->with('success', 'Component added successfully.');
+    }
+
+    public function removeComponent(Item $item, \App\Models\ItemComponent $component)
+    {
+        if ($component->parent_item_id !== $item->id) {
+            abort(403, 'Unauthorized component deletion.');
+        }
+
+        $component->delete();
+
+        return back()->with('success', 'Component removed successfully.');
     }
 }

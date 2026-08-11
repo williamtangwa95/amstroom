@@ -416,4 +416,68 @@ class SettingController extends Controller
             'low_stock_items' => $lowStockItems
         ];
     }
+
+    public function toggleComponents(Request $request)
+    {
+        $user = Auth::user();
+        
+        // --- BULK ACTION FOR MAIN STOCK ---
+        if ($request->has('main_stock_ids')) {
+            if (!$user->isOwner()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            $ids = (array) $request->input('main_stock_ids');
+            $enabled = $request->input('enabled') ? true : false;
+            
+            MainStock::whereIn('id', $ids)->update(['allow_components' => $enabled]);
+            return response()->json(['success' => true]);
+        }
+        
+        // --- BULK ACTION FOR SHOP STOCK ---
+        if ($request->has('shop_stock_ids')) {
+            $ids = (array) $request->input('shop_stock_ids');
+            $enabled = $request->input('enabled') ? true : false;
+            
+            $query = ShopStock::whereIn('id', $ids);
+            
+            // Shop Admin can only update their own shop's records
+            if ($user->isShopAdmin()) {
+                $query->where('shop_id', $user->shop_id);
+            } elseif (!$user->isOwner()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            
+            $query->update(['allow_components' => $enabled]);
+            return response()->json(['success' => true]);
+        }
+
+        // --- SINGLE ACTION FOR MAIN STOCK ---
+        if ($request->has('main_stock_id')) {
+            if (!$user->isOwner()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            $mainStock = MainStock::findOrFail($request->input('main_stock_id'));
+            $mainStock->update(['allow_components' => $request->input('enabled') ? true : false]);
+            return response()->json(['success' => true, 'enabled' => $mainStock->allow_components]);
+        }
+        
+        // --- SINGLE ACTION FOR SHOP STOCK ---
+        if ($request->has('shop_stock_id')) {
+            $shopStock = ShopStock::findOrFail($request->input('shop_stock_id'));
+            
+            // Shop Admin can only toggle their own shop's components visibility
+            if ($user->isShopAdmin() && $user->shop_id !== $shopStock->shop_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            // Owner can toggle any
+            if (!$user->isOwner() && !$user->isShopAdmin()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            
+            $shopStock->update(['allow_components' => $request->input('enabled') ? true : false]);
+            return response()->json(['success' => true, 'enabled' => $shopStock->allow_components]);
+        }
+        
+        return response()->json(['success' => false, 'message' => 'Invalid Request'], 400);
+    }
 }

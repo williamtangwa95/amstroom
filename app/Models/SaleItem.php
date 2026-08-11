@@ -10,7 +10,7 @@ class SaleItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'sale_id', 'item_id', 'custom_name', 'quantity', 'selling_price',
+        'sale_id', 'parent_id', 'item_id', 'custom_name', 'quantity', 'selling_price',
         'owner_cost_price', 'owner_realized_sp', 'shop_cost_price', 'shop_realized_sp', 'is_admin_stock',
     ];
 
@@ -31,6 +31,16 @@ class SaleItem extends Model
     public function item()
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(SaleItem::class, 'parent_id');
+    }
+
+    public function components()
+    {
+        return $this->hasMany(SaleItem::class, 'parent_id');
     }
 
     /** Returns the display name whether it's a catalog item or a custom off-catalog product. */

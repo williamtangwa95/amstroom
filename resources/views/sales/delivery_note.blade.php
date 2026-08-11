@@ -59,16 +59,32 @@
         </tr>
     </thead>
     <tbody>
-        @foreach($sale->items as $index => $item)
+        @php $rowNum = 1; @endphp
+        @foreach($sale->items->where('parent_id', null) as $item)
         <tr>
-            <td>{{ $index + 1 }}</td>
-            <td>{{ $item->display_name }}</td>
+            <td>{{ $rowNum++ }}</td>
+            <td style="font-weight:600;">{{ $item->display_name }}</td>
             <td class="text-center">{{ $item->quantity }}</td>
             <td class="text-center">{{ $item->quantity }}</td>
             <td class="text-center">
                 <span class="badge-status badge-delivered">Delivered</span>
             </td>
         </tr>
+        @if($item->components->isNotEmpty())
+            @foreach($item->components as $component)
+            <tr>
+                <td></td>
+                <td style="padding-left: 1.5rem; color: #555; font-size: 11px;">
+                    <span style="color: #bbb; margin-right: 2px;">└─</span> {{ $component->display_name }}
+                </td>
+                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }}</td>
+                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }}</td>
+                <td class="text-center" style="color: #555; font-size: 11px;">
+                    <span class="badge-status badge-delivered" style="opacity: 0.7;">Delivered</span>
+                </td>
+            </tr>
+            @endforeach
+        @endif
         @endforeach
     </tbody>
     <tfoot>

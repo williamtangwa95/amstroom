@@ -63,6 +63,8 @@ Route::middleware('auth')->group(function () {
 
         // Items
         Route::resource('items', ItemController::class);
+        Route::post('items/{item}/components', [ItemController::class, 'addComponent'])->name('items.add-component');
+        Route::delete('items/{item}/components/{component}', [ItemController::class, 'removeComponent'])->name('items.remove-component');
 
         // Main Store
         Route::get('main-stock', [MainStockController::class, 'index'])->name('main-stock.index');
@@ -127,6 +129,7 @@ Route::middleware('auth')->group(function () {
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
+        Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');
     });
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────
