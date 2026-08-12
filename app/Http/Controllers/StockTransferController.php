@@ -187,7 +187,9 @@ class StockTransferController extends Controller
         }
 
         $request->validate([
-            'selling_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:' . $transferItem->selling_price,
+        ], [
+            'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($transferItem->selling_price) . ').',
         ]);
 
         DB::transaction(function () use ($transferItem, $transfer, $user, $request) {
@@ -260,6 +262,26 @@ class StockTransferController extends Controller
             'selling_prices' => 'required|array',
             'selling_prices.*' => 'required|numeric|min:0',
         ]);
+
+        $items = StockTransferItem::whereIn('id', $request->item_ids)
+            ->where('transfer_id', $stockTransfer->id)
+            ->where('status', 'pending')
+            ->get();
+
+        $errors = [];
+        foreach ($items as $transferItem) {
+            $sellingPrice = $request->selling_prices[$transferItem->id] ?? null;
+            $cleanPrice = $sellingPrice !== null ? floatval(str_replace(',', '', $sellingPrice)) : null;
+
+            if ($cleanPrice === null || $cleanPrice < $transferItem->selling_price) {
+                $itemName = $transferItem->item?->item_name ?? 'Item';
+                $errors["selling_prices.{$transferItem->id}"] = "The selling price for \"{$itemName}\" must be greater than or equal to the buying price (TZS " . number_format($transferItem->selling_price) . ").";
+            }
+        }
+
+        if (!empty($errors)) {
+            return back()->withInput()->withErrors($errors);
+        }
 
         $stockTransfer->load('shop');
 

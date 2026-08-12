@@ -487,7 +487,8 @@
                                     <td>{{ $ti->quantity }}</td>
                                     <td>TZS {{ number_format($ti->selling_price, 0) }}</td>
                                     <td>
-                                        <input type="text" name="selling_price" class="form-control form-control-sm currency-input" min="{{ $ti->selling_price }}" value="{{ $ti->selling_price }}" required>
+                                        <input type="text" name="selling_price" class="form-control form-control-sm currency-input approve-item-selling-price" min="{{ $ti->selling_price }}" value="{{ $ti->selling_price }}" data-buying-price="{{ $ti->selling_price }}" required>
+                                        <div class="text-danger small price-warning mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -568,7 +569,8 @@ function submitBulkApprove() {
                 <td>${qty}</td>
                 <td>TZS ${parseInt(price).toLocaleString()}</td>
                 <td>
-                    <input type="text" name="selling_prices[${itemId}]" class="form-control form-control-sm currency-input" min="${price}" value="${price}" required>
+                    <input type="text" name="selling_prices[${itemId}]" class="form-control form-control-sm currency-input bulk-selling-price" data-buying-price="${price}" value="${price}" required>
+                    <div class="text-danger small price-warning mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                 </td>
             </tr>
         `;
@@ -582,6 +584,11 @@ function submitBulkApprove() {
     
     const myModal = new bootstrap.Modal(document.getElementById('bulkApproveModal'));
     myModal.show();
+
+    // Format currency inputs on show
+    $('#bulkApproveModal').find('.currency-input').each(function() {
+        this.value = window.formatCurrencyValue(this.value);
+    });
 }
 
 function submitDeleteItem(url) {
@@ -591,5 +598,28 @@ function submitDeleteItem(url) {
         form.submit();
     }
 }
+
+// Instant price validation
+$(document).on('input', '.approve-item-selling-price, .bulk-selling-price', function() {
+    const input = $(this);
+    const buyingPrice = parseFloat(input.data('buying-price') || 0);
+    const currentVal = parseFloat(input.val().replace(/,/g, '') || 0);
+    
+    const warning = input.closest('td').find('.price-warning');
+    const form = input.closest('form');
+    const submitBtn = form.find('button[type="submit"]');
+    
+    if (currentVal < buyingPrice) {
+        warning.show();
+        input.addClass('is-invalid');
+    } else {
+        warning.hide();
+        input.removeClass('is-invalid');
+    }
+    
+    // Check if there are any invalid inputs in this form
+    const hasInvalid = form.find('.is-invalid').length > 0;
+    submitBtn.prop('disabled', hasInvalid);
+});
 </script>
 @endpush

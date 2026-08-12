@@ -65,9 +65,10 @@
                         @csrf @method('PATCH')
                         <label class="form-label fw-600">Update Item Selling Price</label>
                         <div class="input-group">
-                            <input type="text" name="selling_price" class="form-control currency-input @error('selling_price') is-invalid @enderror" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="{{ (int)$shopStock->buying_price }}" required>
+                            <input type="text" name="selling_price" class="form-control currency-input update-selling-price-input @error('selling_price') is-invalid @enderror" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="{{ (int)$shopStock->buying_price }}" required>
                             <button type="submit" class="btn btn-accent">Update Price</button>
                         </div>
+                        <div id="shopStockShowWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                         <small class="form-text text-muted mt-1 d-block">Minimum allowed price: TZS {{ number_format($shopStock->buying_price, 0) }} (equal to buying price)</small>
                         @error('selling_price')
                         <div class="invalid-feedback d-block mt-1">{{ $message }}</div>
@@ -82,3 +83,27 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    const input = $('.update-selling-price-input');
+    const buyingPrice = parseFloat('{{ (int)$shopStock->buying_price }}');
+    const warning = $('#shopStockShowWarning');
+    const submitBtn = input.closest('form').find('button[type="submit"]');
+
+    input.on('input', function() {
+        const currentVal = parseFloat(input.val().replace(/,/g, '') || 0);
+        if (currentVal < buyingPrice) {
+            warning.show();
+            input.addClass('is-invalid');
+            submitBtn.prop('disabled', true);
+        } else {
+            warning.hide();
+            input.removeClass('is-invalid');
+            submitBtn.prop('disabled', false);
+        }
+    });
+});
+</script>
+@endpush

@@ -33,9 +33,11 @@ class MainStockController extends Controller
         $request->validate([
             'item_id'          => 'required|exists:items,id',
             'buying_price'     => 'required|numeric|min:0',
-            'selling_price'    => 'required|numeric|min:0',
+            'selling_price'    => 'required|numeric|min:0|gte:buying_price',
             'stocked_quantity' => 'required|integer|min:1',
             'date_received'    => 'required|date',
+        ], [
+            'selling_price.gte' => 'The selling price must be greater than or equal to the buying price.',
         ]);
 
         $stock = MainStock::create([
@@ -87,8 +89,10 @@ class MainStockController extends Controller
     {
         $request->validate([
             'buying_price'  => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0|gte:buying_price',
             'date_received' => 'required|date',
+        ], [
+            'selling_price.gte' => 'The selling price must be greater than or equal to the buying price.',
         ]);
 
         $newSellingPrice = floatval($request->selling_price);

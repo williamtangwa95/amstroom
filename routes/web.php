@@ -211,5 +211,6 @@ Route::middleware('auth')->group(function () {
         Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
         Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
+        Route::get('reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
     });
 });

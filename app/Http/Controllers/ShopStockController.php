@@ -68,19 +68,19 @@ class ShopStockController extends Controller
 
         if ($createNew) {
             if ($createNewCategory) {
-                $request->validate([
+                $rules = [
                     'new_item_name'     => 'required|string|max:150',
                     'new_category_name' => 'required|string|max:100',
                     'brand'             => 'nullable|string|max:100',
                     'model'             => 'nullable|string|max:100',
                     'specification'     => 'nullable|string',
                     'buying_price'      => 'required|numeric|min:0',
-                    'selling_price' => 'required|numeric|min:' . $request->input('buying_price', 0),
+                    'selling_price'     => 'required|numeric|min:' . $request->input('buying_price', 0),
                     'quantity'          => 'required|integer|min:1',
                     'date_received'     => 'required|date',
-                ]);
+                ];
             } else {
-                $request->validate([
+                $rules = [
                     'new_item_name' => 'required|string|max:150',
                     'category_id'   => 'required|exists:categories,id',
                     'brand'         => 'nullable|string|max:100',
@@ -90,17 +90,21 @@ class ShopStockController extends Controller
                     'selling_price' => 'required|numeric|min:' . $request->input('buying_price', 0),
                     'quantity'      => 'required|integer|min:1',
                     'date_received' => 'required|date',
-                ]);
+                ];
             }
         } else {
-            $request->validate([
+            $rules = [
                 'item_id'       => 'required|exists:items,id',
                 'buying_price'  => 'required|numeric|min:0',
                 'selling_price' => 'required|numeric|min:' . $request->input('buying_price', 0),
                 'quantity'      => 'required|integer|min:1',
                 'date_received' => 'required|date',
-            ]);
+            ];
         }
+
+        $request->validate($rules, [
+            'selling_price.min' => 'The selling price must be greater than or equal to the buying price.',
+        ]);
 
         if ($createNew) {
             if ($createNewCategory) {
@@ -205,6 +209,8 @@ class ShopStockController extends Controller
 
         $request->validate([
             'selling_price' => 'required|numeric|min:' . $shopStock->buying_price,
+        ], [
+            'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
         ]);
 
         $itemName = $shopStock->item?->item_name ?? 'Item';
@@ -291,9 +297,17 @@ class ShopStockController extends Controller
         if ($shopStock->is_price_pending) {
             $request->validate([
                 'selling_price' => 'nullable|numeric|min:' . $shopStock->buying_price,
+            ], [
+                'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
             ]);
 
             $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : $shopStock->pending_selling_price;
+
+            if ($newPrice < $shopStock->buying_price) {
+                return back()->withInput()->withErrors([
+                    'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
+                ]);
+            }
 
             $shopStock->update([
                 'selling_price' => $newPrice,

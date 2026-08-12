@@ -27,11 +27,12 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Buying Price (TZS) *</label>
-                            <input type="text" name="buying_price" class="form-control currency-input" value="{{ old('buying_price') }}" min="0" required>
+                            <input type="text" name="buying_price" id="main_buying_price" class="form-control currency-input" value="{{ old('buying_price') }}" min="0" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Selling Price (TZS) *</label>
-                            <input type="text" name="selling_price" class="form-control currency-input" value="{{ old('selling_price') }}" min="0" required>
+                            <input type="text" name="selling_price" id="main_selling_price" class="form-control currency-input" value="{{ old('selling_price') }}" min="0" required>
+                            <div id="mainStockWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Quantity *</label>
@@ -52,3 +53,32 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    const buyingInput = $('#main_buying_price');
+    const sellingInput = $('#main_selling_price');
+    const warning = $('#mainStockWarning');
+    const submitBtn = buyingInput.closest('form').find('button[type="submit"]');
+
+    function validatePrices() {
+        const buying = parseFloat(buyingInput.val().replace(/,/g, '') || 0);
+        const selling = parseFloat(sellingInput.val().replace(/,/g, '') || 0);
+        
+        if (selling > 0 && buying > 0 && selling < buying) {
+            warning.show();
+            sellingInput.addClass('is-invalid');
+            submitBtn.prop('disabled', true);
+        } else {
+            warning.hide();
+            sellingInput.removeClass('is-invalid');
+            submitBtn.prop('disabled', false);
+        }
+    }
+
+    buyingInput.on('input', validatePrices);
+    sellingInput.on('input', validatePrices);
+});
+</script>
+@endpush

@@ -488,4 +488,281 @@ class ReportController extends Controller
 
         return view('reports.sales_vs_expenses', compact('totalSales', 'totalExpenses', 'netProfit', 'shops', 'period'));
     }
+
+    public function analytics(Request $request)
+    {
+        $user   = auth()->user();
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+
+        // ── Build base date range ───────────────────────────────────────────
+        [$dateFrom, $dateTo] = $this->resolveDateRange($period, $request);
+
+        // ── Sales query helper ─────────────────────────────────────────────
+        $baseSaleQuery = function () use ($user, $shopId) {
+            $q = Sale::completed()->with('items.item.category', 'seller', 'shop');
+            if ($user->isOwner()) {
+                $q->where('is_admin_stock', false);
+            }
+            if ($shopId) {
+                if ($shopId === 'owner') {
+                    $q->whereNull('shop_id');
+                } else {
+                    $q->where('shop_id', $shopId);
+                }
+            }
+            return $q;
+        };
+
+        $sales = (clone $baseSaleQuery())
+            ->whereDate('sale_date', '>=', $dateFrom)
+            ->whereDate('sale_date', '<=', $dateTo)
+            ->get();
+
+        $isOwner       = $user->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+
+        // ── Annotate each sale item with revenue / cost / profit ───────────
+        $allItems = collect();
+        $totalRevenue = 0;
+        $totalCost    = 0;
+        $totalProfit  = 0;
+
+        foreach ($sales as $sale) {
+            foreach ($sale->items as $si) {
+                if ($isOwner && $si->is_admin_stock) continue;
+
+                if ($isOwner && $isIndependent && $sale->shop_id !== null) {
+                    $rev = (float)($si->owner_realized_sp ?? $si->selling_price) * $si->quantity;
+                } else {
+                    $rev = (float)($si->shop_realized_sp  ?? $si->selling_price) * $si->quantity;
+                }
+                $cost = $isOwner
+                    ? (float)($si->owner_cost_price ?? 0) * $si->quantity
+                    : (float)($si->shop_cost_price ?? $si->owner_realized_sp ?? 0) * $si->quantity;
+
+                $profit = $rev - $cost;
+
+                $si->_rev    = $rev;
+                $si->_cost   = $cost;
+                $si->_profit = $profit;
+
+                $allItems->push($si);
+                $totalRevenue += $rev;
+                $totalCost    += $cost;
+                $totalProfit  += $profit;
+            }
+        }
+
+        // ── 1. Product Velocity ────────────────────────────────────────────
+        $byItem = $allItems->filter(fn($si) => $si->item_id)->groupBy('item_id')->map(function ($items) {
+            $first = $items->first();
+            return (object)[
+                'item_id'   => $first->item_id,
+                'item_name' => optional($first->item)->item_name ?? 'Unknown',
+                'category'  => optional(optional($first->item)->category)->name ?? '—',
+                'qty_sold'  => $items->sum('quantity'),
+                'revenue'   => $items->sum('_rev'),
+                'profit'    => $items->sum('_profit'),
+            ];
+        })->values()->sortByDesc('qty_sold');
+
+        $count = $byItem->count();
+        $fastCut  = max(1, (int)ceil($count * 0.30));
+        $slowCut  = max(1, (int)ceil($count * 0.30));
+        $fastItems  = $byItem->take($fastCut);
+        $slowItems  = $byItem->slice($count - $slowCut)->values();
+
+        // Items in stock but zero sales in the period → "Stop Ordering"
+        $soldItemIds = $byItem->pluck('item_id')->toArray();
+        $stopItemsQuery = \App\Models\MainStock::with('item.category')
+            ->selectRaw('item_id, SUM(remaining_quantity) as total_qty')
+            ->groupBy('item_id')
+            ->having('total_qty', '>', 0);
+        if (!$isOwner) {
+            $stopItemsQuery = \App\Models\ShopStock::with('item.category')
+                ->selectRaw('item_id, SUM(remaining_quantity) as total_qty')
+                ->where('shop_id', $user->shop_id)
+                ->groupBy('item_id')
+                ->having('total_qty', '>', 0);
+        }
+        $stopItems = $stopItemsQuery->get()
+            ->filter(fn($s) => !in_array($s->item_id, $soldItemIds))
+            ->map(fn($s) => (object)[
+                'item_name' => optional($s->item)->item_name ?? 'Unknown',
+                'category'  => optional(optional($s->item)->category)->name ?? '—',
+                'qty_in_stock' => $s->total_qty,
+            ])->values()->take(20);
+
+        // ── 2. Profit Margin Analysis ──────────────────────────────────────
+        $marginItems = $byItem->map(function ($i) {
+            $margin = $i->revenue > 0 ? ($i->profit / $i->revenue) * 100 : 0;
+            $tier   = $margin < 10 ? 'low' : ($margin < 25 ? 'moderate' : 'high');
+            return (object)array_merge((array)$i, ['margin_pct' => $margin, 'margin_tier' => $tier]);
+        })->sortByDesc('margin_pct')->values();
+
+        $marginSummary = [
+            'low'      => $marginItems->where('margin_tier', 'low')->count(),
+            'moderate' => $marginItems->where('margin_tier', 'moderate')->count(),
+            'high'     => $marginItems->where('margin_tier', 'high')->count(),
+        ];
+
+        // ── 3. Stock Suggestions ───────────────────────────────────────────
+        $periodDays = max(1, \Carbon\Carbon::parse($dateFrom)->diffInDays(\Carbon\Carbon::parse($dateTo)) + 1);
+
+        $stockSuggestions = $byItem->map(function ($i) use ($periodDays, $isOwner, $user) {
+            $dailyRate = $i->qty_sold / $periodDays;
+
+            // get current stock
+            if ($isOwner) {
+                $currentStock = \App\Models\MainStock::where('item_id', $i->item_id)->sum('remaining_quantity');
+            } else {
+                $currentStock = \App\Models\ShopStock::where('item_id', $i->item_id)->where('shop_id', $user->shop_id)->sum('remaining_quantity');
+            }
+
+            $daysLeft = $dailyRate > 0 ? $currentStock / $dailyRate : PHP_INT_MAX;
+
+            return (object)[
+                'item_id'       => $i->item_id,
+                'item_name'     => $i->item_name,
+                'category'      => $i->category,
+                'daily_rate'    => round($dailyRate, 2),
+                'current_stock' => $currentStock,
+                'days_left'     => $daysLeft === PHP_INT_MAX ? null : round($daysLeft, 1),
+                'suggest_qty'   => (int)ceil($dailyRate * 30),
+                'urgency'       => $daysLeft <= 3 ? 'critical' : ($daysLeft <= 7 ? 'warning' : 'ok'),
+            ];
+        })->filter(fn($s) => $s->urgency !== 'ok' || $s->days_left === null)
+          ->sortBy(fn($s) => $s->days_left ?? 999)
+          ->values()->take(20);
+
+        // ── 4. Staff Performance ───────────────────────────────────────────
+        $staffPerformance = $sales->groupBy('seller_id')->map(function ($group, $sellerId) {
+            $rev    = $group->sum('_annotated_rev') ?: $group->sum(fn($s) => collect($s->items)->sum('_rev'));
+            $profit = $group->sum(fn($s) => collect($s->items)->sum('_profit'));
+            $first  = $group->first();
+            return (object)[
+                'seller_id'   => $sellerId,
+                'seller_name' => optional($first->seller)->name ?? 'Unknown',
+                'txn_count'   => $group->count(),
+                'revenue'     => $group->sum(fn($s) => collect($s->items)->sum('_rev')),
+                'profit'      => $group->sum(fn($s) => collect($s->items)->sum('_profit')),
+                'avg_sale'    => $group->count() > 0 ? $group->sum(fn($s) => collect($s->items)->sum('_rev')) / $group->count() : 0,
+            ];
+        })->values()->sortByDesc('revenue');
+
+        // ── 5. Daily Revenue Trend (last 60 days actual) ──────────────────
+        $trendDays  = 60;
+        $trendStart = now()->subDays($trendDays - 1)->startOfDay();
+        $trendSales = (clone $baseSaleQuery())
+            ->whereDate('sale_date', '>=', $trendStart)
+            ->get();
+
+        $dailyRevenue = collect();
+        for ($d = 0; $d < $trendDays; $d++) {
+            $day = $trendStart->copy()->addDays($d)->toDateString();
+            $dayRev = $trendSales->filter(fn($s) => $s->sale_date->toDateString() === $day)
+                ->sum(fn($s) => collect($s->items)->filter(fn($si) => !($isOwner && $si->is_admin_stock))
+                    ->sum(fn($si) => $isOwner && $isIndependent && $s->shop_id
+                        ? (float)($si->owner_realized_sp ?? $si->selling_price) * $si->quantity
+                        : (float)($si->shop_realized_sp  ?? $si->selling_price) * $si->quantity
+                    ));
+            $dailyRevenue->push(['date' => $day, 'revenue' => $dayRev]);
+        }
+
+        // ── 6. Prediction (linear regression next 30 days) ─────────────────
+        $n    = $dailyRevenue->count();
+        $xArr = range(0, $n - 1);
+        $yArr = $dailyRevenue->pluck('revenue')->toArray();
+        $xMean = array_sum($xArr) / $n;
+        $yMean = array_sum($yArr) / $n;
+        $num   = 0; $den = 0;
+        foreach ($xArr as $i) {
+            $num += ($xArr[$i] - $xMean) * ($yArr[$i] - $yMean);
+            $den += ($xArr[$i] - $xMean) ** 2;
+        }
+        $slope = $den > 0 ? $num / $den : 0;
+        $intercept = $yMean - $slope * $xMean;
+
+        $predictionDays = 30;
+        $prediction = collect();
+        for ($d = 0; $d < $predictionDays; $d++) {
+            $x   = $n + $d;
+            $day = now()->addDays($d + 1)->toDateString();
+            $prediction->push(['date' => $day, 'predicted' => max(0, $slope * $x + $intercept)]);
+        }
+
+        // ── 7. Category Revenue Breakdown ──────────────────────────────────
+        $categoryRevenue = $allItems->filter(fn($si) => $si->item_id)
+            ->groupBy(fn($si) => optional(optional($si->item)->category)->name ?? 'Uncategorized')
+            ->map(fn($items, $cat) => (object)[
+                'category' => $cat,
+                'revenue'  => $items->sum('_rev'),
+                'profit'   => $items->sum('_profit'),
+                'qty'      => $items->sum('quantity'),
+            ])->values()->sortByDesc('revenue');
+
+        // ── 7.5. Expenses and Sales vs Expenses ──────────────────────────────────
+        $expensesQuery = Expense::whereIn('status', ['approved', 'review_requested', 'editable'])
+            ->whereDate('activity_date', '>=', $dateFrom)
+            ->whereDate('activity_date', '<=', $dateTo);
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $expensesQuery->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $expensesQuery->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        $expenses = $expensesQuery->with('category')->get();
+        $totalExpenses = $expenses->sum('amount');
+        $netProfitValue = $totalProfit - $totalExpenses;
+
+        $expensesByCategory = $expenses->groupBy('expense_category_id')->map(function ($group) {
+            $first = $group->first();
+            return (object)[
+                'category_name' => optional($first->category)->name ?? 'Uncategorized',
+                'total_amount'  => $group->sum('amount'),
+                'count'         => $group->count(),
+            ];
+        })->values()->sortByDesc('total_amount');
+
+        // ── 8. Shops + Items for filter dropdowns ─────────────────────────
+        $shops = $user->isOwner() ? \App\Models\Shop::all() : \App\Models\Shop::where('id', $user->shop_id)->get();
+
+        $totalTransactions = $sales->count();
+        $avgOrderValue     = $totalTransactions > 0 ? $totalRevenue / $totalTransactions : 0;
+
+        return view('reports.analytics', compact(
+            'period', 'shopId', 'shops',
+            'dateFrom', 'dateTo',
+            'totalRevenue', 'totalCost', 'totalProfit', 'totalTransactions', 'avgOrderValue',
+            'fastItems', 'slowItems', 'stopItems', 'byItem',
+            'marginItems', 'marginSummary',
+            'stockSuggestions',
+            'staffPerformance',
+            'dailyRevenue', 'prediction',
+            'categoryRevenue',
+            'totalExpenses', 'netProfitValue', 'expensesByCategory', 'expenses'
+        ));
+    }
+
+    /** Resolve a [$from, $to] date-string pair from period/custom inputs. */
+    private function resolveDateRange(string $period, \Illuminate\Http\Request $request): array
+    {
+        return match ($period) {
+            'daily'  => [today()->toDateString(), today()->toDateString()],
+            'yearly' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+            'custom' => [
+                $request->get('date_from', now()->startOfMonth()->toDateString()),
+                $request->get('date_to',   now()->toDateString()),
+            ],
+            default  => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+        };
+    }
 }

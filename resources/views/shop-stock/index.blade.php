@@ -185,6 +185,7 @@
                         <label for="modalSellingPrice" class="form-label" style="font-size:0.8rem;">Selling Price (TZS)</label>
                         <input type="text" class="form-control" id="modalSellingPrice" required autocomplete="off">
                         <input type="hidden" id="modalSellingPriceHidden" name="selling_price">
+                        <div id="approveModalPriceWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                         <div id="modalBuyingPriceHelp" class="form-text text-muted" style="font-size:0.75rem;"></div>
                     </div>
                 </div>
@@ -277,6 +278,7 @@
                         <label for="selling_price_display" class="form-label" style="font-size:0.8rem;">Selling Price (TZS) *</label>
                         <input type="text" id="selling_price_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 1,500">
                         <input type="hidden" name="selling_price" id="selling_price">
+                        <div id="adminStockPriceWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                     </div>
                     <div class="mb-3">
                         <label for="date_received" class="form-label" style="font-size:0.8rem;">Date Received *</label>
@@ -323,6 +325,22 @@
 
             let newLength = this.value.length;
             this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+
+            // Realtime validation
+            const buyingPrice = parseFloat($('#modalSellingPrice').data('buying-price') || 0);
+            const enteredPrice = parseFloat(cleanVal || 0);
+            const warning = $('#approveModalPriceWarning');
+            const submitBtn = $('#approvePriceForm').find('button[type="submit"]');
+
+            if (enteredPrice < buyingPrice) {
+                warning.show();
+                $('#modalSellingPrice').addClass('is-invalid');
+                submitBtn.prop('disabled', true);
+            } else {
+                warning.hide();
+                $('#modalSellingPrice').removeClass('is-invalid');
+                submitBtn.prop('disabled', false);
+            }
         });
 
         @if(auth()->user()->isShopAdmin())
@@ -349,6 +367,7 @@
             $('#buying_price').val(cleanVal);
             let newLength = this.value.length;
             this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+            validateAdminStockPrices();
         });
 
         $('#selling_price_display').on('input', function() {
@@ -363,13 +382,34 @@
             $('#selling_price').val(cleanVal);
             let newLength = this.value.length;
             this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+            validateAdminStockPrices();
         });
+
+        function validateAdminStockPrices() {
+            const buying = parseFloat($('#buying_price').val() || 0);
+            const selling = parseFloat($('#selling_price').val() || 0);
+            const warning = $('#adminStockPriceWarning');
+            const submitBtn = $('#addAdminStockModal').find('button[type="submit"]');
+
+            if (selling > 0 && buying > 0 && selling < buying) {
+                warning.show();
+                $('#selling_price_display').addClass('is-invalid');
+                submitBtn.prop('disabled', true);
+            } else {
+                warning.hide();
+                $('#selling_price_display').removeClass('is-invalid');
+                submitBtn.prop('disabled', false);
+            }
+        }
 
         $('#addAdminStockModal').on('hidden.bs.modal', function() {
             $(this).find('form')[0].reset();
             $('#quantity').val('');
             $('#buying_price').val('');
             $('#selling_price').val('');
+            $('#adminStockPriceWarning').hide();
+            $('#selling_price_display').removeClass('is-invalid');
+            $(this).find('button[type="submit"]').prop('disabled', false);
         });
         @endif
 
