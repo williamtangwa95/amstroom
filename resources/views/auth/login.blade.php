@@ -432,21 +432,6 @@
                 </button>
             </form>
 
-            <div class="demo-accounts">
-                <h6>Demo Accounts (click to fill)</h6>
-                <div class="demo-item">
-                    <span>owner@amstroom.com</span>
-                    <span class="role-chip chip-owner">Owner</span>
-                </div>
-                <div class="demo-item">
-                    <span>admin1@amstroom.com</span>
-                    <span class="role-chip chip-admin">Shop Admin</span>
-                </div>
-                <div class="demo-item">
-                    <span>seller1@amstroom.com</span>
-                    <span class="role-chip chip-seller">Seller</span>
-                </div>
-            </div>
         </div>
     </div>
 
