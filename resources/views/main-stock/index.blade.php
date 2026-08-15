@@ -100,8 +100,17 @@
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $stock->date_received->format('M d, Y') }}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('main-stock.show', $stock) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('main-stock.edit', $stock) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ route('main-stock.show', $stock) }}" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>
+                            <a href="{{ route('main-stock.edit', $stock) }}" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>
+                            @if($stock->stocked_quantity == $stock->remaining_quantity)
+                            <form action="{{ route('main-stock.destroy', $stock) }}" method="POST" class="d-inline delete-stock-form">
+                                @csrf
+                                @method('DELETE')
+                                <button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            @endif
                             <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
                                 <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $stock->id }}" style="cursor:pointer; width: 30px; height: 16px;" 
                                     {{ $stock->allow_components ? 'checked' : '' }} title="Toggle custom components capability">
@@ -233,6 +242,27 @@
 
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
+
+        $(document).on('click', '.confirm-delete-btn', function(e) {
+            e.preventDefault();
+            const form = $(this).closest('form');
+            Swal.fire({
+                title: 'Delete Stock Batch?',
+                text: "Are you sure you want to delete this stock batch? This action cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
     });
 </script>
 @endpush

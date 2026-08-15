@@ -88,17 +88,35 @@ class MainStockController extends Controller
     public function update(Request $request, MainStock $mainStock)
     {
         $request->validate([
-            'buying_price'  => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0|gte:buying_price',
-            'date_received' => 'required|date',
+            'buying_price'       => 'required|numeric|min:0',
+            'selling_price'      => 'required|numeric|min:0|gte:buying_price',
+            'remaining_quantity' => 'required|integer|min:0|max:' . $mainStock->stocked_quantity,
+            'date_received'      => 'required|date',
         ], [
-            'selling_price.gte' => 'The selling price must be greater than or equal to the buying price.',
+            'selling_price.gte'      => 'The selling price must be greater than or equal to the buying price.',
+            'remaining_quantity.max' => 'The remaining quantity cannot exceed the stocked quantity (' . $mainStock->stocked_quantity . ').',
         ]);
 
         $newSellingPrice = floatval($request->selling_price);
         $oldSellingPrice = floatval($mainStock->selling_price);
 
-        $mainStock->update($request->only('buying_price', 'selling_price', 'date_received'));
+        $oldQty = intval($mainStock->remaining_quantity);
+        $newQty = intval($request->remaining_quantity);
+
+        $mainStock->update($request->only('buying_price', 'selling_price', 'remaining_quantity', 'date_received'));
+
+        if ($oldQty !== $newQty) {
+            StockLog::create([
+                'item_id'          => $mainStock->item_id,
+                'from_location'    => 'Main Warehouse',
+                'to_location'      => 'Main Warehouse',
+                'quantity'         => abs($newQty - $oldQty),
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => Auth::id(),
+                'date'             => now(),
+                'notes'            => "Stock batch remaining quantity adjusted from {$oldQty} to {$newQty}",
+            ]);
+        }
 
         if ($newSellingPrice != $oldSellingPrice) {
             $itemName = $mainStock->item?->item_name ?? 'Item';
@@ -149,5 +167,32 @@ class MainStockController extends Controller
 
         return redirect()->route('main-stock.index')
             ->with('success', 'Stock updated successfully. Associated shop stock prices are now pending admin approval.');
+    }
+
+    public function destroy(MainStock $mainStock)
+    {
+        if ($mainStock->stocked_quantity != $mainStock->remaining_quantity) {
+            return redirect()->route('main-stock.index')
+                ->with('error', 'Cannot delete stock batch because some items have already been transferred or sold.');
+        }
+
+        $itemId = $mainStock->item_id;
+        $quantity = $mainStock->stocked_quantity;
+
+        $mainStock->delete();
+
+        StockLog::create([
+            'item_id'          => $itemId,
+            'from_location'    => 'Main Warehouse',
+            'to_location'      => 'Supplier (Deleted)',
+            'quantity'         => $quantity,
+            'transaction_type' => 'ADJUSTMENT',
+            'performed_by'     => Auth::id(),
+            'date'             => now(),
+            'notes'            => 'Stock batch deleted and removed from central warehouse.',
+        ]);
+
+        return redirect()->route('main-stock.index')
+            ->with('success', 'Stock batch deleted successfully.');
     }
 }

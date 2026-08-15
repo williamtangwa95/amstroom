@@ -27,7 +27,11 @@
                             <input type="text" name="selling_price" id="main_selling_price" class="form-control currency-input" value="{{ old('selling_price', (int)$mainStock->selling_price) }}" min="0" required>
                             <div id="mainStockWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-6">
+                            <label class="form-label">Remaining Quantity * (Max: {{ $mainStock->stocked_quantity }})</label>
+                            <input type="number" name="remaining_quantity" class="form-control" value="{{ old('remaining_quantity', $mainStock->remaining_quantity) }}" min="0" max="{{ $mainStock->stocked_quantity }}" required>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Date Received *</label>
                             <input type="date" name="date_received" class="form-control" value="{{ old('date_received', $mainStock->date_received->format('Y-m-d')) }}" required>
                         </div>

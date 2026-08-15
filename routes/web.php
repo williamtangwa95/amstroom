@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::get('main-stock/{mainStock}', [MainStockController::class, 'show'])->name('main-stock.show');
         Route::get('main-stock/{mainStock}/edit', [MainStockController::class, 'edit'])->name('main-stock.edit');
         Route::put('main-stock/{mainStock}', [MainStockController::class, 'update'])->name('main-stock.update');
+        Route::delete('main-stock/{mainStock}', [MainStockController::class, 'destroy'])->name('main-stock.destroy');
 
         // Stock Request Approval (owner only)
         Route::post('stock-requests/{stockRequest}/approve', [StockRequestController::class, 'approve'])->name('stock-requests.approve');
