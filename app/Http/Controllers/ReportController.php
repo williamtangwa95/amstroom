@@ -765,4 +765,61 @@ class ReportController extends Controller
             default  => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
         };
     }
+
+    /**
+     * Display Visitor Analytics reports.
+     */
+    public function visitorAnalytics(\Illuminate\Http\Request $request)
+    {
+        // 1. KPI Cards
+        $totalPageViews = \App\Models\VisitorLog::count();
+        $uniqueVisitors = \App\Models\VisitorLog::distinct('ip_address')->count('ip_address');
+
+        // Top Device
+        $topDeviceRow = \App\Models\VisitorLog::select('device_type')
+            ->groupBy('device_type')
+            ->orderByRaw('COUNT(*) DESC')
+            ->first();
+        $topDevice = $topDeviceRow ? $topDeviceRow->device_type : 'Desktop';
+
+        // Top Country
+        $topCountryRow = \App\Models\VisitorLog::select('country')
+            ->groupBy('country')
+            ->orderByRaw('COUNT(*) DESC')
+            ->first();
+        $topCountry = $topCountryRow ? $topCountryRow->country : 'Unknown';
+
+        // 2. Top Visitor Locations
+        $locations = \App\Models\VisitorLog::select('city', 'country')
+            ->selectRaw('COUNT(*) as hits')
+            ->groupBy('city', 'country')
+            ->orderByRaw('COUNT(*) DESC')
+            ->limit(5)
+            ->get();
+
+        // 3. Devices Stats
+        $deviceStats = \App\Models\VisitorLog::select('device_type')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('device_type')
+            ->orderByRaw('COUNT(*) DESC')
+            ->get();
+
+        // 4. Browser Stats
+        $browserStats = \App\Models\VisitorLog::select('browser')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('browser')
+            ->orderByRaw('COUNT(*) DESC')
+            ->get();
+
+        // 5. Visitor logs list (Last 1000)
+        $visitorLogs = \App\Models\VisitorLog::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit(1000)
+            ->get();
+
+        return view('reports.visitors', compact(
+            'totalPageViews', 'uniqueVisitors', 'topDevice', 'topCountry',
+            'locations', 'deviceStats', 'browserStats', 'visitorLogs'
+        ));
+    }
 }

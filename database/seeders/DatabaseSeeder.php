@@ -214,5 +214,9 @@ class DatabaseSeeder extends Seeder
                 'date_received'     => now()->subDays(rand(1, 30))->toDateString(),
             ]);
         }
+
+        if (\App\Models\VisitorLog::count() === 0) {
+            $this->call(VisitorLogSeeder::class);
+        }
     }
 }

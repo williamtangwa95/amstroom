@@ -783,6 +783,12 @@
             </a>
         </div>
 
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}">
+                <i class="bi bi-globe"></i> Visitor Analytics
+            </a>
+        </div>
+
         <div class="nav-section-label">System</div>
         <div class="nav-item-custom">
             <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
@@ -901,6 +907,12 @@
         <div class="nav-item-custom">
             <a href="{{ route('reports.analytics') }}" class="nav-link-custom {{ request()->routeIs('reports.analytics') ? 'active' : '' }}" style="background:rgba(139,92,246,.08);border-left:3px solid #8b5cf6;">
                 <i class="bi bi-stars" style="color:#8b5cf6;"></i> <span style="color:#8b5cf6;font-weight:700;">Analytics</span>
+            </a>
+        </div>
+
+        <div class="nav-item-custom">
+            <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}">
+                <i class="bi bi-globe"></i> Visitor Analytics
             </a>
         </div>
 
