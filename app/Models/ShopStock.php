@@ -5,14 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class ShopStock extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'shop_id', 'item_id', 'buying_price', 'selling_price',
         'quantity', 'remaining_quantity', 'low_stock_alert', 'date_received',
         'is_price_pending', 'pending_selling_price', 'is_sellable', 'is_admin_stock', 'allow_components',
+        'pending_quantity_request', 'pending_quantity_reason',
     ];
 
     protected $casts = [

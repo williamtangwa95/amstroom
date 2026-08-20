@@ -19,6 +19,36 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Listen for Login event
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Login::class,
+            function (\Illuminate\Auth\Events\Login $event) {
+                \App\Models\ActivityLog::create([
+                    'user_id'      => $event->user->id,
+                    'action'       => 'LOGIN',
+                    'description'  => 'Logged into the system.',
+                    'ip_address'   => request()->ip(),
+                    'user_agent'   => request()->userAgent(),
+                ]);
+            }
+        );
+
+        // Listen for Logout event
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Logout::class,
+            function (\Illuminate\Auth\Events\Logout $event) {
+                if ($event->user) {
+                    \App\Models\ActivityLog::create([
+                        'user_id'      => $event->user->id,
+                        'action'       => 'LOGOUT',
+                        'description'  => 'Logged out of the system.',
+                        'ip_address'   => request()->ip(),
+                        'user_agent'   => request()->userAgent(),
+                    ]);
+                }
+            }
+        );
+
         \Illuminate\Support\Facades\View::composer('*', function ($view) {
             $user = auth()->user();
             $shop = ($user && !$user->isOwner() && $user->shop) ? $user->shop : null;

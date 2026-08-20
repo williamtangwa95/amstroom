@@ -21,6 +21,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -68,6 +69,8 @@ Route::middleware('auth')->group(function () {
 
         // Main Store
         Route::get('main-stock', [MainStockController::class, 'index'])->name('main-stock.index');
+        Route::get('main-stock/import-template', [MainStockController::class, 'downloadTemplate'])->name('main-stock.import-template');
+        Route::post('main-stock/import', [MainStockController::class, 'import'])->name('main-stock.import');
         Route::get('main-stock/create', [MainStockController::class, 'create'])->name('main-stock.create');
         Route::post('main-stock', [MainStockController::class, 'store'])->name('main-stock.store');
         Route::get('main-stock/history', [MainStockController::class, 'history'])->name('main-stock.history');
@@ -96,6 +99,9 @@ Route::middleware('auth')->group(function () {
         // Owner: update defect status
         Route::patch('defects/{defect}/status', [DefectController::class, 'updateStatus'])->name('defects.update-status');
 
+        // Owner: Approve/Reject Shop stock quantity edit requests
+        Route::post('shop-stock/{shopStock}/approve-quantity', [ShopStockController::class, 'approveQuantity'])->name('shop-stock.approve-quantity');
+        Route::post('shop-stock/{shopStock}/reject-quantity', [ShopStockController::class, 'rejectQuantity'])->name('shop-stock.reject-quantity');
     });
 
     // ─── OWNER + SHOP ADMIN ──────────────────────────────────────────────────
@@ -130,11 +136,22 @@ Route::middleware('auth')->group(function () {
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
+        Route::get('shop-stock/import-template', [ShopStockController::class, 'downloadTemplate'])->name('shop-stock.import-template');
+        Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');
+        Route::get('shop-stock/{shopStock}/edit', [ShopStockController::class, 'edit'])->name('shop-stock.edit');
+        Route::put('shop-stock/{shopStock}', [ShopStockController::class, 'update'])->name('shop-stock.update');
+        Route::delete('shop-stock/{shopStock}', [ShopStockController::class, 'destroy'])->name('shop-stock.destroy');
+        Route::post('shop-stock/{shopStock}/request-edit', [ShopStockController::class, 'requestEdit'])->name('shop-stock.request-edit');
         Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');
     });
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────
     Route::middleware('role:owner,shop_admin,seller')->group(function () {
+
+        // User Activity Logs
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+        Route::get('activity-logs/export-excel', [ActivityLogController::class, 'exportExcel'])->name('activity-logs.export-excel');
+        Route::get('activity-logs/export-pdf', [ActivityLogController::class, 'exportPdf'])->name('activity-logs.export-pdf');
 
         // Sales
         Route::get('sales', [SaleController::class, 'index'])->name('sales.index');

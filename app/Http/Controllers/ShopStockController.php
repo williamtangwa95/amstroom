@@ -4,8 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\ShopStock;
 use App\Models\Shop;
+use App\Models\Item;
+use App\Models\Category;
+use App\Models\StockLog;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class ShopStockController extends Controller
 {
@@ -354,5 +364,565 @@ class ShopStockController extends Controller
         }
 
         return back()->with('error', 'No pending price change found.');
+    }
+
+    public function downloadTemplate()
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $headers = [
+            'Item Name',
+            'Category Name',
+            'Brand',
+            'Model',
+            'Specification',
+            'Buying Price',
+            'Selling Price',
+            'Quantity',
+            'Date Received'
+        ];
+        
+        foreach ($headers as $colIndex => $header) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '1', $header);
+        }
+        
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        
+        $sample = [
+            'Wireless Mouse M170',
+            'Computer Accessories',
+            'Logitech',
+            'M170',
+            '2.4GHz wireless, 10m range, USB nano receiver',
+            '15000',
+            '25000',
+            '10',
+            date('Y-m-d')
+        ];
+        foreach ($sample as $colIndex => $val) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '2', $val);
+        }
+        
+        foreach (range(1, 9) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+        
+        $writer = new Xlsx($spreadsheet);
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="shop_stock_import_template.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
+    }
+
+    public function import(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $rules = [
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ];
+
+        if ($user->isOwner()) {
+            $rules['shop_id'] = 'required|exists:shops,id';
+        }
+
+        $request->validate($rules);
+
+        $shopId = $user->isOwner() ? $request->shop_id : $user->shop_id;
+        $shop = Shop::findOrFail($shopId);
+        $isAdminStock = $user->isShopAdmin(); // Shop Admin imports as Admin Stock, Owner imports as standard stock
+
+        $file = $request->file('excel_file');
+        
+        try {
+            $spreadsheet = IOFactory::load($file->getRealPath());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to read spreadsheet file. Please make sure the format is valid.');
+        }
+
+        if (count($rows) <= 1) {
+            return back()->with('error', 'The spreadsheet does not contain any data rows.');
+        }
+
+        $headers = array_map(function($h) {
+            return strtolower(trim($h));
+        }, $rows[0]);
+
+        $headerMap = [
+            'item_name' => ['item name', 'product name', 'item', 'product', 'name'],
+            'category_name' => ['category name', 'category', 'category_name'],
+            'brand' => ['brand'],
+            'model' => ['model'],
+            'specification' => ['specification', 'specifications', 'specification details', 'specs'],
+            'buying_price' => ['buying price', 'buying_price', 'buy price', 'cost', 'cost price', 'buying'],
+            'selling_price' => ['selling price', 'selling_price', 'sell price', 'retail price', 'selling'],
+            'quantity' => ['quantity', 'qty', 'stocked_quantity', 'amount', 'count'],
+            'date_received' => ['date received', 'date_received', 'date', 'received date'],
+        ];
+
+        $indices = [];
+        $missingRequired = [];
+        $requiredKeys = ['item_name', 'buying_price', 'selling_price', 'quantity'];
+
+        foreach ($headerMap as $key => $aliases) {
+            $indices[$key] = -1;
+            foreach ($aliases as $alias) {
+                $idx = array_search($alias, $headers);
+                if ($idx !== false) {
+                    $indices[$key] = $idx;
+                    break;
+                }
+            }
+            if ($indices[$key] === -1 && in_array($key, $requiredKeys)) {
+                $missingRequired[] = ucwords(str_replace('_', ' ', $key));
+            }
+        }
+
+        if (!empty($missingRequired)) {
+            return back()->with('error', 'Missing required columns in spreadsheet: ' . implode(', ', $missingRequired));
+        }
+
+        $errors = [];
+        $importData = [];
+
+        // First pass: validation
+        for ($i = 1; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            
+            $isEmptyRow = true;
+            foreach ($row as $cell) {
+                if ($cell !== null && trim($cell) !== '') {
+                    $isEmptyRow = false;
+                    break;
+                }
+            }
+            if ($isEmptyRow) {
+                continue;
+            }
+
+            $rowNum = $i + 1; // Excel row number (1-based)
+            
+            $itemName = isset($row[$indices['item_name']]) ? trim($row[$indices['item_name']]) : '';
+            if (empty($itemName)) {
+                $errors[] = "Row {$rowNum}: Item Name is required.";
+                continue;
+            }
+
+            // Check if item exists (either standard or admin item for this shop)
+            $item = Item::where('item_name', $itemName)
+                ->where(function($q) use ($shopId) {
+                    $q->where('is_admin_item', false)
+                      ->orWhere(function($sq) use ($shopId) {
+                          $sq->where('is_admin_item', true)
+                             ->where('shop_id', $shopId);
+                      });
+                })
+                ->first();
+            
+            $categoryName = $indices['category_name'] !== -1 && isset($row[$indices['category_name']]) ? trim($row[$indices['category_name']]) : '';
+            if (!$item && empty($categoryName)) {
+                $errors[] = "Row {$rowNum}: Product \"{$itemName}\" is new, but Category Name is missing. A category is required to create a new product.";
+                continue;
+            }
+
+            $buyingPriceStr = isset($row[$indices['buying_price']]) ? trim($row[$indices['buying_price']]) : '';
+            $buyingPrice = floatval(str_replace([',', 'TZS', 'tzs', ' '], '', $buyingPriceStr));
+            if (!is_numeric(str_replace([',', ' '], '', $buyingPriceStr)) || $buyingPrice < 0) {
+                $errors[] = "Row {$rowNum}: Buying Price must be a positive number.";
+            }
+
+            $sellingPriceStr = isset($row[$indices['selling_price']]) ? trim($row[$indices['selling_price']]) : '';
+            $sellingPrice = floatval(str_replace([',', 'TZS', 'tzs', ' '], '', $sellingPriceStr));
+            if (!is_numeric(str_replace([',', ' '], '', $sellingPriceStr)) || $sellingPrice < 0) {
+                $errors[] = "Row {$rowNum}: Selling Price must be a positive number.";
+            } elseif ($sellingPrice < $buyingPrice) {
+                $errors[] = "Row {$rowNum}: Selling Price (TZS " . number_format($sellingPrice) . ") must be greater than or equal to Buying Price (TZS " . number_format($buyingPrice) . ").";
+            }
+
+            $quantityStr = isset($row[$indices['quantity']]) ? trim($row[$indices['quantity']]) : '';
+            $quantity = intval(str_replace([',', ' '], '', $quantityStr));
+            if (!is_numeric(str_replace([',', ' '], '', $quantityStr)) || $quantity < 1) {
+                $errors[] = "Row {$rowNum}: Quantity must be a positive integer (minimum 1).";
+            }
+
+            // Date parsing
+            $dateReceived = now()->toDateString();
+            if ($indices['date_received'] !== -1 && isset($row[$indices['date_received']])) {
+                $dateVal = trim($row[$indices['date_received']]);
+                if (!empty($dateVal)) {
+                    if (is_numeric($dateVal) && $dateVal > 40000 && $dateVal < 60000) {
+                        try {
+                            $dateReceived = Date::excelToDateTimeObject($dateVal)->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            $dateReceived = now()->toDateString();
+                        }
+                    } else {
+                        $parsedDate = strtotime(str_replace('/', '-', $dateVal));
+                        if ($parsedDate !== false) {
+                            $dateReceived = date('Y-m-d', $parsedDate);
+                        } else {
+                            $errors[] = "Row {$rowNum}: Date Received \"{$dateVal}\" is not a valid date format.";
+                        }
+                    }
+                }
+            }
+
+            if (empty($errors)) {
+                $importData[] = [
+                    'item_name' => $itemName,
+                    'category_name' => $categoryName,
+                    'brand' => $indices['brand'] !== -1 && isset($row[$indices['brand']]) ? trim($row[$indices['brand']]) : null,
+                    'model' => $indices['model'] !== -1 && isset($row[$indices['model']]) ? trim($row[$indices['model']]) : null,
+                    'specification' => $indices['specification'] !== -1 && isset($row[$indices['specification']]) ? trim($row[$indices['specification']]) : null,
+                    'buying_price' => $buyingPrice,
+                    'selling_price' => $sellingPrice,
+                    'quantity' => $quantity,
+                    'date_received' => $dateReceived,
+                    'item_object' => $item,
+                ];
+            }
+        }
+
+        if (!empty($errors)) {
+            return back()->with('import_errors', $errors);
+        }
+
+        // Second pass: database insertion in transaction
+        try {
+            DB::transaction(function () use ($importData, $shopId, $shop, $isAdminStock, $user) {
+                foreach ($importData as $data) {
+                    $item = $data['item_object'];
+
+                    if (!$item) {
+                        // Find category (either standard or admin category for this shop)
+                        $category = Category::where('category_name', $data['category_name'])
+                            ->where(function($q) use ($shopId) {
+                                $q->where('is_admin_category', false)
+                                  ->orWhere(function($sq) use ($shopId) {
+                                      $sq->where('is_admin_category', true)
+                                         ->where('shop_id', $shopId);
+                                  });
+                            })
+                            ->first();
+
+                        if (!$category) {
+                            $category = Category::create([
+                                'category_name' => $data['category_name'],
+                                'is_admin_category' => $isAdminStock,
+                                'shop_id' => $isAdminStock ? $shopId : null,
+                            ]);
+                        }
+
+                        $item = Item::create([
+                            'item_name' => $data['item_name'],
+                            'category_id' => $category->id,
+                            'brand' => $data['brand'],
+                            'model' => $data['model'],
+                            'specification' => $data['specification'],
+                            'is_admin_item' => $isAdminStock,
+                            'shop_id' => $isAdminStock ? $shopId : null,
+                        ]);
+                    }
+
+                    $stock = ShopStock::create([
+                        'shop_id' => $shopId,
+                        'item_id' => $item->id,
+                        'buying_price' => $data['buying_price'],
+                        'selling_price' => $data['selling_price'],
+                        'quantity' => $data['quantity'],
+                        'remaining_quantity' => $data['quantity'],
+                        'low_stock_alert' => 1,
+                        'date_received' => $data['date_received'],
+                        'is_price_pending' => false,
+                        'is_sellable' => true,
+                        'is_admin_stock' => $isAdminStock,
+                    ]);
+
+                    StockLog::create([
+                        'item_id' => $item->id,
+                        'from_location' => $isAdminStock ? 'Supplier (Admin)' : 'Supplier',
+                        'to_location' => $shop->shop_name,
+                        'quantity' => $data['quantity'],
+                        'transaction_type' => 'STOCK_RECEIVED',
+                        'performed_by' => $user->id,
+                        'date' => $data['date_received'],
+                        'notes' => 'Imported from Excel',
+                        'is_admin_stock' => $isAdminStock,
+                    ]);
+                }
+            });
+
+            // Send consolidated notification to shop staff
+            $roleLabel = $user->isOwner() ? 'Owner' : 'Admin';
+            $sellers = User::where('shop_id', $shopId)->where('role', 'seller')->get();
+            foreach ($sellers as $seller) {
+                Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'New Stock Uploaded',
+                    'message' => "{$roleLabel} has imported " . count($importData) . " new stock batches from an Excel sheet to the shop.",
+                ]);
+            }
+            if ($user->isOwner()) {
+                $admins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
+                foreach ($admins as $admin) {
+                    Notification::create([
+                        'user_id' => $admin->id,
+                        'title'   => 'New Stock Uploaded by Owner',
+                        'message' => "Owner has imported " . count($importData) . " new stock batches from an Excel sheet to your shop.",
+                    ]);
+                }
+            }
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'An error occurred during DB transaction import: ' . $e->getMessage());
+        }
+
+        return redirect()->route('shop-stock.index', ['shop_id' => $shopId])
+            ->with('success', 'Successfully imported ' . count($importData) . ' stock items.');
+    }
+
+    public function edit(ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
+            abort(403, 'Unauthorized.');
+        }
+
+        // Restrict Shop Admin from editing stock posted by the Owner
+        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
+            return redirect()->route('shop-stock.index')
+                ->with('error', 'You cannot edit stock batches posted by the owner directly. Please use "Request Edit" instead.');
+        }
+
+        $shopStock->load('item.category');
+        return view('shop-stock.edit', compact('shopStock'));
+    }
+
+    public function update(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
+            abort(403, 'Unauthorized.');
+        }
+
+        // Restrict Shop Admin from updating stock posted by the Owner
+        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
+            return redirect()->route('shop-stock.index')
+                ->with('error', 'You cannot edit stock batches posted by the owner.');
+        }
+
+        $oldQty = intval($shopStock->remaining_quantity);
+        $newQty = intval($request->remaining_quantity);
+        $oldInitialQty = intval($shopStock->quantity);
+
+        $rules = [
+            'buying_price'       => 'required|numeric|min:0',
+            'selling_price'      => 'required|numeric|min:0|gte:buying_price',
+            'date_received'      => 'required|date',
+            'remaining_quantity' => 'required|integer|min:0',
+        ];
+
+        $request->validate($rules, [
+            'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
+        ]);
+
+        $diff = $newQty - $oldQty;
+        $newInitialQty = $oldInitialQty + $diff;
+
+        $updateData = [
+            'buying_price'       => $request->buying_price,
+            'selling_price'      => $request->selling_price,
+            'remaining_quantity' => $newQty,
+            'quantity'           => $newInitialQty,
+            'date_received'      => $request->date_received,
+        ];
+
+        $shopStock->update($updateData);
+
+        if ($oldQty !== $newQty) {
+            StockLog::create([
+                'item_id'          => $shopStock->item_id,
+                'from_location'    => $shopStock->shop->shop_name,
+                'to_location'      => $shopStock->shop->shop_name,
+                'quantity'         => abs($newQty - $oldQty),
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => Auth::id(),
+                'date'             => now(),
+                'notes'            => "Shop stock remaining quantity adjusted from {$oldQty} to {$newQty}",
+                'is_admin_stock'   => $shopStock->is_admin_stock,
+            ]);
+        }
+
+        return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+            ->with('success', 'Shop stock updated successfully.');
+    }
+
+    public function destroy(ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
+            abort(403, 'Unauthorized.');
+        }
+
+        // Restrict Shop Admin from deleting stock posted by the Owner
+        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
+            return redirect()->route('shop-stock.index')
+                ->with('error', 'You cannot delete stock batches posted by the owner.');
+        }
+
+        if ($shopStock->quantity != $shopStock->remaining_quantity) {
+            return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                ->with('error', 'Cannot delete stock batch because some items have already been sold or modified.');
+        }
+
+        $itemId = $shopStock->item_id;
+        $quantity = $shopStock->quantity;
+        $shopName = $shopStock->shop->shop_name;
+        $shopId = $shopStock->shop_id;
+        $isAdminStock = $shopStock->is_admin_stock;
+
+        $shopStock->delete();
+
+        StockLog::create([
+            'item_id'          => $itemId,
+            'from_location'    => $shopName,
+            'to_location'      => 'Supplier (Deleted)',
+            'quantity'         => $quantity,
+            'transaction_type' => 'ADJUSTMENT',
+            'performed_by'     => Auth::id(),
+            'date'             => now(),
+            'notes'            => 'Shop stock batch deleted and removed from inventory.',
+            'is_admin_stock'   => $isAdminStock,
+        ]);
+
+        return redirect()->route('shop-stock.index', ['shop_id' => $shopId])
+            ->with('success', 'Shop stock batch deleted successfully.');
+    }
+
+    public function requestEdit(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isShopAdmin() || $shopStock->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $request->validate([
+            'requested_quantity' => 'required|integer|min:0',
+            'reason'             => 'required|string|max:255',
+        ]);
+
+        $shopStock->update([
+            'pending_quantity_request' => $request->requested_quantity,
+            'pending_quantity_reason'  => $request->reason,
+        ]);
+
+        $itemName = $shopStock->item?->item_name ?? 'Item';
+        $shopName = $user->shop?->shop_name ?? 'Shop';
+
+        $owners = User::where('role', 'owner')->get();
+        foreach ($owners as $owner) {
+            Notification::create([
+                'user_id' => $owner->id,
+                'title'   => 'Stock Edit Request',
+                'message' => "Admin {$user->name} ({$shopName}) requested to update remaining quantity for \"{$itemName}\" (Batch #{$shopStock->id}) from {$shopStock->remaining_quantity} to {$request->requested_quantity}. Reason: {$request->reason}",
+            ]);
+        }
+
+        return back()->with('success', 'Your edit request has been sent to the owner.');
+    }
+
+    public function approveQuantity(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (is_null($shopStock->pending_quantity_request)) {
+            return back()->with('error', 'No pending quantity request found.');
+        }
+
+        $oldQty = intval($shopStock->remaining_quantity);
+        $newQty = intval($shopStock->pending_quantity_request);
+        $oldInitialQty = intval($shopStock->quantity);
+        $reason = $shopStock->pending_quantity_reason;
+
+        $diff = $newQty - $oldQty;
+        $newInitialQty = $oldInitialQty + $diff;
+
+        $shopStock->update([
+            'remaining_quantity'       => $newQty,
+            'quantity'                 => $newInitialQty,
+            'pending_quantity_request' => null,
+            'pending_quantity_reason'  => null,
+        ]);
+
+        if ($oldQty !== $newQty) {
+            StockLog::create([
+                'item_id'          => $shopStock->item_id,
+                'from_location'    => $shopStock->shop->shop_name,
+                'to_location'      => $shopStock->shop->shop_name,
+                'quantity'         => abs($newQty - $oldQty),
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => Auth::id(),
+                'date'             => now(),
+                'notes'            => "Approved shop stock edit request: adjusted remaining qty from {$oldQty} to {$newQty} (Reason: {$reason})",
+                'is_admin_stock'   => $shopStock->is_admin_stock,
+            ]);
+        }
+
+        // Notify admins of this shop
+        $admins = User::where('shop_id', $shopStock->shop_id)->where('role', 'shop_admin')->get();
+        $itemName = $shopStock->item?->item_name ?? 'Item';
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => 'Stock Edit Approved',
+                'message' => "The owner has approved your request to adjust remaining quantity for \"{$itemName}\" (Batch #{$shopStock->id}) to {$newQty}.",
+            ]);
+        }
+
+        return back()->with('success', 'Quantity edit request approved successfully.');
+    }
+
+    public function rejectQuantity(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (is_null($shopStock->pending_quantity_request)) {
+            return back()->with('error', 'No pending quantity request found.');
+        }
+
+        $shopStock->update([
+            'pending_quantity_request' => null,
+            'pending_quantity_reason'  => null,
+        ]);
+
+        // Notify admins of this shop
+        $admins = User::where('shop_id', $shopStock->shop_id)->where('role', 'shop_admin')->get();
+        $itemName = $shopStock->item?->item_name ?? 'Item';
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => 'Stock Edit Rejected',
+                'message' => "The owner has rejected your request to adjust remaining quantity for \"{$itemName}\" (Batch #{$shopStock->id}).",
+            ]);
+        }
+
+        return back()->with('success', 'Quantity edit request rejected.');
     }
 }

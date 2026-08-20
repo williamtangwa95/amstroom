@@ -1,55 +1,47 @@
 @extends('layouts.app')
-@section('title', 'Edit Stock')
-@section('page-title', 'Edit Stock Batch')
+@section('title', 'Edit Shop Stock')
+@section('page-title', 'Edit Shop Stock Batch')
 @section('breadcrumb')
-<li class="breadcrumb-item"><a href="{{ route('main-stock.index') }}">Main Store</a></li>
+<li class="breadcrumb-item"><a href="{{ route('shop-stock.index') }}">Shop Stock</a></li>
 <li class="breadcrumb-item active">Edit</li>
 @endsection
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="bi bi-pencil me-2" style="color:#e94560;"></i>Edit Batch — {{ $mainStock->item->item_name }}</div>
+            <div class="card-header"><i class="bi bi-pencil me-2" style="color:#e94560;"></i>Edit Batch — {{ $shopStock->item->item_name }}</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('main-stock.update', $mainStock) }}">
+                <form method="POST" action="{{ route('shop-stock.update', $shopStock) }}">
                     @csrf @method('PUT')
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label">Product</label>
-                            <input type="text" class="form-control" value="{{ $mainStock->item->item_name }}" disabled>
+                            <input type="text" class="form-control" value="{{ $shopStock->item->item_name }}" disabled>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Buying Price (TZS) *</label>
-                            <input type="text" name="buying_price" id="main_buying_price" class="form-control currency-input" value="{{ old('buying_price', (int)$mainStock->buying_price) }}" min="0" required>
+                            <input type="text" name="buying_price" id="shop_buying_price" class="form-control currency-input" value="{{ old('buying_price', (int)$shopStock->buying_price) }}" min="0" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Selling Price (TZS) *</label>
-                            <input type="text" name="selling_price" id="main_selling_price" class="form-control currency-input" value="{{ old('selling_price', (int)$mainStock->selling_price) }}" min="0" required>
-                            <div id="mainStockWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
+                            <input type="text" name="selling_price" id="shop_selling_price" class="form-control currency-input" value="{{ old('selling_price', (int)$shopStock->selling_price) }}" min="0" required>
+                            <div id="shopStockWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">
-                                Remaining Quantity * 
-                                @if($mainStock->remaining_quantity < $mainStock->stocked_quantity)
-                                    (Max: {{ $mainStock->stocked_quantity }})
-                                @endif
-                            </label>
+                            <label class="form-label">Remaining Quantity *</label>
                             <input type="number" name="remaining_quantity" class="form-control" 
-                                   value="{{ old('remaining_quantity', $mainStock->remaining_quantity) }}" 
+                                   value="{{ old('remaining_quantity', $shopStock->remaining_quantity) }}" 
                                    min="0" 
-                                   @if($mainStock->remaining_quantity < $mainStock->stocked_quantity)
-                                       max="{{ $mainStock->stocked_quantity }}" 
-                                   @endif
                                    required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Date Received *</label>
-                            <input type="date" name="date_received" class="form-control" value="{{ old('date_received', $mainStock->date_received->format('Y-m-d')) }}" required>
+                            <input type="date" name="date_received" class="form-control" value="{{ old('date_received', $shopStock->date_received ? $shopStock->date_received->format('Y-m-d') : '') }}" required>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-accent"><i class="bi bi-check-circle me-1"></i>Update</button>
-                        <a href="{{ route('main-stock.index') }}" class="btn btn-outline-custom">Cancel</a>
+                        <a href="{{ route('shop-stock.index') }}" class="btn btn-outline-custom">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -61,9 +53,9 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    const buyingInput = $('#main_buying_price');
-    const sellingInput = $('#main_selling_price');
-    const warning = $('#mainStockWarning');
+    const buyingInput = $('#shop_buying_price');
+    const sellingInput = $('#shop_selling_price');
+    const warning = $('#shopStockWarning');
     const submitBtn = buyingInput.closest('form').find('button[type="submit"]');
 
     function validatePrices() {

@@ -12,9 +12,24 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{{ route('main-stock.history') }}" class="btn btn-outline-custom"><i class="bi bi-clock-history me-1"></i>History</a>
+        <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadMainStockModal">
+            <i class="bi bi-file-earmark-excel me-1"></i>Upload Stock
+        </button>
         <a href="{{ route('main-stock.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i>Add Stock</a>
     </div>
 </div>
+
+@if(session('import_errors'))
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="background: rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
+    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed! Please correct the following errors and try again:</h6>
+    <ul class="mb-0 ps-3 small" style="max-height: 200px; overflow-y: auto;">
+        @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+        @endforeach
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: invert(1);"></button>
+</div>
+@endif
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
@@ -121,6 +136,39 @@
                 @endforeach
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Upload Excel Modal -->
+<div class="modal fade" id="uploadMainStockModal" tabindex="-1" aria-labelledby="uploadMainStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="uploadMainStockModalLabel"><i class="bi bi-file-earmark-excel text-accent me-2"></i>Upload Stock Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
+            </div>
+            <form action="{{ route('main-stock.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-4 text-center py-3 border border-dashed rounded bg-light" style="border-style: dashed !important; border-width: 2px !important; border-color: var(--accent) !important; background: rgba(0, 136, 204, 0.03) !important;">
+                        <i class="bi bi-cloud-arrow-up text-accent" style="font-size: 3rem;"></i>
+                        <p class="mt-2 small text-muted">Select an Excel or CSV file to import stock batches.</p>
+                        <div class="d-grid gap-2 px-4 mt-3">
+                            <input type="file" name="excel_file" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" required>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info py-2 px-3 mb-0" style="font-size:0.8rem; background: rgba(0, 136, 204, 0.08); border-color: rgba(0, 136, 204, 0.15); color: #005f9e;">
+                        <i class="bi bi-info-circle-fill me-2"></i><strong>Tip:</strong> Need a starting point?
+                        <a href="{{ route('main-stock.import-template') }}" class="fw-bold text-accent text-decoration-none ms-1"><i class="bi bi-download me-1"></i>Download Template (.xlsx)</a>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-accent"><i class="bi bi-upload me-1"></i>Import Stock</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection

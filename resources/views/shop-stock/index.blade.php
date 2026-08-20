@@ -11,6 +11,11 @@
         <small style="color:var(--text-secondary);">Available products in retail shops</small>
     </div>
     <div class="d-flex align-items-center gap-2">
+        @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+        <button type="button" class="btn btn-outline-custom btn-sm" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
+            <i class="bi bi-file-earmark-excel me-1"></i> Upload Stock
+        </button>
+        @endif
         @if(auth()->user()->isShopAdmin())
         <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
             <i class="bi bi-plus-circle me-1"></i> Add Admin Stock
@@ -23,6 +28,18 @@
         @endif
     </div>
 </div>
+
+@if(session('import_errors'))
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="background: rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
+    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed! Please correct the following errors and try again:</h6>
+    <ul class="mb-0 ps-3 small" style="max-height: 200px; overflow-y: auto;">
+        @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+        @endforeach
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: invert(1);"></button>
+</div>
+@endif
 
 @if(auth()->user()->isOwner())
 <div class="card mb-4">
@@ -106,6 +123,32 @@
                                 </div>
                             </div>
                         </div>
+                        @if(auth()->user()->isOwner() && !is_null($st->pending_quantity_request))
+                        <div class="mt-2 p-2 rounded border border-warning text-start" style="background: rgba(245, 158, 11, 0.05); max-width: 350px;">
+                            <div class="text-warning fw-700 small mb-1">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Pending Edit Request
+                            </div>
+                            <div class="small text-secondary mb-2" style="font-size: .78rem; line-height: 1.3;">
+                                <strong>Request:</strong> Change remaining qty from {{ $st->remaining_quantity }} to <span class="badge bg-warning text-dark">{{ $st->pending_quantity_request }}</span>
+                                <br>
+                                <strong>Reason:</strong> "{{ $st->pending_quantity_reason }}"
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form action="{{ route('shop-stock.approve-quantity', $st) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-success px-2 py-0.5" style="font-size: .7rem;">Confirm</button>
+                                </form>
+                                <form action="{{ route('shop-stock.reject-quantity', $st) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-outline-danger px-2 py-0.5" style="font-size: .7rem;">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                        @elseif(auth()->user()->isShopAdmin() && !is_null($st->pending_quantity_request))
+                        <div class="mt-2 text-warning small fw-600 d-flex align-items-center gap-1 text-start" title="Reason: {{ $st->pending_quantity_reason }}">
+                            <i class="bi bi-hourglass-split"></i> Edit Pending: {{ $st->pending_quantity_request }} qty
+                        </div>
+                        @endif
                     </td>
                     <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $st->item->category->category_name }}</span></td>
                     <td style="font-size:.82rem;">{{ $st->quantity }}</td>
@@ -150,16 +193,70 @@
                                 <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
                             </button>
                             @endif
-                            <a href="{{ route('shop-stock.show', $st) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
+                            <a href="{{ route('shop-stock.show', $st) }}" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>
                             @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
-                            <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
-                                <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $st->id }}" style="cursor:pointer; width: 30px; height: 16px;" 
-                                    {{ $st->allow_components ? 'checked' : '' }} title="Toggle custom components capability">
-                            </div>
+                                @if(auth()->user()->isOwner() || $st->is_admin_stock)
+                                    <a href="{{ route('shop-stock.edit', $st) }}" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>
+                                    @if($st->quantity == $st->remaining_quantity)
+                                    <form action="{{ route('shop-stock.destroy', $st) }}" method="POST" class="d-inline delete-stock-form">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                @else
+                                    <button type="button" class="btn btn-xs btn-outline-warning" data-bs-toggle="modal" data-bs-target="#requestEditModal{{ $st->id }}" title="Request quantity edit to Owner">
+                                        <i class="bi bi-envelope-exclamation"></i> Request Edit
+                                    </button>
+                                @endif
+                                <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
+                                    <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $st->id }}" style="cursor:pointer; width: 30px; height: 16px;" 
+                                        {{ $st->allow_components ? 'checked' : '' }} title="Toggle custom components capability">
+                                </div>
                             @endif
                         </div>
                     </td>
                 </tr>
+                @if(auth()->user()->isShopAdmin() && !$st->is_admin_stock)
+                <!-- Request Edit Modal for Shop Admin on Owner-posted stock -->
+                <div class="modal fade" id="requestEditModal{{ $st->id }}" tabindex="-1" aria-labelledby="requestEditModalLabel{{ $st->id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+                            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                                <h5 class="modal-title fw-700" id="requestEditModalLabel{{ $st->id }}"><i class="bi bi-envelope-exclamation text-warning me-2"></i>Request Stock Edit</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
+                            </div>
+                            <form action="{{ route('shop-stock.request-edit', $st) }}" method="POST">
+                                @csrf
+                                <div class="modal-body text-start">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-600">Product</label>
+                                        <input type="text" class="form-control form-control-sm" value="{{ $st->item->item_name }}" disabled>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-600">Current Remaining Quantity</label>
+                                        <input type="text" class="form-control form-control-sm" value="{{ $st->remaining_quantity }}" disabled>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="requested_quantity{{ $st->id }}" class="form-label small fw-600">Requested Quantity *</label>
+                                        <input type="number" name="requested_quantity" id="requested_quantity{{ $st->id }}" class="form-control form-control-sm" min="0" required placeholder="e.g. 15">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="reason{{ $st->id }}" class="form-label small fw-600">Reason for Request *</label>
+                                        <textarea name="reason" id="reason{{ $st->id }}" class="form-control form-control-sm" rows="3" required placeholder="Describe why you need this edit (e.g. counting error during transfer receiving)"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-sm btn-accent">Send Request</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endif
                 @endforeach
             </tbody>
         </table>
@@ -288,6 +385,53 @@
                 <div class="modal-footer" style="border-top:1px solid var(--card-border);">
                     <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-sm btn-accent">Add Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+<!-- Upload Shop Stock Modal -->
+<div class="modal fade" id="uploadShopStockModal" tabindex="-1" aria-labelledby="uploadShopStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="uploadShopStockModalLabel"><i class="bi bi-file-earmark-excel text-accent me-2"></i>Upload Shop Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
+            </div>
+            <form action="{{ route('shop-stock.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    @if(auth()->user()->isOwner())
+                    <div class="mb-3">
+                        <label for="import_shop_id" class="form-label" style="font-size:0.8rem;">Target Retail Shop *</label>
+                        <select name="shop_id" id="import_shop_id" class="form-select form-select-sm" required>
+                            <option value="">-- Select Retail Shop --</option>
+                            @foreach($shops as $s)
+                            <option value="{{ $s->id }}" {{ $shopId == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
+                    <div class="mb-4 text-center py-3 border border-dashed rounded bg-light" style="border-style: dashed !important; border-width: 2px !important; border-color: var(--accent) !important; background: rgba(0, 136, 204, 0.03) !important;">
+                        <i class="bi bi-cloud-arrow-up text-accent" style="font-size: 3rem;"></i>
+                        <p class="mt-2 small text-muted">Select an Excel or CSV file to import shop stocks.</p>
+                        <div class="d-grid gap-2 px-4 mt-3">
+                            <input type="file" name="excel_file" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" required>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info py-2 px-3 mb-0" style="font-size:0.8rem; background: rgba(0, 136, 204, 0.08); border-color: rgba(0, 136, 204, 0.15); color: #005f9e;">
+                        <i class="bi bi-info-circle-fill me-2"></i><strong>Tip:</strong> Need a starting point?
+                        <a href="{{ route('shop-stock.import-template') }}" class="fw-bold text-accent text-decoration-none ms-1"><i class="bi bi-download me-1"></i>Download Template (.xlsx)</a>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-accent"><i class="bi bi-upload me-1"></i>Import Stock</button>
                 </div>
             </form>
         </div>
@@ -647,6 +791,27 @@
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
         @endif
+
+        $(document).on('click', '.confirm-delete-btn', function(e) {
+            e.preventDefault();
+            const form = $(this).closest('form');
+            Swal.fire({
+                title: 'Delete Stock Batch?',
+                text: "Are you sure you want to delete this stock batch? This action cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
     });
 </script>
 @endpush
