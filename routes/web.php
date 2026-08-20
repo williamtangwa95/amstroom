@@ -135,6 +135,7 @@ Route::middleware('auth')->group(function () {
 
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
+        Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
         Route::get('shop-stock/import-template', [ShopStockController::class, 'downloadTemplate'])->name('shop-stock.import-template');
         Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');

@@ -699,12 +699,6 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        // Restrict Shop Admin from editing stock posted by the Owner
-        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-            return redirect()->route('shop-stock.index')
-                ->with('error', 'You cannot edit stock batches posted by the owner directly. Please use "Request Edit" instead.');
-        }
-
         $shopStock->load('item.category');
         return view('shop-stock.edit', compact('shopStock'));
     }
@@ -716,10 +710,58 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        // Restrict Shop Admin from updating stock posted by the Owner
+        // If Shop Admin edits stock posted by the Owner (transferred from Main Store)
         if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-            return redirect()->route('shop-stock.index')
-                ->with('error', 'You cannot edit stock batches posted by the owner.');
+            $request->validate([
+                'selling_price' => 'required|numeric|min:' . $shopStock->buying_price,
+            ], [
+                'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
+            ]);
+
+            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+            $itemName = $shopStock->item?->item_name ?? 'Item';
+
+            if ($isIndependent) {
+                $shopStock->update([
+                    'selling_price'         => $request->selling_price,
+                    'is_price_pending'      => false,
+                    'pending_selling_price' => null,
+                    'is_sellable'           => true,
+                ]);
+
+                // Notify sellers of this shop
+                $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                    ->where('role', 'seller')
+                    ->get();
+                foreach ($sellers as $seller) {
+                    \App\Models\Notification::create([
+                        'user_id' => $seller->id,
+                        'title'   => 'Shop Stock Price Updated',
+                        'message' => "Admin has updated the selling price for \"{$itemName}\" to: TZS " . number_format($request->selling_price, 2),
+                    ]);
+                }
+
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('success', 'Selling price updated successfully.');
+            } else {
+                $shopStock->update([
+                    'is_price_pending'      => true,
+                    'pending_selling_price' => $request->selling_price,
+                ]);
+
+                // Notify all owners
+                $owners = \App\Models\User::where('role', 'owner')->get();
+                foreach ($owners as $owner) {
+                    \App\Models\Notification::create([
+                        'user_id' => $owner->id,
+                        'title'   => 'Shop Price Change Pending',
+                        'message' => "Admin {$user->name} updated the selling price for \"{$itemName}\" in {$shopStock->shop->shop_name} to: TZS " . number_format($request->selling_price, 2) . ". Pending owner approval.",
+                    ]);
+                }
+
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('success', 'Selling price update is pending owner approval.');
+            }
         }
 
         $oldQty = intval($shopStock->remaining_quantity);
@@ -924,5 +966,56 @@ class ShopStockController extends Controller
         }
 
         return back()->with('success', 'Quantity edit request rejected.');
+    }
+
+    public function quickRestock(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $request->shop_id)) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $request->validate([
+            'shop_id'            => 'required|exists:shops,id',
+            'item_id'            => 'required|exists:items,id',
+            'buying_price'       => 'required|numeric|min:0',
+            'selling_price'      => 'required|numeric|min:0',
+            'quantity'           => 'required|integer|min:1',
+            'date_received'      => 'required|date',
+            'low_stock_alert'    => 'required|integer|min:0',
+        ]);
+
+        // Restock is always admin stock when performed by a shop admin,
+        // regardless of whether the source batch was owner stock or admin stock.
+        $isAdminStock = $user->isShopAdmin();
+
+        $shopStock = ShopStock::create([
+            'shop_id'            => $request->shop_id,
+            'item_id'            => $request->item_id,
+            'buying_price'       => $request->buying_price,
+            'selling_price'      => $request->selling_price,
+            'quantity'           => $request->quantity,
+            'remaining_quantity' => $request->quantity,
+            'date_received'      => $request->date_received,
+            'low_stock_alert'    => $request->low_stock_alert,
+            'is_admin_stock'     => $isAdminStock,
+            'is_sellable'        => true,
+        ]);
+
+
+        \App\Models\StockLog::create([
+            'item_id'          => $shopStock->item_id,
+            'from_location'    => 'Main Store / Restock',
+            'to_location'      => $shopStock->shop->shop_name,
+            'quantity'         => $shopStock->quantity,
+            'transaction_type' => 'STOCK_RECEIVED',
+            'performed_by'     => Auth::id(),
+            'date'             => $shopStock->date_received,
+            'notes'            => "Quick restocked {$shopStock->quantity} units for product \"{$shopStock->item->item_name}\"",
+            'is_admin_stock'   => $isAdminStock,
+        ]);
+
+        return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+            ->with('success', 'Product quick restocked successfully.');
     }
 }
