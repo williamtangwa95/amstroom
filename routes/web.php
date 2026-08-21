@@ -105,6 +105,7 @@ Route::middleware('auth')->group(function () {
 
         // Employee / User Management (owner: all; shop_admin: own sellers only — enforced in controller)
         Route::resource('users', UserController::class);
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::resource('shops', ShopController::class);
 
         // Stock Requests

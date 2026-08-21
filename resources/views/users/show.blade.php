@@ -29,6 +29,15 @@
                         <td>{{ $user->shop ? $user->shop->shop_name : 'Unassigned' }}</td>
                     </tr>
                     <tr>
+                        <th style="color:var(--text-secondary);">Status</th>
+                        <td>
+                            <span class="status-badge {{ $user->status === 'active' ? 'badge-active' : 'badge-inactive' }}">
+                                <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+                                {{ ucfirst($user->status) }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
                         <th style="color:var(--text-secondary);">Total Sales Made</th>
                         <td><strong style="color:#3fb950;">{{ $user->sales->count() }} transaction(s)</strong></td>
                     </tr>

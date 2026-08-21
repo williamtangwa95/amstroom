@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, LogsActivity;
 
     protected $fillable = [
-        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path', 'allow_stock_addition',
+        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path', 'allow_stock_addition', 'status',
     ];
 
     protected $hidden = [
@@ -72,5 +72,22 @@ class User extends Authenticatable
             return in_array($this->role, $roles);
         }
         return $this->role === $roles;
+    }
+
+    /**
+     * Determine if there are any transactions, stocks, or records dependent on this user.
+     */
+    public function hasDependencies(): bool
+    {
+        if ($this->sales()->exists()) return true;
+        if ($this->stockRequests()->exists()) return true;
+        if ($this->defects()->exists()) return true;
+
+        if (\DB::table('stock_transfers')->where('approved_by', $this->id)->exists()) return true;
+        if (\DB::table('expenses')->where('recorded_by', $this->id)->orWhere('approved_by', $this->id)->exists()) return true;
+        if (\DB::table('handover_reports')->where('shop_admin_id', $this->id)->orWhere('created_by', $this->id)->orWhere('approved_by', $this->id)->orWhere('received_by', $this->id)->exists()) return true;
+        if (\DB::table('stock_logs')->where('performed_by', $this->id)->exists()) return true;
+
+        return false;
     }
 }

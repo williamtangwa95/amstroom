@@ -26,6 +26,13 @@ class ForgotPasswordController extends Controller
             'email.exists' => 'No account found with this email address.',
         ]);
 
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->status === 'inactive') {
+            return back()->withInput()->withErrors([
+                'email' => 'Your account has been disabled. Password recovery is not allowed.',
+            ]);
+        }
+
         $code = sprintf('%06d', random_int(100000, 999999));
 
         DB::table('password_reset_tokens')->updateOrInsert(
@@ -67,6 +74,13 @@ class ForgotPasswordController extends Controller
             'email' => 'required|email|exists:users,email',
             'code'  => 'required|digits:6',
         ]);
+
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->status === 'inactive') {
+            return redirect()->route('password.request')->withErrors([
+                'email' => 'Your account has been disabled.',
+            ]);
+        }
 
         $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
 
@@ -117,6 +131,13 @@ class ForgotPasswordController extends Controller
 
         $email = session('reset_email');
         $user = User::where('email', $email)->firstOrFail();
+
+        if ($user->status === 'inactive') {
+            session()->forget(['code_verified', 'reset_email']);
+            return redirect()->route('password.request')->withErrors([
+                'email' => 'Your account has been disabled.',
+            ]);
+        }
 
         $user->update([
             'password' => Hash::make($request->password),

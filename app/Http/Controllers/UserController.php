@@ -117,6 +117,7 @@ class UserController extends Controller
             'shop_id' => 'nullable|exists:shops,id',
             'password'=> 'nullable|min:6|confirmed',
             'allow_stock_addition' => 'nullable|boolean',
+            'status'  => 'required|in:active,inactive',
         ]);
 
         $data = $request->only('name', 'email', 'phone');
@@ -125,6 +126,10 @@ class UserController extends Controller
 
         if ($auth->isOwner()) {
             $data['allow_stock_addition'] = $request->boolean('allow_stock_addition');
+        }
+
+        if ($user->id !== $auth->id) {
+            $data['status'] = $request->status;
         }
 
         if ($request->filled('password')) {
@@ -137,12 +142,36 @@ class UserController extends Controller
             ->with('success', 'Employee updated successfully.');
     }
 
+    public function toggleStatus(User $user)
+    {
+        $this->authorizeAccess($user);
+
+        if ($user->isOwner()) {
+            return back()->with('error', 'Cannot disable owner account.');
+        }
+
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'Cannot change your own status.');
+        }
+
+        $newStatus = $user->status === 'active' ? 'inactive' : 'active';
+        $user->update(['status' => $newStatus]);
+
+        $message = $newStatus === 'active' ? 'Employee account has been enabled.' : 'Employee account has been disabled.';
+
+        return back()->with('success', $message);
+    }
+
     public function destroy(User $user)
     {
         $this->authorizeAccess($user);
 
         if ($user->isOwner()) {
             return back()->with('error', 'Cannot delete owner account.');
+        }
+
+        if ($user->hasDependencies()) {
+            return back()->with('error', 'Cannot delete employee account because they have associated records (sales, stock actions, or other dependencies).');
         }
 
         $user->delete();

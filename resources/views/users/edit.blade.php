@@ -88,6 +88,14 @@
                         @endif
 
                         <div class="col-md-6">
+                            <label class="form-label">Account Status *</label>
+                            <select name="status" class="form-select" required>
+                                <option value="active" {{ old('status', $user->status) === 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="inactive" {{ old('status', $user->status) === 'inactive' ? 'selected' : '' }}>Disabled</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
                             <label class="form-label">New Password <small class="text-muted">(leave blank to keep current)</small></label>
                             <input type="password" name="password" class="form-control" minlength="6">
                         </div>

@@ -52,6 +52,7 @@
                     @if(auth()->user()->isOwner())
                     <th>Assigned Shop</th>
                     @endif
+                    <th>Status</th>
                     <th class="no-sort">Actions</th>
                 </tr>
             </thead>
@@ -79,17 +80,47 @@
                     </td>
                     @endif
                     <td>
+                        <span class="status-badge {{ $u->status === 'active' ? 'badge-active' : 'badge-inactive' }}">
+                            <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+                            {{ $u->status === 'active' ? 'Active' : 'Disabled' }}
+                        </span>
+                    </td>
+                    <td>
                         <div class="d-flex gap-1">
                             <a href="{{ route('users.show', $u) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('users.edit', $u) }}" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+                            @if(!$u->isOwner() && $u->id !== auth()->id())
+                            <form method="POST" action="{{ route('users.toggle-status', $u) }}" id="toggle-user-{{ $u->id }}" class="d-inline">
+                                @csrf @method('PATCH')
+                                <button type="button" class="btn btn-xs btn-outline-custom"
+                                    data-confirm="{{ $u->status === 'active' ? 'Disable employee account?' : 'Enable employee account?' }}"
+                                    data-text="{{ $u->status === 'active' ? 'They will not be able to log in or reset password.' : 'They will be able to log in and use the application.' }}"
+                                    data-form="toggle-user-{{ $u->id }}"
+                                    title="{{ $u->status === 'active' ? 'Disable' : 'Enable' }}">
+                                    @if($u->status === 'active')
+                                        <i class="bi bi-person-dash" style="color:var(--text-secondary);"></i>
+                                    @else
+                                        <i class="bi bi-person-check" style="color:#3fb950;"></i>
+                                    @endif
+                                </button>
+                            </form>
+                            @endif
+                            @if(!$u->hasDependencies())
                             <form method="POST" action="{{ route('users.destroy', $u) }}" id="del-user-{{ $u->id }}">
                                 @csrf @method('DELETE')
                                 <button type="button" class="btn btn-xs btn-outline-custom"
                                     data-confirm="Delete employee account?"
-                                    data-form="del-user-{{ $u->id }}">
+                                    data-form="del-user-{{ $u->id }}"
+                                    title="Delete">
                                     <i class="bi bi-trash" style="color:#e94560;"></i>
                                 </button>
                             </form>
+                            @else
+                            <button type="button" class="btn btn-xs btn-outline-custom" disabled style="opacity:0.5; cursor:not-allowed;"
+                                title="Cannot delete user with associated sales, stock requests, or other records.">
+                                <i class="bi bi-trash" style="color:var(--text-secondary);"></i>
+                            </button>
+                            @endif
                         </div>
                     </td>
                 </tr>

@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
         $middleware->web(append: [
+            \App\Http\Middleware\ActiveUserMiddleware::class,
             \App\Http\Middleware\TrackVisitor::class,
         ]);
     })

@@ -24,6 +24,17 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $user = Auth::user();
+            if ($user->status === 'inactive') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                throw ValidationException::withMessages([
+                    'email' => 'Your account has been disabled. Please contact your administrator.',
+                ]);
+            }
+
             $request->session()->regenerate();
             return redirect()->intended(route('dashboard'));
         }
