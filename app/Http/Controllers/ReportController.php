@@ -216,11 +216,15 @@ class ReportController extends Controller
             $type = 'shop';
         }
 
-        $mainStocks = \App\Models\MainStock::with('item.category')
-            ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
-            ->groupBy('item_id')
-            ->with('item.category')
-            ->get();
+        if ($user->isOwner()) {
+            $mainStocks = \App\Models\MainStock::with('item.category')
+                ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
+                ->groupBy('item_id')
+                ->with('item.category')
+                ->get();
+        } else {
+            $mainStocks = collect();
+        }
 
         $shopStocksQuery = \App\Models\ShopStock::with('item.category', 'shop')
             ->where('remaining_quantity', '>', 0);

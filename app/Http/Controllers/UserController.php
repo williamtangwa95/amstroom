@@ -61,6 +61,7 @@ class UserController extends Controller
             'role'     => ['required', Rule::in($roleAllowed)],
             'shop_id'  => 'nullable|exists:shops,id',
             'password' => 'required|min:6|confirmed',
+            'allow_stock_addition' => 'nullable|boolean',
         ]);
 
         // Shop admin always assigns to their own shop
@@ -73,6 +74,7 @@ class UserController extends Controller
             'role'     => $auth->isShopAdmin() ? 'seller' : $request->role,
             'shop_id'  => $shopId,
             'password' => Hash::make($request->password),
+            'allow_stock_addition' => $auth->isOwner() ? $request->boolean('allow_stock_addition') : false,
         ]);
 
         return redirect()->route('users.index')
@@ -114,11 +116,16 @@ class UserController extends Controller
             'role'    => ['required', Rule::in($roleAllowed)],
             'shop_id' => 'nullable|exists:shops,id',
             'password'=> 'nullable|min:6|confirmed',
+            'allow_stock_addition' => 'nullable|boolean',
         ]);
 
         $data = $request->only('name', 'email', 'phone');
         $data['role']    = $auth->isShopAdmin() ? 'seller' : $request->role;
         $data['shop_id'] = $auth->isShopAdmin() ? $auth->shop_id : $request->shop_id;
+
+        if ($auth->isOwner()) {
+            $data['allow_stock_addition'] = $request->boolean('allow_stock_addition');
+        }
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

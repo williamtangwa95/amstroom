@@ -36,9 +36,14 @@
         </button>
         @endif
         @if(auth()->user()->isShopAdmin())
-        <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
-            <i class="bi bi-plus-circle me-1"></i> Add Admin Stock
-        </button>
+            @if(auth()->user()->allow_stock_addition)
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
+                <i class="bi bi-plus-circle me-1"></i> Add Owner Stock
+            </button>
+            @endif
+            <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
+                <i class="bi bi-plus-circle me-1"></i> Add Admin Stock
+            </button>
         @endif
         @if($lowStockItems > 0)
         <div class="alert alert-warning py-1 px-3 mb-0" style="font-size:.8rem;">
@@ -623,7 +628,13 @@
                             <select name="item_id" id="item_id" class="form-select form-select-sm" required>
                                 <option value="">-- Choose Product --</option>
                                 @foreach($items as $item)
-                                <option value="{{ $item->id }}">{{ $item->item_name }} ({{ $item->brand }})</option>
+                                <option value="{{ $item->id }}"
+                                        data-admin-buying="{{ $item->shopStocks->where('is_admin_stock', true)->last()?->buying_price ?? '' }}"
+                                        data-admin-selling="{{ $item->shopStocks->where('is_admin_stock', true)->last()?->selling_price ?? '' }}"
+                                        data-owner-buying="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->buying_price ?? '' }}"
+                                        data-owner-selling="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->selling_price ?? '' }}"
+                                        data-main-selling="{{ $item->mainStocks->last()?->selling_price ?? '' }}"
+                                >{{ $item->item_name }} ({{ $item->brand }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -690,6 +701,108 @@
                 <div class="modal-footer" style="border-top:1px solid var(--card-border);">
                     <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-sm btn-accent">Add Stock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(auth()->user()->isShopAdmin() && auth()->user()->allow_stock_addition)
+<div class="modal fade" id="addOwnerStockModal" tabindex="-1" aria-labelledby="addOwnerStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="addOwnerStockModalLabel"><i class="bi bi-plus-circle text-success me-2"></i>Add Owner Stock</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('shop-stock.store-owner-stock') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="owner_createNewProductToggle" name="create_new_product" value="1">
+                        <label class="form-check-label small fw-600" for="owner_createNewProductToggle">Create a new product instead</label>
+                    </div>
+
+                    <div id="owner_existingProductGroup">
+                        <div class="mb-3">
+                            <label for="owner_item_id" class="form-label" style="font-size:0.8rem;">Select Product *</label>
+                            <select name="item_id" id="owner_item_id" class="form-select form-select-sm" required>
+                                <option value="">-- Choose Product --</option>
+                                @foreach($items as $item)
+                                <option value="{{ $item->id }}"
+                                        data-admin-buying="{{ $item->shopStocks->where('is_admin_stock', true)->last()?->buying_price ?? '' }}"
+                                        data-admin-selling="{{ $item->shopStocks->where('is_admin_stock', true)->last()?->selling_price ?? '' }}"
+                                        data-owner-buying="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->buying_price ?? '' }}"
+                                        data-owner-selling="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->selling_price ?? '' }}"
+                                        data-main-selling="{{ $item->mainStocks->last()?->selling_price ?? '' }}"
+                                >{{ $item->item_name }} ({{ $item->brand }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="owner_newProductGroup" style="display: none;">
+                        <div class="mb-3">
+                            <label for="owner_new_item_name" class="form-label" style="font-size:0.8rem;">Product Name *</label>
+                            <input type="text" name="new_item_name" id="owner_new_item_name" class="form-control form-control-sm" placeholder="e.g. Wireless Keyboard K120">
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="owner_createNewCategoryToggle" name="create_new_category" value="1">
+                            <label class="form-check-label small fw-600" for="owner_createNewCategoryToggle">Create a new category instead</label>
+                        </div>
+
+                        <div id="owner_existingCategoryGroup" class="mb-3">
+                            <label for="owner_category_id" class="form-label" style="font-size:0.8rem;">Category *</label>
+                            <select name="category_id" id="owner_category_id" class="form-select form-select-sm">
+                                <option value="">-- Choose Category --</option>
+                                @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="owner_newCategoryGroup" class="mb-3" style="display: none;">
+                            <label for="owner_new_category_name" class="form-label" style="font-size:0.8rem;">Category Name *</label>
+                            <input type="text" name="new_category_name" id="owner_new_category_name" class="form-control form-control-sm" placeholder="e.g. Gaming Gear">
+                        </div>
+                        <div class="mb-3">
+                            <label for="owner_brand" class="form-label" style="font-size:0.8rem;">Brand</label>
+                            <input type="text" name="brand" id="owner_brand" class="form-control form-control-sm" placeholder="e.g. Logitech">
+                        </div>
+                        <div class="mb-3">
+                            <label for="owner_model" class="form-label" style="font-size:0.8rem;">Model</label>
+                            <input type="text" name="model" id="owner_model" class="form-control form-control-sm" placeholder="e.g. K120">
+                        </div>
+                        <div class="mb-3">
+                            <label for="owner_specification" class="form-label" style="font-size:0.8rem;">Specification</label>
+                            <input type="text" name="specification" id="owner_specification" class="form-control form-control-sm" placeholder="e.g. USB connection, spill-resistant">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="owner_quantity_display" class="form-label" style="font-size:0.8rem;">Quantity *</label>
+                        <input type="text" id="owner_quantity_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 10">
+                        <input type="hidden" name="quantity" id="owner_quantity">
+                    </div>
+                    <div class="mb-3">
+                        <label for="owner_buying_price_display" class="form-label" style="font-size:0.8rem;">Buying Price (TZS) *</label>
+                        <input type="text" id="owner_buying_price_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 1,000">
+                        <input type="hidden" name="buying_price" id="owner_buying_price">
+                    </div>
+                    <div class="mb-3">
+                        <label for="owner_selling_price_display" class="form-label" style="font-size:0.8rem;">Selling Price (TZS) *</label>
+                        <input type="text" id="owner_selling_price_display" class="form-control form-control-sm" required autocomplete="off" placeholder="e.g. 1,500">
+                        <input type="hidden" name="selling_price" id="owner_selling_price">
+                        <div id="ownerStockPriceWarning" class="text-danger small mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="owner_date_received" class="form-label" style="font-size:0.8rem;">Date Received *</label>
+                        <input type="date" name="date_received" id="owner_date_received" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success">Add Owner Stock</button>
                 </div>
             </form>
         </div>
@@ -1341,6 +1454,40 @@
             updateCategoryFields();
         });
 
+        // Auto-suggest values when selecting a product (Admin Stock modal)
+        $('#item_id').on('change', function() {
+            const selectedOpt = $(this).find('option:selected');
+            if (!selectedOpt.val()) {
+                $('#buying_price_display').val('');
+                $('#buying_price').val('');
+                $('#selling_price_display').val('');
+                $('#selling_price').val('');
+                return;
+            }
+
+            const shopBuying = selectedOpt.data('admin-buying');
+            const shopSelling = selectedOpt.data('admin-selling');
+            const mainSelling = selectedOpt.data('main-selling');
+
+            if (shopBuying && shopSelling) {
+                $('#buying_price').val(shopBuying);
+                $('#buying_price_display').val(formatNumber(shopBuying));
+                $('#selling_price').val(shopSelling);
+                $('#selling_price_display').val(formatNumber(shopSelling));
+            } else if (mainSelling) {
+                $('#buying_price').val(mainSelling);
+                $('#buying_price_display').val(formatNumber(mainSelling));
+                $('#selling_price').val('');
+                $('#selling_price_display').val('');
+            } else {
+                $('#buying_price_display').val('');
+                $('#buying_price').val('');
+                $('#selling_price_display').val('');
+                $('#selling_price').val('');
+            }
+            validateAdminStockPrices();
+        });
+
         // Add Admin Stock Form validation
         $('#addAdminStockModal form').on('submit', function(e) {
             const buyingPrice = parseFloat($('#buying_price').val()) || 0;
@@ -1502,6 +1649,171 @@
                     });
                 });
         }
+
+        @if(auth()->user()->allow_stock_addition)
+        // Auto-comma formatter for Add Owner Stock Modal
+        $('#owner_quantity_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9]/g, '');
+            this.value = formatNumber(cleanVal);
+            $('#owner_quantity').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+        });
+
+        $('#owner_buying_price_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            }
+            this.value = formatNumber(cleanVal);
+            $('#owner_buying_price').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+            validateOwnerStockPrices();
+        });
+
+        $('#owner_selling_price_display').on('input', function() {
+            let selectionStart = this.selectionStart;
+            let origLength = this.value.length;
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            }
+            this.value = formatNumber(cleanVal);
+            $('#owner_selling_price').val(cleanVal);
+            let newLength = this.value.length;
+            this.setSelectionRange(selectionStart + (newLength - origLength), selectionStart + (newLength - origLength));
+            validateOwnerStockPrices();
+        });
+
+        function validateOwnerStockPrices() {
+            const buying = parseFloat($('#owner_buying_price').val() || 0);
+            const selling = parseFloat($('#owner_selling_price').val() || 0);
+            const warning = $('#ownerStockPriceWarning');
+            const submitBtn = $('#addOwnerStockModal').find('button[type="submit"]');
+
+            if (selling > 0 && buying > 0 && selling < buying) {
+                warning.show();
+                $('#owner_selling_price_display').addClass('is-invalid');
+                submitBtn.prop('disabled', true);
+            } else {
+                warning.hide();
+                $('#owner_selling_price_display').removeClass('is-invalid');
+                submitBtn.prop('disabled', false);
+            }
+        }
+
+        $('#addOwnerStockModal').on('hidden.bs.modal', function() {
+            $(this).find('form')[0].reset();
+            $('#owner_quantity').val('');
+            $('#owner_buying_price').val('');
+            $('#owner_selling_price').val('');
+            $('#ownerStockPriceWarning').hide();
+            $('#owner_selling_price_display').removeClass('is-invalid');
+            $(this).find('button[type="submit"]').prop('disabled', false);
+        });
+
+        function updateOwnerCategoryFields() {
+            const isNewProduct = $('#owner_createNewProductToggle').is(':checked');
+            const isNewCategory = $('#owner_createNewCategoryToggle').is(':checked');
+
+            if (isNewProduct) {
+                if (isNewCategory) {
+                    $('#owner_existingCategoryGroup').hide();
+                    $('#owner_category_id').val('').prop('required', false);
+                    $('#owner_newCategoryGroup').show();
+                    $('#owner_new_category_name').prop('required', true);
+                } else {
+                    $('#owner_newCategoryGroup').hide();
+                    $('#owner_new_category_name').val('').prop('required', false);
+                    $('#owner_existingCategoryGroup').show();
+                    $('#owner_category_id').prop('required', true);
+                }
+            } else {
+                $('#owner_category_id').prop('required', false);
+                $('#owner_new_category_name').prop('required', false);
+            }
+        }
+
+        // Toggle new product inputs vs select product dropdown
+        $('#owner_createNewProductToggle').on('change', function() {
+            if (this.checked) {
+                $('#owner_existingProductGroup').hide();
+                $('#owner_item_id').val('').prop('required', false);
+                $('#owner_newProductGroup').show();
+                $('#owner_new_item_name').prop('required', true);
+                updateOwnerCategoryFields();
+            } else {
+                $('#owner_newProductGroup').hide();
+                $('#owner_new_item_name').val('').prop('required', false);
+                $('#owner_existingProductGroup').show();
+                $('#owner_item_id').prop('required', true);
+                updateOwnerCategoryFields();
+            }
+        });
+
+        // Toggle new category input vs category select dropdown
+        $('#owner_createNewCategoryToggle').on('change', function() {
+            updateOwnerCategoryFields();
+        });
+
+        // Auto-suggest values when selecting a product (Owner Stock modal)
+        $('#owner_item_id').on('change', function() {
+            const selectedOpt = $(this).find('option:selected');
+            if (!selectedOpt.val()) {
+                $('#owner_buying_price_display').val('');
+                $('#owner_buying_price').val('');
+                $('#owner_selling_price_display').val('');
+                $('#owner_selling_price').val('');
+                return;
+            }
+
+            const shopBuying = selectedOpt.data('owner-buying');
+            const shopSelling = selectedOpt.data('owner-selling');
+            const mainSelling = selectedOpt.data('main-selling');
+
+            if (shopBuying && shopSelling) {
+                $('#owner_buying_price').val(shopBuying);
+                $('#owner_buying_price_display').val(formatNumber(shopBuying));
+                $('#owner_selling_price').val(shopSelling);
+                $('#owner_selling_price_display').val(formatNumber(shopSelling));
+            } else if (mainSelling) {
+                $('#owner_buying_price').val(mainSelling);
+                $('#owner_buying_price_display').val(formatNumber(mainSelling));
+                $('#owner_selling_price').val('');
+                $('#owner_selling_price_display').val('');
+            } else {
+                $('#owner_buying_price_display').val('');
+                $('#owner_buying_price').val('');
+                $('#owner_selling_price_display').val('');
+                $('#owner_selling_price').val('');
+            }
+            validateOwnerStockPrices();
+        });
+
+        // Add Owner Stock Form validation
+        $('#addOwnerStockModal form').on('submit', function(e) {
+            const buyingPrice = parseFloat($('#owner_buying_price').val()) || 0;
+            const sellingPrice = parseFloat($('#owner_selling_price').val()) || 0;
+
+            if (sellingPrice < buyingPrice) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Price Too Low',
+                    text: 'Selling price cannot be less than the buying price TZS ' + buyingPrice.toLocaleString() + '.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            }
+        });
+        @endif
 
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));

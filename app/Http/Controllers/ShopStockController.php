@@ -43,7 +43,9 @@ class ShopStockController extends Controller
         $items = collect();
         $categories = collect();
         if ($user->isShopAdmin()) {
-            $items = \App\Models\Item::where(function ($q) use ($user) {
+            $items = \App\Models\Item::with(['shopStocks' => function ($q) use ($user) {
+                $q->where('shop_id', $user->shop_id);
+            }, 'mainStocks'])->where(function ($q) use ($user) {
                 $q->where('is_admin_item', false)
                   ->orWhere(function ($sq) use ($user) {
                       $sq->where('is_admin_item', true)
@@ -196,6 +198,177 @@ class ShopStockController extends Controller
 
         return redirect()->route('shop-stock.index')
             ->with('success', 'Admin stock added to shop successfully.');
+    }
+
+    public function storeOwnerStock(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isShopAdmin() || !$user->allow_stock_addition) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $createNew = $request->boolean('create_new_product');
+        $createNewCategory = $request->boolean('create_new_category');
+
+        if ($createNew) {
+            if ($createNewCategory) {
+                $rules = [
+                    'new_item_name'     => 'required|string|max:150',
+                    'new_category_name' => 'required|string|max:100',
+                    'brand'             => 'nullable|string|max:100',
+                    'model'             => 'nullable|string|max:100',
+                    'specification'     => 'nullable|string',
+                    'buying_price'      => 'required|numeric|min:0',
+                    'selling_price'     => 'required|numeric|min:' . $request->input('buying_price', 0),
+                    'quantity'          => 'required|integer|min:1',
+                    'date_received'     => 'required|date',
+                ];
+            } else {
+                $rules = [
+                    'new_item_name' => 'required|string|max:150',
+                    'category_id'   => 'required|exists:categories,id',
+                    'brand'         => 'nullable|string|max:100',
+                    'model'         => 'nullable|string|max:100',
+                    'specification' => 'nullable|string',
+                    'buying_price'  => 'required|numeric|min:0',
+                    'selling_price' => 'required|numeric|min:' . $request->input('buying_price', 0),
+                    'quantity'      => 'required|integer|min:1',
+                    'date_received' => 'required|date',
+                ];
+            }
+        } else {
+            $rules = [
+                'item_id'       => 'required|exists:items,id',
+                'buying_price'  => 'required|numeric|min:0',
+                'selling_price' => 'required|numeric|min:' . $request->input('buying_price', 0),
+                'quantity'      => 'required|integer|min:1',
+                'date_received' => 'required|date',
+            ];
+        }
+
+        $request->validate($rules, [
+            'selling_price.min' => 'The selling price must be greater than or equal to the buying price.',
+        ]);
+
+        return DB::transaction(function () use ($request, $user, $createNew, $createNewCategory) {
+            if ($createNew) {
+                if ($createNewCategory) {
+                    $categoryName = trim($request->new_category_name);
+                    $category = \App\Models\Category::where('is_admin_category', false)
+                        ->where('category_name', $categoryName)->first();
+
+                    if (!$category) {
+                        $category = \App\Models\Category::create([
+                            'category_name'     => $categoryName,
+                            'is_admin_category' => false,
+                            'shop_id'           => null,
+                        ]);
+                    }
+                    $categoryId = $category->id;
+                } else {
+                    $categoryId = $request->category_id;
+                }
+
+                $item = \App\Models\Item::create([
+                    'item_name'     => $request->new_item_name,
+                    'category_id'   => $categoryId,
+                    'brand'         => $request->brand,
+                    'model'         => $request->model,
+                    'specification' => $request->specification,
+                    'is_admin_item' => false,
+                    'shop_id'       => null,
+                ]);
+                $itemId = $item->id;
+            } else {
+                $itemId = $request->item_id;
+            }
+
+            // 1. Create Main Stock reference record with remaining_quantity = 0
+            $mainStock = \App\Models\MainStock::create([
+                'item_id'            => $itemId,
+                'buying_price'       => $request->buying_price,
+                'selling_price'      => $request->buying_price,
+                'stocked_quantity'   => $request->quantity,
+                'remaining_quantity' => 0,
+                'date_received'      => $request->date_received,
+                'is_price_pending'   => false,
+            ]);
+
+            // 2. Create Stock Transfer record (status = received)
+            $transfer = \App\Models\StockTransfer::create([
+                'from_store'    => 'Main Warehouse',
+                'to_shop'       => $user->shop_id,
+                'approved_by'   => $user->id,
+                'transfer_date' => $request->date_received,
+                'status'        => 'received',
+            ]);
+
+            // 3. Create Stock Transfer Item
+            \App\Models\StockTransferItem::create([
+                'transfer_id'   => $transfer->id,
+                'item_id'       => $itemId,
+                'quantity'      => $request->quantity,
+                'buying_price'  => $request->buying_price,
+                'selling_price' => $request->buying_price,
+                'status'        => 'received',
+                'received_by'   => $user->id,
+                'received_at'   => now(),
+            ]);
+
+            // 4. Create Shop Stock entry (is_admin_stock = false)
+            $stock = ShopStock::create([
+                'shop_id'            => $user->shop_id,
+                'item_id'            => $itemId,
+                'buying_price'       => $request->buying_price,
+                'selling_price'      => $request->selling_price,
+                'quantity'           => $request->quantity,
+                'remaining_quantity' => $request->quantity,
+                'low_stock_alert'    => 1,
+                'date_received'      => $request->date_received,
+                'is_price_pending'   => false,
+                'is_sellable'        => true,
+                'is_admin_stock'     => false,
+            ]);
+
+            // 5. Create Stock Log entry
+            \App\Models\StockLog::create([
+                'item_id'          => $stock->item_id,
+                'from_location'    => 'Supplier (Owner)',
+                'to_location'      => $user->shop->shop_name,
+                'quantity'         => $stock->quantity,
+                'transaction_type' => 'STOCK_RECEIVED',
+                'performed_by'     => $user->id,
+                'date'             => $stock->date_received,
+                'notes'            => 'Owner stock added directly to shop by authorized admin',
+                'is_admin_stock'   => false,
+            ]);
+
+            // 6. Notify sellers of this shop
+            $itemObj = \App\Models\Item::findOrFail($itemId);
+            $sellers = \App\Models\User::where('shop_id', $user->shop_id)
+                ->where('role', 'seller')
+                ->get();
+            foreach ($sellers as $seller) {
+                \App\Models\Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'New Shop Stock Added',
+                    'message' => "Stock added directly for \"{$itemObj->item_name}\" (Qty: {$stock->quantity}) as Owner Stock.",
+                ]);
+            }
+
+            // Notify owners of this stock addition
+            $owners = \App\Models\User::where('role', 'owner')->get();
+            foreach ($owners as $owner) {
+                \App\Models\Notification::create([
+                    'user_id' => $owner->id,
+                    'title'   => 'Owner Stock Added by Admin',
+                    'message' => "Shop Admin \"{$user->name}\" added new owner stock for \"{$itemObj->item_name}\" (Qty: {$stock->quantity}) directly to shop \"{$user->shop->shop_name}\".",
+                ]);
+            }
+
+            return redirect()->route('shop-stock.index')
+                ->with('success', 'Owner stock added and recorded to main store reference successfully.');
+        });
     }
 
     public function show(ShopStock $shopStock)

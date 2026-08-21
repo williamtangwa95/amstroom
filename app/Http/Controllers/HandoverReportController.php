@@ -555,11 +555,6 @@ class HandoverReportController extends Controller
         $sheet->setCellValue('B12', (float)$handover->total_expenses);
 
         $rowNum = 13;
-        if (!auth()->user()->isShopAdmin()) {
-            $sheet->setCellValue('A' . $rowNum, 'Admin Net Profit:');
-            $sheet->setCellValue('B' . $rowNum, (float)$handover->net_profit);
-            $rowNum++;
-        }
 
         $sheet->getStyle('A' . $rowNum . ':B' . $rowNum)->getFont()->setBold(true);
         $sheet->setCellValue('A' . $rowNum, 'Expected Amount to Submit:');
@@ -583,18 +578,32 @@ class HandoverReportController extends Controller
         $sheet->setCellValue('B' . $rowNum, $handover->difference_reason);
         $rowNum++;
 
-        // Transactions details table
+        // Define thin black border style
+        $borderStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => '000000'],
+                ],
+            ],
+        ];
+
+        // Apply borders to Header Details and Financial Summary
+        $sheet->getStyle('A3:B8')->applyFromArray($borderStyle);
+        $sheet->getStyle('A10:B' . ($rowNum - 1))->applyFromArray($borderStyle);
+
+        // Format Financial Summary numbers with thousands separator (B11 to B15)
+        $sheet->getStyle('B11:B' . ($rowNum - 3))->getNumberFormat()->setFormatCode('#,##0');
+
+        // Transactions details table (Removed: Ownership, Purchase Cost, Attributable Amount)
         $tableHeaderRow = $rowNum + 2;
-        $sheet->getStyle('A' . $tableHeaderRow . ':I' . $tableHeaderRow)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $tableHeaderRow . ':F' . $tableHeaderRow)->getFont()->setBold(true);
         $sheet->setCellValue('A' . $tableHeaderRow, 'Date');
         $sheet->setCellValue('B' . $tableHeaderRow, 'Invoice No');
         $sheet->setCellValue('C' . $tableHeaderRow, 'Product');
-        $sheet->setCellValue('D' . $tableHeaderRow, 'Ownership');
-        $sheet->setCellValue('E' . $tableHeaderRow, 'Quantity');
-        $sheet->setCellValue('F' . $tableHeaderRow, 'Selling Price');
-        $sheet->setCellValue('G' . $tableHeaderRow, 'Purchase Cost');
-        $sheet->setCellValue('H' . $tableHeaderRow, 'Total Revenue');
-        $sheet->setCellValue('I' . $tableHeaderRow, 'Attributable Amount');
+        $sheet->setCellValue('D' . $tableHeaderRow, 'Quantity');
+        $sheet->setCellValue('E' . $tableHeaderRow, 'Selling Price');
+        $sheet->setCellValue('F' . $tableHeaderRow, 'Total Revenue');
 
         $rowNum = $tableHeaderRow + 1;
         foreach ($sales as $sale) {
@@ -605,18 +614,20 @@ class HandoverReportController extends Controller
                 $sheet->setCellValue('A' . $rowNum, $sale->sale_date->format('Y-m-d'));
                 $sheet->setCellValue('B' . $rowNum, 'Sale #' . $sale->id);
                 $sheet->setCellValue('C' . $rowNum, $item->display_name);
-                $sheet->setCellValue('D' . $rowNum, 'Owner Stock');
-                $sheet->setCellValue('E' . $rowNum, $item->quantity);
+                $sheet->setCellValue('D' . $rowNum, $item->quantity);
                 
                 $priceVal = (float)($item->owner_realized_sp ?? $item->selling_price);
-                $sheet->setCellValue('F' . $rowNum, $priceVal);
-                $sheet->setCellValue('G' . $rowNum, (float)$item->owner_cost_price);
-                $sheet->setCellValue('H' . $rowNum, (float)($priceVal * $item->quantity));
-                
-                $attributable = $priceVal * $item->quantity;
-                $sheet->setCellValue('I' . $rowNum, (float)$attributable);
+                $sheet->setCellValue('E' . $rowNum, $priceVal);
+                $sheet->setCellValue('F' . $rowNum, (float)($priceVal * $item->quantity));
                 $rowNum++;
             }
+        }
+
+        // Apply borders to transactions table
+        if ($rowNum > $tableHeaderRow + 1) {
+            $sheet->getStyle('A' . $tableHeaderRow . ':F' . ($rowNum - 1))->applyFromArray($borderStyle);
+            // Format numeric values in transactions table (Selling Price and Total Revenue)
+            $sheet->getStyle('E' . ($tableHeaderRow + 1) . ':F' . ($rowNum - 1))->getNumberFormat()->setFormatCode('#,##0');
         }
 
         // Expenses table
@@ -637,10 +648,30 @@ class HandoverReportController extends Controller
             $rowNum++;
         }
 
+        // Apply borders to expenses table
+        if ($rowNum > $expenseHeaderRow + 1) {
+            $sheet->getStyle('A' . $expenseHeaderRow . ':D' . ($rowNum - 1))->applyFromArray($borderStyle);
+            // Format numeric values in expenses table (Amount)
+            $sheet->getStyle('D' . ($expenseHeaderRow + 1) . ':D' . ($rowNum - 1))->getNumberFormat()->setFormatCode('#,##0');
+        }
+
         // Format column auto sizes
-        foreach (range('A', 'I') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+
+        // Set page margins for print layout (in inches)
+        $sheet->getPageMargins()->setTop(0.75);
+        $sheet->getPageMargins()->setRight(0.75);
+        $sheet->getPageMargins()->setBottom(0.75);
+        $sheet->getPageMargins()->setLeft(0.75);
+        $sheet->getPageMargins()->setHeader(0.3);
+        $sheet->getPageMargins()->setFooter(0.3);
+
+        // Set page setup for landscape printing to fit content
+        $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
+        $sheet->getPageSetup()->setFitToWidth(1);
+        $sheet->getPageSetup()->setFitToHeight(0);
 
         $writer = new Xlsx($spreadsheet);
         

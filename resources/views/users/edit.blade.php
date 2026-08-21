@@ -41,10 +41,16 @@
                         @if(auth()->user()->isOwner())
                         <div class="col-md-6">
                             <label class="form-label">System Role *</label>
-                            <select name="role" class="form-select" required>
-                                <option value="shop_admin" {{ old('role', $user->role)==='shop_admin' ? 'selected' : '' }}>Shop Admin</option>
+                            <select name="role" id="roleSelect" class="form-select" required>
                                 <option value="seller" {{ old('role', $user->role)==='seller' ? 'selected' : '' }}>Seller</option>
+                                <option value="shop_admin" {{ old('role', $user->role)==='shop_admin' ? 'selected' : '' }}>Shop Admin</option>
                             </select>
+                        </div>
+                        <div class="col-md-6 align-self-end" id="allow_stock_addition_wrapper" style="display: {{ old('role', $user->role) === 'shop_admin' ? 'block' : 'none' }}; margin-bottom: 8px;">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="allow_stock_addition" id="allow_stock_addition" value="1" {{ old('allow_stock_addition', $user->allow_stock_addition) ? 'checked' : '' }}>
+                                <label class="form-check-label fw-600" for="allow_stock_addition">Allow Owner Stock Addition</label>
+                            </div>
                         </div>
                         @else
                         {{-- Shop admin: role is always seller, show as read-only badge --}}
@@ -100,3 +106,19 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(() => {
+    $('#roleSelect').on('change', function() {
+        const wrapper = $('#allow_stock_addition_wrapper');
+        if ($(this).val() === 'shop_admin') {
+            wrapper.show();
+        } else {
+            wrapper.hide();
+            $('#allow_stock_addition').prop('checked', false);
+        }
+    });
+});
+</script>
+@endpush

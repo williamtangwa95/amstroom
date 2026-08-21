@@ -17,6 +17,7 @@
                     <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
                 </select>
             </div>
+            @if(auth()->user()->isOwner())
             <div class="col-md-3">
                 <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -27,6 +28,14 @@
                     @endforeach
                 </select>
             </div>
+            @else
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+                <select name="shop_id" class="form-select form-select-sm" disabled>
+                    <option value="{{ auth()->user()->shop_id }}" selected>{{ auth()->user()->shop?->shop_name ?? 'My Shop' }}</option>
+                </select>
+            </div>
+            @endif
             @if($period === 'custom')
             <div class="col-md-2">
                 <label class="form-label mb-1" style="font-size:.75rem;">From</label>

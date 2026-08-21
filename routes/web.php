@@ -139,6 +139,7 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');
         Route::get('shop-stock/warehouse-available', [ShopStockController::class, 'warehouseAvailable'])->name('shop-stock.warehouse-available');
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
+        Route::post('shop-stock/owner-stock', [ShopStockController::class, 'storeOwnerStock'])->name('shop-stock.store-owner-stock');
         Route::get('shop-stock/import-template', [ShopStockController::class, 'downloadTemplate'])->name('shop-stock.import-template');
         Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');
         Route::get('shop-stock/{shopStock}/edit', [ShopStockController::class, 'edit'])->name('shop-stock.edit');

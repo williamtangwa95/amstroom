@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, LogsActivity;
 
     protected $fillable = [
-        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path',
+        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path', 'allow_stock_addition',
     ];
 
     protected $hidden = [
@@ -25,6 +25,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'allow_stock_addition' => 'boolean',
         ];
     }
 
