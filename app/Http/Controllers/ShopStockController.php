@@ -611,11 +611,21 @@ class ShopStockController extends Controller
             $rules['shop_id'] = 'required|exists:shops,id';
         }
 
+        if ($user->isShopAdmin() && $user->allow_stock_addition) {
+            $rules['stock_type'] = 'required|in:admin,owner';
+        }
+
         $request->validate($rules);
 
         $shopId = $user->isOwner() ? $request->shop_id : $user->shop_id;
         $shop = Shop::findOrFail($shopId);
-        $isAdminStock = $user->isShopAdmin(); // Shop Admin imports as Admin Stock, Owner imports as standard stock
+        
+        $isShopAdminOwnerStock = false;
+        if ($user->isShopAdmin() && $user->allow_stock_addition && $request->get('stock_type') === 'owner') {
+            $isShopAdminOwnerStock = true;
+        }
+
+        $isAdminStock = $user->isShopAdmin() && !$isShopAdminOwnerStock;
 
         $file = $request->file('excel_file');
         
@@ -776,7 +786,7 @@ class ShopStockController extends Controller
 
         // Second pass: database insertion in transaction
         try {
-            DB::transaction(function () use ($importData, $shopId, $shop, $isAdminStock, $user) {
+            DB::transaction(function () use ($importData, $shopId, $shop, $isAdminStock, $isShopAdminOwnerStock, $user) {
                 foreach ($importData as $data) {
                     $item = $data['item_object'];
 
@@ -811,6 +821,40 @@ class ShopStockController extends Controller
                         ]);
                     }
 
+                    if ($isShopAdminOwnerStock) {
+                        // 1. Create Main Stock reference record with remaining_quantity = 0
+                        \App\Models\MainStock::create([
+                            'item_id'            => $item->id,
+                            'buying_price'       => $data['buying_price'],
+                            'selling_price'      => $data['buying_price'],
+                            'stocked_quantity'   => $data['quantity'],
+                            'remaining_quantity' => 0,
+                            'date_received'      => $data['date_received'],
+                            'is_price_pending'   => false,
+                        ]);
+
+                        // 2. Create Stock Transfer record (status = received)
+                        $transfer = \App\Models\StockTransfer::create([
+                            'from_store'    => 'Main Warehouse',
+                            'to_shop'       => $shopId,
+                            'approved_by'   => $user->id,
+                            'transfer_date' => $data['date_received'],
+                            'status'        => 'received',
+                        ]);
+
+                        // 3. Create Stock Transfer Item
+                        \App\Models\StockTransferItem::create([
+                            'transfer_id'   => $transfer->id,
+                            'item_id'       => $item->id,
+                            'quantity'      => $data['quantity'],
+                            'buying_price'  => $data['buying_price'],
+                            'selling_price' => $data['buying_price'],
+                            'status'        => 'received',
+                            'received_by'   => $user->id,
+                            'received_at'   => now(),
+                        ]);
+                    }
+
                     $stock = ShopStock::create([
                         'shop_id' => $shopId,
                         'item_id' => $item->id,
@@ -827,29 +871,41 @@ class ShopStockController extends Controller
 
                     StockLog::create([
                         'item_id' => $item->id,
-                        'from_location' => $isAdminStock ? 'Supplier (Admin)' : 'Supplier',
+                        'from_location' => $isAdminStock ? 'Supplier (Admin)' : ($isShopAdminOwnerStock ? 'Supplier (Owner)' : 'Supplier'),
                         'to_location' => $shop->shop_name,
                         'quantity' => $data['quantity'],
                         'transaction_type' => 'STOCK_RECEIVED',
                         'performed_by' => $user->id,
                         'date' => $data['date_received'],
-                        'notes' => 'Imported from Excel',
+                        'notes' => $isShopAdminOwnerStock ? 'Owner stock added directly to shop by authorized admin (Excel)' : 'Imported from Excel',
                         'is_admin_stock' => $isAdminStock,
                     ]);
                 }
             });
 
-            // Send consolidated notification to shop staff
+            // Send consolidated notification to shop staff and owners
             $roleLabel = $user->isOwner() ? 'Owner' : 'Admin';
             $sellers = User::where('shop_id', $shopId)->where('role', 'seller')->get();
             foreach ($sellers as $seller) {
                 Notification::create([
                     'user_id' => $seller->id,
-                    'title'   => 'New Stock Uploaded',
-                    'message' => "{$roleLabel} has imported " . count($importData) . " new stock batches from an Excel sheet to the shop.",
+                    'title'   => $isShopAdminOwnerStock ? 'New Shop Stock Added' : 'New Stock Uploaded',
+                    'message' => $isShopAdminOwnerStock 
+                        ? "Stock added directly from Excel as Owner Stock." 
+                        : "{$roleLabel} has imported " . count($importData) . " new stock batches from an Excel sheet to the shop.",
                 ]);
             }
-            if ($user->isOwner()) {
+            
+            if ($isShopAdminOwnerStock) {
+                $owners = User::where('role', 'owner')->get();
+                foreach ($owners as $owner) {
+                    Notification::create([
+                        'user_id' => $owner->id,
+                        'title'   => 'Owner Stock Added by Admin (Excel)',
+                        'message' => "Shop Admin \"{$user->name}\" added " . count($importData) . " owner stock batches directly to shop \"{$shop->shop_name}\" via Excel import.",
+                    ]);
+                }
+            } elseif ($user->isOwner()) {
                 $admins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
                 foreach ($admins as $admin) {
                     Notification::create([

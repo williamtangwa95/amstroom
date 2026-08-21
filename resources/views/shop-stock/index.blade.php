@@ -834,6 +834,16 @@
                     </div>
                     @endif
 
+                    @if(auth()->user()->isShopAdmin() && auth()->user()->allow_stock_addition)
+                    <div class="mb-3">
+                        <label for="import_stock_type" class="form-label" style="font-size:0.8rem;">Stock Type *</label>
+                        <select name="stock_type" id="import_stock_type" class="form-select form-select-sm" required>
+                            <option value="admin">Admin Stock</option>
+                            <option value="owner">Owner Stock</option>
+                        </select>
+                    </div>
+                    @endif
+
                     <div class="mb-4 text-center py-3 border border-dashed rounded bg-light" style="border-style: dashed !important; border-width: 2px !important; border-color: var(--accent) !important; background: rgba(0, 136, 204, 0.03) !important;">
                         <i class="bi bi-cloud-arrow-up text-accent" style="font-size: 3rem;"></i>
                         <p class="mt-2 small text-muted">Select an Excel or CSV file to import shop stocks.</p>
