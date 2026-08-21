@@ -20,6 +20,7 @@ class Expense extends Model
         'recorded_by',
         'approved_by',
         'status',
+        'handover_report_id',
     ];
 
     protected $casts = [
@@ -34,6 +35,11 @@ class Expense extends Model
     public function recorder()
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function handoverReport()
+    {
+        return $this->belongsTo(HandoverReport::class);
     }
 
     public function approver()

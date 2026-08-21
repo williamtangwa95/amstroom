@@ -507,7 +507,10 @@ class StockTransferController extends Controller
             $transfer->load('shop');
         }
 
-        DB::transaction(function () use ($transferItem, $transfer, $user) {
+        $transferId     = $transfer?->id;
+        $transferDeleted = false;
+
+        DB::transaction(function () use ($transferItem, $transfer, $user, &$transferDeleted) {
             // Restore stock to main warehouse
             $this->restoreMainStock($transferItem->item_id, $transferItem->quantity);
 
@@ -524,10 +527,69 @@ class StockTransferController extends Controller
 
             $transferItem->delete();
 
-            $this->updateTransferStatus($transfer);
+            // Check if transfer now has no items — if so, delete the transfer too
+            $remainingItems = $transfer->items()->count();
+            if ($remainingItems === 0) {
+                $transfer->delete();
+                $transferDeleted = true;
+            } else {
+                $this->updateTransferStatus($transfer);
+            }
         });
 
+        if ($transferDeleted) {
+            return redirect()->route('stock-transfers.index')
+                ->with('success', 'Last item removed. Transfer has been deleted as it contained no more items.');
+        }
+
         return back()->with('success', 'Item removed from transfer and stock returned to Main Warehouse.');
+    }
+
+    /**
+     * Owner: Delete an empty transfer (no items).
+     */
+    public function destroyTransfer(StockTransfer $stockTransfer)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isOwner()) {
+            abort(403, 'Only the owner can delete transfers.');
+        }
+
+        // Safety: only allow deletion if all items are non-received (or transfer is empty)
+        $receivedCount = $stockTransfer->items()->where('status', 'received')->count();
+        if ($receivedCount > 0) {
+            return back()->with('error', 'Cannot delete a transfer that has received items.');
+        }
+
+        $itemsCount = $stockTransfer->items()->count();
+
+        DB::transaction(function () use ($stockTransfer, $user) {
+            // Restore warehouse stock for any pending/rejected items
+            foreach ($stockTransfer->items as $item) {
+                $this->restoreMainStock($item->item_id, $item->quantity);
+
+                StockLog::create([
+                    'item_id'          => $item->item_id,
+                    'from_location'    => 'Main Warehouse',
+                    'to_location'      => $stockTransfer->shop?->shop_name ?? 'Shop',
+                    'quantity'         => $item->quantity,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now()->toDateString(),
+                    'notes'            => "Transfer #{$stockTransfer->id} deleted — stock returned to Main Warehouse.",
+                ]);
+            }
+
+            $stockTransfer->items()->delete();
+            $stockTransfer->delete();
+        });
+
+        $msg = $itemsCount > 0
+            ? "Transfer deleted. {$itemsCount} item(s) stock returned to Main Warehouse."
+            : 'Empty transfer deleted.';
+
+        return redirect()->route('stock-transfers.index')->with('success', $msg);
     }
 
     /**

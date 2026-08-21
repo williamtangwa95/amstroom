@@ -47,6 +47,7 @@
                             <label class="form-label">Email</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email', $shop->email) }}">
                         </div>
+                        @if(auth()->user()->isOwner())
                         <div class="col-12">
                             <label class="form-label">Status *</label>
                             <select name="status" class="form-select" required>
@@ -54,6 +55,7 @@
                                 <option value="inactive" {{ old('status', $shop->status)==='inactive' ? 'selected' : '' }}>Inactive</option>
                             </select>
                         </div>
+                        @endif
                     </div>
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-accent"><i class="bi bi-check-circle me-1"></i>Update Shop</button>

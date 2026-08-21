@@ -22,6 +22,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\HandoverReportController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -56,7 +57,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:owner')->group(function () {
 
         // Shops
-        Route::resource('shops', ShopController::class);
         Route::post('shops/{shop}/assign-employee', [ShopController::class, 'assignEmployee'])->name('shops.assign-employee');
 
         // Categories
@@ -88,10 +88,6 @@ Route::middleware('auth')->group(function () {
         Route::get('stock-transfers/create', [StockTransferController::class, 'create'])->name('stock-transfers.create');
         Route::post('stock-transfers', [StockTransferController::class, 'store'])->name('stock-transfers.store');
 
-        // Users
-        Route::resource('users', UserController::class);
-
-
 
         // Audit Logs
         Route::get('stock-logs', [StockLogController::class, 'index'])->name('stock-logs.index');
@@ -106,6 +102,10 @@ Route::middleware('auth')->group(function () {
 
     // ─── OWNER + SHOP ADMIN ──────────────────────────────────────────────────
     Route::middleware('role:owner,shop_admin')->group(function () {
+
+        // Employee / User Management (owner: all; shop_admin: own sellers only — enforced in controller)
+        Route::resource('users', UserController::class);
+        Route::resource('shops', ShopController::class);
 
         // Stock Requests
         Route::get('stock-requests', [StockRequestController::class, 'index'])->name('stock-requests.index');
@@ -126,6 +126,7 @@ Route::middleware('auth')->group(function () {
         Route::put('stock-transfers/item/{transferItem}', [StockTransferController::class, 'updateItem'])->name('stock-transfers.update-item');
         Route::delete('stock-transfers/item/{transferItem}', [StockTransferController::class, 'deleteItem'])->name('stock-transfers.delete-item');
         Route::post('stock-transfers/{stockTransfer}/add-item', [StockTransferController::class, 'addItem'])->name('stock-transfers.add-item');
+        Route::delete('stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroyTransfer'])->name('stock-transfers.destroy');
 
         // Shop Admin: Approve/Reject/Revert sale returns
         Route::post('sales-returns/{saleReturn}/approve', [SaleReturnController::class, 'approve'])->name('sales-returns.approve');
@@ -136,6 +137,7 @@ Route::middleware('auth')->group(function () {
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');
+        Route::get('shop-stock/warehouse-available', [ShopStockController::class, 'warehouseAvailable'])->name('shop-stock.warehouse-available');
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
         Route::get('shop-stock/import-template', [ShopStockController::class, 'downloadTemplate'])->name('shop-stock.import-template');
         Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');
@@ -144,6 +146,19 @@ Route::middleware('auth')->group(function () {
         Route::delete('shop-stock/{shopStock}', [ShopStockController::class, 'destroy'])->name('shop-stock.destroy');
         Route::post('shop-stock/{shopStock}/request-edit', [ShopStockController::class, 'requestEdit'])->name('shop-stock.request-edit');
         Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');
+
+        // Handover Reports
+        Route::get('handovers', [HandoverReportController::class, 'index'])->name('handovers.index');
+        Route::get('handovers/create', [HandoverReportController::class, 'create'])->name('handovers.create');
+        Route::post('handovers', [HandoverReportController::class, 'store'])->name('handovers.store');
+        Route::get('handovers/{handover}', [HandoverReportController::class, 'show'])->name('handovers.show');
+        Route::post('handovers/{handover}/submit', [HandoverReportController::class, 'submit'])->name('handovers.submit');
+        Route::post('handovers/{handover}/approve', [HandoverReportController::class, 'approve'])->name('handovers.approve');
+        Route::post('handovers/{handover}/reject', [HandoverReportController::class, 'reject'])->name('handovers.reject');
+        Route::post('handovers/{handover}/confirm-receipt', [HandoverReportController::class, 'confirmReceipt'])->name('handovers.confirm-receipt');
+        Route::delete('handovers/{handover}', [HandoverReportController::class, 'destroy'])->name('handovers.destroy');
+        Route::get('handovers/{handover}/export-excel', [HandoverReportController::class, 'exportExcel'])->name('handovers.export-excel');
+        Route::get('handovers/{handover}/export-pdf', [HandoverReportController::class, 'exportPdf'])->name('handovers.export-pdf');
     });
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────

@@ -7,11 +7,37 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h5 class="mb-0 fw-700">Employees</h5>
-        <small style="color:var(--text-secondary);">Manage Shop Admins and Sellers</small>
+        <h5 class="mb-0 fw-700">
+            @if(auth()->user()->isShopAdmin() && $shopName)
+                {{ $shopName }} — Sellers
+            @else
+                Employees
+            @endif
+        </h5>
+        <small style="color:var(--text-secondary);">
+            @if(auth()->user()->isShopAdmin())
+                Manage sellers in your shop
+            @else
+                Manage Shop Admins and Sellers
+            @endif
+        </small>
     </div>
-    <a href="{{ route('users.create') }}" class="btn btn-accent"><i class="bi bi-person-plus-fill me-1"></i> Register Employee</a>
+    <a href="{{ route('users.create') }}" class="btn btn-accent">
+        <i class="bi bi-person-plus-fill me-1"></i>
+        @if(auth()->user()->isShopAdmin()) Add Seller @else Register Employee @endif
+    </a>
 </div>
+
+@if(session('success'))
+<div class="alert alert-success border-0 rounded-3 mb-3" style="font-size:.83rem;">
+    <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}
+</div>
+@endif
+@if(session('error'))
+<div class="alert alert-danger border-0 rounded-3 mb-3" style="font-size:.83rem;">
+    <i class="bi bi-exclamation-circle-fill me-1"></i> {{ session('error') }}
+</div>
+@endif
 
 <div class="card">
     <div class="card-body p-0">
@@ -23,7 +49,9 @@
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Role</th>
+                    @if(auth()->user()->isOwner())
                     <th>Assigned Shop</th>
+                    @endif
                     <th class="no-sort">Actions</th>
                 </tr>
             </thead>
@@ -39,6 +67,7 @@
                             {{ str_replace('_', ' ', ucfirst($u->role)) }}
                         </span>
                     </td>
+                    @if(auth()->user()->isOwner())
                     <td>
                         @if($u->shop)
                         <span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">
@@ -48,10 +77,11 @@
                         <span style="font-size:.75rem;color:var(--text-secondary);">Unassigned</span>
                         @endif
                     </td>
+                    @endif
                     <td>
                         <div class="d-flex gap-1">
-                            <a href="{{ route('users.show', $u) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('users.edit', $u) }}" class="btn btn-xs btn-outline-custom"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ route('users.show', $u) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
+                            <a href="{{ route('users.edit', $u) }}" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
                             <form method="POST" action="{{ route('users.destroy', $u) }}" id="del-user-{{ $u->id }}">
                                 @csrf @method('DELETE')
                                 <button type="button" class="btn btn-xs btn-outline-custom"

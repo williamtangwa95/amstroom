@@ -6,7 +6,10 @@ use App\Models\ShopStock;
 use App\Models\Shop;
 use App\Models\Item;
 use App\Models\Category;
+use App\Models\MainStock;
 use App\Models\StockLog;
+use App\Models\StockTransfer;
+use App\Models\StockTransferItem;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -975,6 +978,99 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized.');
         }
 
+        if ($user->isOwner()) {
+            // ── OWNER: create a proper stock transfer from warehouse ──────────
+            $request->validate([
+                'shop_id'  => 'required|exists:shops,id',
+                'item_id'  => 'required|exists:items,id',
+                'quantity' => 'required|integer|min:1',
+            ]);
+
+            $itemId  = $request->item_id;
+            $shopId  = $request->shop_id;
+            $qty     = $request->quantity;
+            $item    = \App\Models\Item::findOrFail($itemId);
+            $shop    = \App\Models\Shop::findOrFail($shopId);
+
+            // Check warehouse availability
+            $available = \App\Models\MainStock::where('item_id', $itemId)
+                ->where('remaining_quantity', '>', 0)
+                ->sum('remaining_quantity');
+
+            if ($available < $qty) {
+                return back()->withInput()->withErrors([
+                    'quantity' => "Insufficient warehouse stock for \"{$item->item_name}\". Available: {$available}, Requested: {$qty}.",
+                ]);
+            }
+
+            // Get pricing from latest available batch
+            $mainStock = \App\Models\MainStock::where('item_id', $itemId)
+                ->where('remaining_quantity', '>', 0)
+                ->orderByDesc('date_received')
+                ->first();
+
+            DB::transaction(function () use ($request, $shop, $shopId, $itemId, $qty, $item, $mainStock) {
+                // Create transfer record
+                $transfer = \App\Models\StockTransfer::create([
+                    'from_store'    => 'Main Warehouse',
+                    'to_shop'       => $shopId,
+                    'approved_by'   => Auth::id(),
+                    'request_id'    => null,
+                    'transfer_date' => now()->toDateString(),
+                    'status'        => 'pending_receipt',
+                ]);
+
+                // Deduct from warehouse (FIFO)
+                $remaining = $qty;
+                $batches   = \App\Models\MainStock::where('item_id', $itemId)
+                    ->where('remaining_quantity', '>', 0)
+                    ->orderBy('date_received')
+                    ->get();
+                foreach ($batches as $batch) {
+                    if ($remaining <= 0) break;
+                    $deduct = min($batch->remaining_quantity, $remaining);
+                    $batch->decrement('remaining_quantity', $deduct);
+                    $remaining -= $deduct;
+                }
+
+                // Create transfer item
+                \App\Models\StockTransferItem::create([
+                    'transfer_id'   => $transfer->id,
+                    'item_id'       => $itemId,
+                    'quantity'      => $qty,
+                    'buying_price'  => $mainStock?->buying_price ?? 0,
+                    'selling_price' => $mainStock?->selling_price ?? 0,
+                    'status'        => 'pending',
+                ]);
+
+                // Audit log
+                StockLog::create([
+                    'item_id'          => $itemId,
+                    'from_location'    => 'Main Warehouse',
+                    'to_location'      => $shop->shop_name,
+                    'quantity'         => $qty,
+                    'transaction_type' => 'STOCK_TRANSFER',
+                    'performed_by'     => Auth::id(),
+                    'date'             => now()->toDateString(),
+                    'notes'            => "Quick restock: dispatched {$qty} units of \"{$item->item_name}\" to {$shop->shop_name} (Transfer #{$transfer->id})",
+                ]);
+
+                // Notify shop admins
+                $shopAdmins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
+                foreach ($shopAdmins as $admin) {
+                    Notification::create([
+                        'user_id' => $admin->id,
+                        'title'   => 'Quick Restock Dispatched',
+                        'message' => "Owner dispatched {$qty} unit(s) of \"{$item->item_name}\" to your shop via quick restock (Transfer #{$transfer->id}). Please confirm receipt.",
+                    ]);
+                }
+            });
+
+            return redirect()->route('stock-transfers.index')
+                ->with('success', "Quick restock dispatched: {$qty} unit(s) of \"{$item->item_name}\" sent to {$shop->shop_name}. Awaiting shop admin receipt confirmation.");
+        }
+
+        // ── SHOP ADMIN: direct admin stock restock ───────────────────────
         $request->validate([
             'shop_id'            => 'required|exists:shops,id',
             'item_id'            => 'required|exists:items,id',
@@ -985,10 +1081,6 @@ class ShopStockController extends Controller
             'low_stock_alert'    => 'required|integer|min:0',
         ]);
 
-        // Restock is always admin stock when performed by a shop admin,
-        // regardless of whether the source batch was owner stock or admin stock.
-        $isAdminStock = $user->isShopAdmin();
-
         $shopStock = ShopStock::create([
             'shop_id'            => $request->shop_id,
             'item_id'            => $request->item_id,
@@ -998,24 +1090,42 @@ class ShopStockController extends Controller
             'remaining_quantity' => $request->quantity,
             'date_received'      => $request->date_received,
             'low_stock_alert'    => $request->low_stock_alert,
-            'is_admin_stock'     => $isAdminStock,
+            'is_admin_stock'     => true,
             'is_sellable'        => true,
         ]);
 
-
-        \App\Models\StockLog::create([
+        StockLog::create([
             'item_id'          => $shopStock->item_id,
-            'from_location'    => 'Main Store / Restock',
+            'from_location'    => 'Admin Restock',
             'to_location'      => $shopStock->shop->shop_name,
             'quantity'         => $shopStock->quantity,
             'transaction_type' => 'STOCK_RECEIVED',
             'performed_by'     => Auth::id(),
             'date'             => $shopStock->date_received,
-            'notes'            => "Quick restocked {$shopStock->quantity} units for product \"{$shopStock->item->item_name}\"",
-            'is_admin_stock'   => $isAdminStock,
+            'notes'            => "Quick restocked {$shopStock->quantity} units for product \"{$shopStock->item->item_name}\" (Admin Stock)",
+            'is_admin_stock'   => true,
         ]);
 
         return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
-            ->with('success', 'Product quick restocked successfully.');
+            ->with('success', 'Admin stock quick restocked successfully.');
+    }
+
+    /**
+     * Return available warehouse quantity for a given item (AJAX).
+     */
+    public function warehouseAvailable(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $itemId    = $request->input('item_id');
+        $available = \App\Models\MainStock::where('item_id', $itemId)
+            ->where('remaining_quantity', '>', 0)
+            ->sum('remaining_quantity');
+
+        return response()->json(['available' => (int) $available]);
     }
 }
+

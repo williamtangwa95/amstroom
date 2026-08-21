@@ -10,17 +10,29 @@ class ShopController extends Controller
 {
     public function index()
     {
-        $shops = Shop::withCount(['users', 'sales'])->latest()->get();
+        $user = auth()->user();
+        if ($user->isOwner()) {
+            $shops = Shop::withCount(['users', 'sales'])->latest()->get();
+        } else {
+            $shops = Shop::where('id', $user->shop_id)->withCount(['users', 'sales'])->get();
+        }
         return view('shops.index', compact('shops'));
     }
 
     public function create()
     {
+        if (!auth()->user()->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
         return view('shops.create');
     }
 
     public function store(Request $request)
     {
+        if (!auth()->user()->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $data = $request->validate([
             'shop_name' => 'required|string|max:150',
             'location'  => 'required|string|max:255',
@@ -43,6 +55,11 @@ class ShopController extends Controller
 
     public function show(Shop $shop)
     {
+        $user = auth()->user();
+        if (!$user->isOwner() && $user->shop_id !== $shop->id) {
+            abort(403, 'Unauthorized.');
+        }
+
         $shop->load([
             'users',
             'shopStocks' => function ($q) {
@@ -56,20 +73,34 @@ class ShopController extends Controller
 
     public function edit(Shop $shop)
     {
+        $user = auth()->user();
+        if (!$user->isOwner() && $user->shop_id !== $shop->id) {
+            abort(403, 'Unauthorized.');
+        }
         return view('shops.edit', compact('shop'));
     }
 
     public function update(Request $request, Shop $shop)
     {
-        $data = $request->validate([
+        $user = auth()->user();
+        if (!$user->isOwner() && $user->shop_id !== $shop->id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $rules = [
             'shop_name' => 'required|string|max:150',
             'location'  => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
             'email'     => 'nullable|email|max:100',
             'slogan'    => 'nullable|string|max:255',
             'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
-            'status'    => 'required|in:active,inactive',
-        ]);
+        ];
+
+        if ($user->isOwner()) {
+            $rules['status'] = 'required|in:active,inactive';
+        }
+
+        $data = $request->validate($rules);
 
         if ($request->hasFile('logo')) {
             if ($shop->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($shop->logo)) {
@@ -80,12 +111,16 @@ class ShopController extends Controller
 
         $shop->update($data);
 
-        return redirect()->route('shops.index')
+        return redirect()->route('shops.show', $shop)
             ->with('success', 'Shop updated successfully.');
     }
 
     public function destroy(Shop $shop)
     {
+        if (!auth()->user()->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $shop->delete();
         return redirect()->route('shops.index')
             ->with('success', 'Shop deleted successfully.');
@@ -93,6 +128,10 @@ class ShopController extends Controller
 
     public function assignEmployee(Request $request, Shop $shop)
     {
+        if (!auth()->user()->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);

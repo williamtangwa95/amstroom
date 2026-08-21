@@ -5,6 +5,25 @@
 <li class="breadcrumb-item active">Shop Stock</li>
 @endsection
 @section('content')
+<style>
+    #shopStockTable .bi {
+        font-size: 0.78rem !important;
+    }
+    #shopStockTable .btn .bi {
+        font-size: 0.72rem !important;
+    }
+    #shopStockTable .btn,
+    #shopStockTable .btn-xs {
+        padding: 3.5px 7px !important;
+        font-size: 0.76rem !important;
+        line-height: 1.3 !important;
+        min-height: auto !important;
+    }
+    /* Specific adjustment for toggler to stay perfectly square */
+    #shopStockTable .toggle-child-details {
+        padding: 3px 8px !important;
+    }
+</style>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h5 class="mb-0 fw-700">Shop Inventory</h5>
@@ -99,13 +118,16 @@
                 @endphp
                 @foreach($groupedStocks as $groupKey => $groupItems)
                 @php
+                // Filter out batches with zero remaining quantity for a cleaner batch list
+                $activeGroupItems = $groupItems->filter(fn($st) => $st->remaining_quantity > 0);
                 $firstSt = $groupItems->first();
                 $totalQty = $groupItems->sum('quantity');
                 $totalRemainingQty = $groupItems->sum('remaining_quantity');
                 $isLowStockGroup = $totalRemainingQty <= $groupItems->max('low_stock_alert');
 
                 $allIds = $groupItems->pluck('id')->toArray();
-                $hasMultiple = $groupItems->count() > 1;
+                // hasMultiple based on active (non-zero) batches
+                $hasMultiple = $activeGroupItems->count() > 1;
 
                 $hasPendingQtyRequest = $groupItems->contains(function($item) {
                 return !is_null($item->pending_quantity_request);
@@ -145,7 +167,7 @@
                                 <div style="font-weight:600;font-size:.83rem;">{{ $firstSt->item->item_name }}</div>
                                 <div style="font-size:.7rem;color:var(--text-secondary);">
                                     {{ $firstSt->item->brand }}
-                                    <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">{{ $groupItems->count() }} Batches</span>
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">{{ $activeGroupItems->count() }} Batch{{ $activeGroupItems->count() === 1 ? '' : 'es' }}</span>
                                     @if($firstSt->is_admin_stock)
                                     <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>
                                     @endif
@@ -237,12 +259,13 @@
                                                     <th>Date Received</th>
                                                     <th>Initial Qty</th>
                                                     <th>Remaining Qty</th>
+                                                    <th>Stock Source</th>
                                                     <th>Alert Threshold</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($groupItems as $st)
+                                                @foreach($activeGroupItems as $st)
                                                 <tr class="{{ $st->isLowStock() ? 'low-stock-row' : '' }}">
                                                     <td>
                                                         @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
@@ -260,6 +283,13 @@
                                                         </strong>
                                                         @if($st->isLowStock())
                                                         <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.7rem;" title="Low Stock!"></i>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if($st->is_admin_stock)
+                                                        <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;">Admin Stock</span>
+                                                        @else
+                                                        <span style="background:rgba(245,158,11,.12);color:#f59e0b;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;">Owner Stock</span>
                                                         @endif
                                                     </td>
                                                     <td class="text-secondary">
@@ -786,15 +816,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
             <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
-                <h5 class="modal-title fw-700" id="quickRestockModalLabel"><i class="bi bi-plus-square text-success me-2"></i>Quick Restock</h5>
+                <h5 class="modal-title fw-700" id="quickRestockModalLabel"><i class="bi bi-arrow-left-right text-success me-2"></i>Quick Restock</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
             </div>
             <form action="{{ route('shop-stock.quick-restock') }}" method="POST">
                 @csrf
                 <div class="modal-body text-start">
-                    <p class="mb-3 text-secondary small">
-                        Adding a new stock batch for <strong id="restockItemName" class="text-white"></strong> with identical pricing details.
-                    </p>
 
                     <input type="hidden" name="shop_id" id="restockShopId">
                     <input type="hidden" name="item_id" id="restockItemId">
@@ -803,19 +830,52 @@
                     <input type="hidden" name="low_stock_alert" id="restockLowStockAlert">
                     <input type="hidden" name="is_admin_stock" id="restockIsAdminStock">
 
+                    @if(auth()->user()->isOwner())
+                    {{-- Owner flow: stock transfer from warehouse --}}
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.82rem; background:rgba(57,178,255,.08); border-color:rgba(57,178,255,.25); color:#39b2ff;">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        This will create a <strong>stock transfer</strong> from the Main Warehouse to the shop.
+                        The shop admin will confirm receipt before stock is added.
+                    </div>
+                    <p class="mb-3 text-secondary small">
+                        Dispatching <strong id="restockItemName" class="text-white"></strong> from Main Warehouse to shop.
+                    </p>
+                    <div class="mb-2 p-2 rounded" style="background:rgba(63,185,80,.06); border:1px solid rgba(63,185,80,.18); font-size:.82rem;">
+                        <span class="text-secondary">Warehouse Available:</span>
+                        <strong id="restockWarehouseAvailable" class="text-success ms-1">—</strong>
+                        <span class="text-secondary ms-1">units</span>
+                        <div id="restockWarehouseWarning" class="text-danger small mt-1 d-none">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Requested quantity exceeds available warehouse stock!
+                        </div>
+                    </div>
+                    @else
+                    {{-- ShopAdmin flow: direct admin stock restock --}}
+                    <p class="mb-3 text-secondary small">
+                        Adding a new admin stock batch for <strong id="restockItemName" class="text-white"></strong>.
+                    </p>
+                    @endif
+
                     <div class="mb-3">
                         <label for="restock_quantity" class="form-label small fw-600">Quantity to Restock *</label>
                         <input type="number" name="quantity" id="restock_quantity" class="form-control form-control-sm" min="1" required placeholder="e.g. 20">
                     </div>
 
+                    @if(!auth()->user()->isOwner())
                     <div class="mb-3">
                         <label for="restock_date" class="form-label small fw-600">Date Received *</label>
                         <input type="date" name="date_received" id="restock_date" class="form-control form-control-sm" required value="{{ now()->toDateString() }}">
                     </div>
+                    @endif
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--card-border);">
                     <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-success">Save Restock</button>
+                    <button type="submit" class="btn btn-sm btn-success" id="restockSubmitBtn">
+                        @if(auth()->user()->isOwner())
+                        <i class="bi bi-send me-1"></i> Dispatch to Shop
+                        @else
+                        <i class="bi bi-plus-circle me-1"></i> Save Restock
+                        @endif
+                    </button>
                 </div>
             </form>
         </div>
@@ -895,12 +955,51 @@
             $('#restockLowStockAlert').val(lowStockAlert);
             $('#restockIsAdminStock').val(isAdminStock);
 
-            // Clear previous quantity input
-            $('#restock_quantity').val('');
+            // Clear previous quantity input and warnings
+            $('#restock_quantity').val('').removeClass('is-invalid');
+            $('#restockWarehouseWarning').addClass('d-none');
+            $('#restockSubmitBtn').prop('disabled', false);
+
+            @if(auth()->user()->isOwner())
+            // Owner flow: fetch available warehouse stock for this item
+            $('#restockWarehouseAvailable').text('Loading...');
+            $.get('{{ route("shop-stock.warehouse-available") }}', { item_id: itemId })
+                .done(function(res) {
+                    const available = parseInt(res.available || 0);
+                    $('#restockWarehouseAvailable').text(available.toLocaleString());
+                    $('#restockWarehouseAvailable').data('available', available);
+                    // Validate current qty input if already filled
+                    const qty = parseInt($('#restock_quantity').val() || 0);
+                    if (qty > 0 && qty > available) {
+                        $('#restockWarehouseWarning').removeClass('d-none');
+                        $('#restockSubmitBtn').prop('disabled', true);
+                    }
+                })
+                .fail(function() {
+                    $('#restockWarehouseAvailable').text('N/A');
+                });
+            @endif
 
             const modal = new bootstrap.Modal(document.getElementById('quickRestockModal'));
             modal.show();
         });
+
+        @if(auth()->user()->isOwner())
+        // Validate quantity vs warehouse availability in real-time (owner only)
+        $('#restock_quantity').on('input', function() {
+            const qty = parseInt($(this).val() || 0);
+            const available = parseInt($('#restockWarehouseAvailable').data('available') || 0);
+            if (available > 0 && qty > available) {
+                $('#restockWarehouseWarning').removeClass('d-none');
+                $('#restock_quantity').addClass('is-invalid');
+                $('#restockSubmitBtn').prop('disabled', true);
+            } else {
+                $('#restockWarehouseWarning').addClass('d-none');
+                $('#restock_quantity').removeClass('is-invalid');
+                $('#restockSubmitBtn').prop('disabled', false);
+            }
+        });
+        @endif
         // Toggle Expand/Collapse Child Row
         $('#shopStockTable tbody').on('click', '.toggle-child-details', function() {
             const tr = $(this).closest('tr');

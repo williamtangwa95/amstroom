@@ -66,6 +66,15 @@
             min-height: 100vh;
         }
 
+        /* ── Premium Stat Cards Hover Effects ── */
+        .premium-stat-card {
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .premium-stat-card:hover {
+            transform: translateY(-4px) !important;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+        }
+
         /* ── Sidebar ── */
         #sidebar {
             width: 260px;
@@ -206,6 +215,15 @@
             padding: .15rem .4rem;
             border-radius: 10px;
             font-weight: 800;
+        }
+
+        /* Collapsible navigation items style */
+        .nav-link-custom[aria-expanded="true"] .bi-chevron-down {
+            transform: rotate(180deg);
+        }
+        .nav-link-custom[aria-expanded="true"] {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
         }
 
         /* ── Main Content ── */
@@ -853,83 +871,110 @@
             </div>
 
             @if(auth()->user()->isOwner())
-            <div class="nav-section-label">Management</div>
-
+            {{-- Products collapsible --}}
+            @php
+                $isProductsActive = request()->routeIs('items.*') || request()->routeIs('categories.*') || request()->routeIs('shops.*') || request()->routeIs('users.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                    <i class="bi bi-sliders"></i> System Branding
+                <a class="nav-link-custom {{ $isProductsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#productsCollapseOwner" role="button"
+                    aria-expanded="{{ $isProductsActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-box-seam-fill"></i> Products & Shops</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
+                <div class="collapse {{ $isProductsActive ? 'show' : '' }}" id="productsCollapseOwner">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('items.index') }}" class="nav-link-custom {{ request()->routeIs('items.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-box-seam"></i> Products
+                        </a>
+                        <a href="{{ route('categories.index') }}" class="nav-link-custom {{ request()->routeIs('categories.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-tags"></i> Categories
+                        </a>
+                        <a href="{{ route('shops.index') }}" class="nav-link-custom {{ request()->routeIs('shops.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-shop"></i> Shops
+                        </a>
+                        <a href="{{ route('users.index') }}" class="nav-link-custom {{ request()->routeIs('users.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-people"></i> Employees
+                        </a>
+                    </div>
+                </div>
             </div>
 
+            {{-- Stocks collapsible --}}
+            @php
+                $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('shops.index') }}" class="nav-link-custom {{ request()->routeIs('shops.*') ? 'active' : '' }}">
-                    <i class="bi bi-shop"></i> Shops
+                <a class="nav-link-custom {{ $isStocksActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#stocksCollapseOwner" role="button"
+                    aria-expanded="{{ $isStocksActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-layers-fill"></i> Stocks & Warehouse</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
+                <div class="collapse {{ $isStocksActive ? 'show' : '' }}" id="stocksCollapseOwner">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('main-stock.index') }}" class="nav-link-custom {{ request()->routeIs('main-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-building"></i> Main Store Stock
+                        </a>
+                        <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right"></i> Stock Requests
+                            @php $pending = \App\Models\StockRequest::where('status','pending')->count() @endphp
+                            @if($pending > 0) <span class="nav-badge">{{ $pending }}</span> @endif
+                        </a>
+                        <a href="{{ route('stock-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-truck"></i> Transfers
+                        </a>
+                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-layers"></i> Shop Stocks
+                        </a>
+                    </div>
+                </div>
             </div>
 
+            {{-- Sales collapsible --}}
+            @php
+                $isSalesActive = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('users.index') }}" class="nav-link-custom {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                    <i class="bi bi-people-fill"></i> Employees
+                <a class="nav-link-custom {{ $isSalesActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#salesCollapseOwner" role="button"
+                    aria-expanded="{{ $isSalesActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('categories.index') }}" class="nav-link-custom {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                    <i class="bi bi-tags-fill"></i> Categories
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('items.index') }}" class="nav-link-custom {{ request()->routeIs('items.*') ? 'active' : '' }}">
-                    <i class="bi bi-box-seam-fill"></i> Products
-                </a>
-            </div>
-
-            <div class="nav-section-label">Warehouse</div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('main-stock.index') }}" class="nav-link-custom {{ request()->routeIs('main-stock.*') ? 'active' : '' }}">
-                    <i class="bi bi-building-fill"></i> Main Store Stock
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}">
-                    <i class="bi bi-arrow-left-right"></i> Stock Requests
-                    @php $pending = \App\Models\StockRequest::where('status','pending')->count() @endphp
-                    @if($pending > 0) <span class="nav-badge">{{ $pending }}</span> @endif
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('stock-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">
-                    <i class="bi bi-truck"></i> Transfers
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}">
-                    <i class="bi bi-layers-fill"></i> Shop Stocks
-                </a>
-            </div>
-
-            <div class="nav-section-label">Operations</div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') ? 'active' : '' }}">
-                    <i class="bi bi-cart-check-fill"></i> Sales
-                </a>
+                <div class="collapse {{ $isSalesActive ? 'show' : '' }}" id="salesCollapseOwner">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') && !request()->has('status') && !request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-cart-check"></i> Sales List
+                        </a>
+                        <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
+                        </a>
+                        <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-exclamation-triangle"></i> Defective Items
+                        </a>
+                        <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-wallet2"></i> Expenses Ledger
+                        </a>
+                        <a href="{{ route('handovers.index') }}" class="nav-link-custom {{ request()->routeIs('handovers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-cash-coin"></i> Cash Handovers
+                        </a>
+                    </div>
+                </div>
             </div>
 
             {{-- Documents collapsible --}}
+            @php
+                $isDocsActive = request()->routeIs('sales.*') && request()->has('status');
+            @endphp
             <div class="nav-item-custom">
-                <a class="nav-link-custom {{ request()->routeIs('sales.*') ? '' : '' }} d-flex justify-content-between align-items-center"
+                <a class="nav-link-custom {{ $isDocsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
                     data-bs-toggle="collapse" href="#docsCollapseOwner" role="button"
-                    aria-expanded="false" style="cursor:pointer;">
+                    aria-expanded="{{ $isDocsActive ? 'true' : 'false' }}" style="cursor:pointer;">
                     <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse" id="docsCollapseOwner">
+                <div class="collapse {{ $isDocsActive ? 'show' : '' }}" id="docsCollapseOwner">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
@@ -944,132 +989,176 @@
                 </div>
             </div>
 
+            {{-- Reports collapsible --}}
+            @php
+                $isReportsActive = request()->routeIs('reports.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}">
-                    <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
+                <a class="nav-link-custom {{ $isReportsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#reportsCollapseOwner" role="button"
+                    aria-expanded="{{ $isReportsActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-graph-up-arrow"></i> Reports</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
+                <div class="collapse {{ $isReportsActive ? 'show' : '' }}" id="reportsCollapseOwner">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-graph-up-arrow"></i> Sales Report
+                        </a>
+                        <a href="{{ route('reports.stock') }}" class="nav-link-custom {{ request()->routeIs('reports.stock') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-bar-chart-fill"></i> Stock Report
+                        </a>
+                        <a href="{{ route('reports.transfer') }}" class="nav-link-custom {{ request()->routeIs('reports.transfer') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right"></i> Transfer Report
+                        </a>
+                        <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-shield-exclamation"></i> Defect Report
+                        </a>
+                        <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-wallet2"></i> Expenses Report
+                        </a>
+                        <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
+                        </a>
+                        <a href="{{ route('reports.analytics') }}" class="nav-link-custom {{ request()->routeIs('reports.analytics') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-stars"></i> Analytics
+                        </a>
+                        <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-globe"></i> Visitor Analytics
+                        </a>
+                    </div>
+                </div>
             </div>
 
+            {{-- System collapsible --}}
+            @php
+                $isSystemActive = request()->routeIs('stock-logs.*') || request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}">
-                    <i class="bi bi-exclamation-triangle-fill"></i> Defective Items
+                <a class="nav-link-custom {{ $isSystemActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#systemCollapseOwner" role="button"
+                    aria-expanded="{{ $isSystemActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-gear-fill"></i> System</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                    <i class="bi bi-wallet2"></i> Expenses Ledger
-                </a>
-            </div>
-
-            <div class="nav-section-label">Reports</div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}">
-                    <i class="bi bi-graph-up-arrow"></i> Sales Report
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.stock') }}" class="nav-link-custom {{ request()->routeIs('reports.stock') ? 'active' : '' }}">
-                    <i class="bi bi-bar-chart-fill"></i> Stock Report
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.transfer') }}" class="nav-link-custom {{ request()->routeIs('reports.transfer') ? 'active' : '' }}">
-                    <i class="bi bi-arrow-left-right"></i> Transfer Report
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}">
-                    <i class="bi bi-shield-exclamation"></i> Defect Report
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}">
-                    <i class="bi bi-wallet2"></i> Expenses Report
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}">
-                    <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.analytics') }}" class="nav-link-custom {{ request()->routeIs('reports.analytics') ? 'active' : '' }}">
-                    <i class="bi bi-stars"></i> <span>Analytics</span>
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}">
-                    <i class="bi bi-globe"></i> Visitor Analytics
-                </a>
-            </div>
-
-            <div class="nav-section-label">System</div>
-            <div class="nav-item-custom">
-                <a href="{{ route('stock-logs.index') }}" class="nav-link-custom {{ request()->routeIs('stock-logs.*') ? 'active' : '' }}">
-                    <i class="bi bi-clock-history"></i> Audit Logs
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}">
-                    <i class="bi bi-journal-text"></i> User Activity Logs
-                </a>
-            </div>
-            <div class="nav-item-custom">
-                <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                    <i class="bi bi-gear-fill"></i> Settings
-                </a>
+                <div class="collapse {{ $isSystemActive ? 'show' : '' }}" id="systemCollapseOwner">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-sliders"></i> System Branding
+                        </a>
+                        <a href="{{ route('stock-logs.index') }}" class="nav-link-custom {{ request()->routeIs('stock-logs.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-clock-history"></i> Audit Logs
+                        </a>
+                        <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-journal-text"></i> User Activity Logs
+                        </a>
+                        <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </div>
+                </div>
             </div>
 
 
 
             @elseif(auth()->user()->isShopAdmin())
-            <div class="nav-section-label">Shop Operations</div>
-
+            {{-- Management collapsible --}}
+            @php
+                $isManagementActive = request()->routeIs('shops.show') || request()->routeIs('users.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}">
-                    <i class="bi bi-layers-fill"></i> Shop Stock
+                <a class="nav-link-custom {{ $isManagementActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#productsCollapseAdmin" role="button"
+                    aria-expanded="{{ $isManagementActive ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-shop"></i> Management</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
+                <div class="collapse {{ $isManagementActive ? 'show' : '' }}" id="productsCollapseAdmin">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('shops.show', auth()->user()->shop_id ?? 0) }}" class="nav-link-custom {{ request()->routeIs('shops.show') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-shop"></i> Shop Profile
+                        </a>
+                        <a href="{{ route('users.index') }}" class="nav-link-custom {{ request()->routeIs('users.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-people"></i> My Employees
+                        </a>
+                    </div>
+                </div>
             </div>
 
+            {{-- Stocks collapsible --}}
+            @php
+                $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}">
-                    <i class="bi bi-arrow-left-right"></i> Stock Requests
+                <a class="nav-link-custom {{ $isStocksActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#stocksCollapseAdmin" role="button"
+                    aria-expanded="{{ $isStocksActiveAdmin ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-layers-fill"></i> Stocks & Transfers</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
+                <div class="collapse {{ $isStocksActiveAdmin ? 'show' : '' }}" id="stocksCollapseAdmin">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-layers"></i> Shop Stock
+                        </a>
+                        <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right"></i> Stock Requests
+                        </a>
+                        <a href="{{ route('stock-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-truck"></i> Stock Transfers
+                            @php $pendingDispatches = \App\Models\StockTransfer::where('to_shop', auth()->user()->shop_id)->whereIn('status', ['pending_receipt','partially_received'])->count() @endphp
+                            @if($pendingDispatches > 0) <span class="nav-badge">{{ $pendingDispatches }}</span> @endif
+                        </a>
+                    </div>
+                </div>
             </div>
 
+            {{-- Sales collapsible --}}
+            @php
+                $isSalesActiveAdmin = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('stock-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">
-                    <i class="bi bi-truck"></i> Stock Transfers
-                    @php $pendingDispatches = \App\Models\StockTransfer::where('to_shop', auth()->user()->shop_id)->whereIn('status', ['pending_receipt','partially_received'])->count() @endphp
-                    @if($pendingDispatches > 0) <span class="nav-badge">{{ $pendingDispatches }}</span> @endif
+                <a class="nav-link-custom {{ $isSalesActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#salesCollapseAdmin" role="button"
+                    aria-expanded="{{ $isSalesActiveAdmin ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') ? 'active' : '' }}">
-                    <i class="bi bi-cart-check-fill"></i> Sales
-                </a>
+                <div class="collapse {{ $isSalesActiveAdmin ? 'show' : '' }}" id="salesCollapseAdmin">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') && !request()->has('status') && !request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-cart-check"></i> Sales List
+                        </a>
+                        <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
+                            @php $pendingReturns = \App\Models\SaleReturn::whereHas('sale', function ($q) { $q->where('shop_id', auth()->user()->shop_id); })->where('status', 'pending')->count() @endphp
+                            @if($pendingReturns > 0) <span class="nav-badge">{{ $pendingReturns }}</span> @endif
+                        </a>
+                        <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-exclamation-triangle"></i> Defective Items
+                        </a>
+                        <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-wallet2"></i> Expenses Ledger
+                        </a>
+                        <a href="{{ route('handovers.index') }}" class="nav-link-custom {{ request()->routeIs('handovers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-cash-coin"></i> Cash Handovers
+                        </a>
+                    </div>
+                </div>
             </div>
 
             {{-- Documents collapsible --}}
+            @php
+                $isDocsActiveAdmin = request()->routeIs('sales.*') && request()->has('status');
+            @endphp
             <div class="nav-item-custom">
-                <a class="nav-link-custom d-flex justify-content-between align-items-center"
+                <a class="nav-link-custom {{ $isDocsActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
                     data-bs-toggle="collapse" href="#docsCollapseAdmin" role="button"
-                    aria-expanded="false" style="cursor:pointer;">
+                    aria-expanded="{{ $isDocsActiveAdmin ? 'true' : 'false' }}" style="cursor:pointer;">
                     <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
-                    <i class="bi bi-chevron-down" style="font-size:.7rem;"></i>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse" id="docsCollapseAdmin">
+                <div class="collapse {{ $isDocsActiveAdmin ? 'show' : '' }}" id="docsCollapseAdmin">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
@@ -1084,160 +1173,172 @@
                 </div>
             </div>
 
+            {{-- Reports collapsible --}}
+            @php
+                $isReportsActiveAdmin = request()->routeIs('reports.*');
+            @endphp
             <div class="nav-item-custom">
-                <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}">
-                    <i class="bi bi-arrow-counterclockwise"></i> Sales Returns
-                    @php $pendingReturns = \App\Models\SaleReturn::whereHas('sale', function ($q) { $q->where('shop_id', auth()->user()->shop_id); })->where('status', 'pending')->count() @endphp
-                    @if($pendingReturns > 0) <span class="nav-badge">{{ $pendingReturns }}</span> @endif
+                <a class="nav-link-custom {{ $isReportsActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#reportsCollapseAdmin" role="button"
+                    aria-expanded="{{ $isReportsActiveAdmin ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-graph-up-arrow"></i> Reports</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}">
-                    <i class="bi bi-exclamation-triangle-fill"></i> Defective Items
-                </a>
-            </div>
-
-            <div class="nav-item-custom">
-                <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                    <i class="bi bi-wallet2"></i> Expenses Ledger
-                </a>
-                <div class="nav-section-label">Reports</div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}">
-                        <i class="bi bi-graph-up-arrow"></i> Sales Report
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.stock') }}" class="nav-link-custom {{ request()->routeIs('reports.stock') ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-fill"></i> Stock Report
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.transfer') }}" class="nav-link-custom {{ request()->routeIs('reports.transfer') ? 'active' : '' }}">
-                        <i class="bi bi-arrow-left-right"></i> Transfer Report
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}">
-                        <i class="bi bi-shield-exclamation"></i> Defect Report
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}">
-                        <i class="bi bi-wallet2"></i> Expenses Report
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.analytics') }}" class="nav-link-custom {{ request()->routeIs('reports.analytics') ? 'active' : '' }}">
-                        <i class="bi bi-stars"></i> <span>Analytics</span>
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}">
-                        <i class="bi bi-globe"></i> Visitor Analytics
-                    </a>
-                </div>
-
-                <div class="nav-section-label">System</div>
-                <div class="nav-item-custom">
-                    <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}">
-                        <i class="bi bi-journal-text"></i> User Activity Logs
-                    </a>
-                </div>
-                <div class="nav-item-custom">
-                    <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                        <i class="bi bi-gear-fill"></i> Settings
-                    </a>
-                </div>
-
-                @else {{-- Seller --}}
-                <div class="nav-section-label">My Workspace</div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}">
-                        <i class="bi bi-layers-fill"></i> Available Stock
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('sales.create') }}" class="nav-link-custom {{ request()->is('sales/create') ? 'active' : '' }}">
-                        <i class="bi bi-plus-circle-fill"></i> New Sale
-                    </a>
-                </div>
-
-                <div class="nav-item-custom">
-                    <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') ? 'active' : '' }}">
-                        <i class="bi bi-cart-check-fill"></i> My Sales
-                    </a>
-                </div>
-
-                {{-- Documents collapsible --}}
-                <div class="nav-item-custom">
-                    <a class="nav-link-custom d-flex justify-content-between align-items-center"
-                        data-bs-toggle="collapse" href="#docsCollapseSeller" role="button"
-                        aria-expanded="false" style="cursor:pointer;">
-                        <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
-                        <i class="bi bi-chevron-down" style="font-size:.7rem;"></i>
-                    </a>
-                    <div class="collapse" id="docsCollapseSeller">
-                        <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                            <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                                <i class="bi bi-file-earmark-text"></i> Invoices
-                            </a>
-                            <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                                <i class="bi bi-file-earmark"></i> Proforma Quotes
-                            </a>
-                            <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                                <i class="bi bi-truck"></i> Delivery Notes
-                            </a>
-                        </div>
+                <div class="collapse {{ $isReportsActiveAdmin ? 'show' : '' }}" id="reportsCollapseAdmin">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-graph-up-arrow"></i> Sales Report
+                        </a>
+                        <a href="{{ route('reports.stock') }}" class="nav-link-custom {{ request()->routeIs('reports.stock') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-bar-chart-fill"></i> Stock Report
+                        </a>
+                        <a href="{{ route('reports.transfer') }}" class="nav-link-custom {{ request()->routeIs('reports.transfer') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right"></i> Transfer Report
+                        </a>
+                        <a href="{{ route('reports.defect') }}" class="nav-link-custom {{ request()->routeIs('reports.defect') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-shield-exclamation"></i> Defect Report
+                        </a>
+                        <a href="{{ route('reports.expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.expenses') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-wallet2"></i> Expenses Report
+                        </a>
+                        <a href="{{ route('reports.sales-vs-expenses') }}" class="nav-link-custom {{ request()->routeIs('reports.sales-vs-expenses') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Sales vs Expenses
+                        </a>
+                        <a href="{{ route('reports.analytics') }}" class="nav-link-custom {{ request()->routeIs('reports.analytics') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-stars"></i> Analytics
+                        </a>
+                        <a href="{{ route('reports.visitors') }}" class="nav-link-custom {{ request()->routeIs('reports.visitors') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-globe"></i> Visitor Analytics
+                        </a>
                     </div>
                 </div>
+            </div>
 
-                <div class="nav-item-custom">
-                    <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}">
-                        <i class="bi bi-arrow-counterclockwise"></i> Returns & Refunds
-                    </a>
+            {{-- System collapsible --}}
+            @php
+                $isSystemActiveAdmin = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            @endphp
+            <div class="nav-item-custom">
+                <a class="nav-link-custom {{ $isSystemActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#systemCollapseAdmin" role="button"
+                    aria-expanded="{{ $isSystemActiveAdmin ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-gear-fill"></i> System</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+                </a>
+                <div class="collapse {{ $isSystemActiveAdmin ? 'show' : '' }}" id="systemCollapseAdmin">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-journal-text"></i> User Activity Logs
+                        </a>
+                        <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </div>
                 </div>
+            </div>
 
-                <div class="nav-item-custom">
-                    <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}">
-                        <i class="bi bi-exclamation-triangle-fill"></i> Report Defect
-                    </a>
+            @else {{-- Seller --}}
+            {{-- Stocks collapsible --}}
+            @php
+                $isStocksActiveSeller = request()->routeIs('shop-stock.*');
+            @endphp
+            <div class="nav-item-custom">
+                <a class="nav-link-custom {{ $isStocksActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#stocksCollapseSeller" role="button"
+                    aria-expanded="{{ $isStocksActiveSeller ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-layers-fill"></i> Stocks</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+                </a>
+                <div class="collapse {{ $isStocksActiveSeller ? 'show' : '' }}" id="stocksCollapseSeller">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-layers"></i> Available Stock
+                        </a>
+                    </div>
                 </div>
+            </div>
 
-                <div class="nav-item-custom">
-                    <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                        <i class="bi bi-wallet2"></i> My Expenses
-                    </a>
+            {{-- Sales collapsible --}}
+            @php
+                $isSalesActiveSeller = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*');
+            @endphp
+            <div class="nav-item-custom">
+                <a class="nav-link-custom {{ $isSalesActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#salesCollapseSeller" role="button"
+                    aria-expanded="{{ $isSalesActiveSeller ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+                </a>
+                <div class="collapse {{ $isSalesActiveSeller ? 'show' : '' }}" id="salesCollapseSeller">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('sales.create') }}" class="nav-link-custom {{ request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-plus-circle"></i> New Sale
+                        </a>
+                        <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.index') && !request()->has('status') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-cart-check"></i> My Sales
+                        </a>
+                        <a href="{{ route('sales-returns.index') }}" class="nav-link-custom {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-counterclockwise"></i> Returns & Refunds
+                        </a>
+                        <a href="{{ route('defects.index') }}" class="nav-link-custom {{ request()->routeIs('defects.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-exclamation-triangle"></i> Report Defect
+                        </a>
+                        <a href="{{ route('expenses.index') }}" class="nav-link-custom {{ request()->routeIs('expenses.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-wallet2"></i> My Expenses
+                        </a>
+                    </div>
                 </div>
+            </div>
 
-                <div class="nav-section-label">System</div>
-                <div class="nav-item-custom">
-                    <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}">
-                        <i class="bi bi-journal-text"></i> User Activity Logs
-                    </a>
+            {{-- Documents collapsible --}}
+            @php
+                $isDocsActiveSeller = request()->routeIs('sales.*') && request()->has('status');
+            @endphp
+            <div class="nav-item-custom">
+                <a class="nav-link-custom {{ $isDocsActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#docsCollapseSeller" role="button"
+                    aria-expanded="{{ $isDocsActiveSeller ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+                </a>
+                <div class="collapse {{ $isDocsActiveSeller ? 'show' : '' }}" id="docsCollapseSeller">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-text"></i> Invoices
+                        </a>
+                        <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark"></i> Proforma Quotes
+                        </a>
+                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-truck"></i> Delivery Notes
+                        </a>
+                    </div>
                 </div>
-                <div class="nav-item-custom">
-                    <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                        <i class="bi bi-printer-fill"></i> Printer Settings
-                    </a>
+            </div>
+
+            {{-- System collapsible --}}
+            @php
+                $isSystemActiveSeller = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            @endphp
+            <div class="nav-item-custom">
+                <a class="nav-link-custom {{ $isSystemActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
+                    data-bs-toggle="collapse" href="#systemCollapseSeller" role="button"
+                    aria-expanded="{{ $isSystemActiveSeller ? 'true' : 'false' }}" style="cursor:pointer;">
+                    <span><i class="bi bi-gear-fill"></i> System</span>
+                    <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
+                </a>
+                <div class="collapse {{ $isSystemActiveSeller ? 'show' : '' }}" id="systemCollapseSeller">
+                    <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
+                        <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-journal-text"></i> User Activity Logs
+                        </a>
+                        <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-printer"></i> Printer Settings
+                        </a>
+                    </div>
                 </div>
-                @endif
+            </div>
+            @endif
 
         </nav>
 

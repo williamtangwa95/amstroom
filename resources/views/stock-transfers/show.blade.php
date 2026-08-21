@@ -142,6 +142,16 @@
                         </button>
                     @endif
 
+                    {{-- Delete Transfer button (owner only, no received items) --}}
+                    @if($isOwner && $stockTransfer->items->where('status','received')->count() === 0)
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="deleteTransferBtn"
+                            data-url="{{ route('stock-transfers.destroy', $stockTransfer) }}"
+                            data-id="{{ $stockTransfer->id }}"
+                            title="Delete this transfer and return stock to warehouse">
+                            <i class="bi bi-trash-fill me-1"></i> Delete Transfer
+                        </button>
+                    @endif
+
                     {{-- Bulk approve button for shop admin --}}
                     @if($isShopAdmin && $pendingItems > 0)
                         <button type="button" class="btn btn-sm btn-success" onclick="submitBulkApprove()" id="bulkApproveBtn" disabled>
@@ -181,11 +191,20 @@
                                     @if($isShopAdmin && $pendingItems > 0)
                                         <td class="text-center">
                                             @if($ti->status === 'pending')
+                                                @php
+                                                    $existingPrice = \App\Models\ShopStock::where('item_id', $ti->item_id)
+                                                        ->where('shop_id', $stockTransfer->to_shop)
+                                                        ->where('remaining_quantity', '>', 0)
+                                                        ->orderByDesc('date_received')
+                                                        ->value('selling_price');
+                                                @endphp
                                                 <input type="checkbox" class="form-check-input item-checkbox"
                                                        name="item_ids[]" value="{{ $ti->id }}"
                                                        data-name="{{ $ti->item?->item_name }}"
                                                        data-qty="{{ $ti->quantity }}"
                                                        data-price="{{ $ti->selling_price }}"
+                                                       data-suggested-price="{{ $existingPrice ?? $ti->selling_price }}"
+                                                       data-has-existing="{{ $existingPrice ? 'true' : 'false' }}"
                                                        onchange="updateSelectedCount()">
                                             @endif
                                         </td>
@@ -455,6 +474,15 @@
 
     {{-- Receive/Approve Item Modal (Shop Admin / Admin) --}}
     @if($isShopAdmin && $ti->status === 'pending')
+    @php
+        // Look up existing shop stock selling price for this item
+        $existingShopPrice = \App\Models\ShopStock::where('item_id', $ti->item_id)
+            ->where('shop_id', $stockTransfer->to_shop)
+            ->where('remaining_quantity', '>', 0)
+            ->orderByDesc('date_received')
+            ->value('selling_price');
+        $defaultSellingPrice = $existingShopPrice ?? $ti->selling_price;
+    @endphp
     <div class="modal fade" id="approveModal{{ $ti->id }}" tabindex="-1" aria-labelledby="approveModalLabel{{ $ti->id }}" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -468,27 +496,51 @@
                     </div>
                     <div class="modal-body p-4 text-start">
                         <p class="small text-muted mb-3">
-                            You are receiving this item. Please determine the selling price to be used in your shop. The buying price for your shop is set to the owner's selling price.
+                            You are receiving this item. Please confirm or adjust the selling price for your shop. The buying price is the owner's selling price.
                         </p>
+                        @if($existingShopPrice)
+                        <div class="alert py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size:.8rem;background:rgba(57,178,255,.08);border:1px solid rgba(57,178,255,.22);color:#39b2ff;">
+                            <i class="bi bi-info-circle-fill fs-6"></i>
+                            <span>This item already exists in your shop stock. The current selling price <strong>TZS {{ number_format($existingShopPrice, 0) }}</strong> has been pre-filled.</span>
+                        </div>
+                        @endif
                         <table class="table align-middle">
                             <thead>
                                 <tr>
                                     <th>Item Name</th>
                                     <th>Qty</th>
                                     <th>Buying Price (TZS)</th>
-                                    <th style="width: 200px;">Selling Price (TZS) *</th>
+                                    <th style="width: 220px;">Selling Price (TZS) *</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>
                                         <div class="fw-600">{{ $ti->item?->item_name }}</div>
+                                        @if($ti->item?->brand)
+                                            <small class="text-muted">{{ $ti->item->brand }}</small>
+                                        @endif
                                     </td>
                                     <td>{{ $ti->quantity }}</td>
                                     <td>TZS {{ number_format($ti->selling_price, 0) }}</td>
                                     <td>
-                                        <input type="text" name="selling_price" class="form-control form-control-sm currency-input approve-item-selling-price" min="{{ $ti->selling_price }}" value="{{ $ti->selling_price }}" data-buying-price="{{ $ti->selling_price }}" required>
-                                        <div class="text-danger small price-warning mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
+                                        <input type="text" name="selling_price"
+                                               class="form-control form-control-sm currency-input approve-item-selling-price"
+                                               value="{{ $defaultSellingPrice }}"
+                                               data-buying-price="{{ $ti->selling_price }}"
+                                               required>
+                                        <div class="text-danger small price-warning mt-1" style="display:none;">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!
+                                        </div>
+                                        @if($existingShopPrice)
+                                        <span class="text-info" style="font-size:.72rem;">
+                                            <i class="bi bi-tag-fill me-1"></i>Current shop price: <strong>TZS {{ number_format($existingShopPrice, 0) }}</strong>
+                                        </span>
+                                        @else
+                                        <span class="text-muted" style="font-size:.72rem;">
+                                            <i class="bi bi-tag me-1"></i>New item — no existing shop price.
+                                        </span>
+                                        @endif
                                     </td>
                                 </tr>
                             </tbody>
@@ -507,6 +559,11 @@
 
 {{-- Hidden Forms to Avoid Nested Form Issues in HTML --}}
 <form id="deleteItemForm" method="POST" action="" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
+
+<form id="deleteTransferForm" method="POST" action="" style="display:none;">
     @csrf
     @method('DELETE')
 </form>
@@ -556,11 +613,13 @@ function submitBulkApprove() {
     `;
     
     document.querySelectorAll('.item-checkbox:checked').forEach(cb => {
-        const itemId = cb.value;
-        const name = cb.dataset.name;
-        const qty = cb.dataset.qty;
-        const price = cb.dataset.price;
-        
+        const itemId  = cb.value;
+        const name    = cb.dataset.name;
+        const qty     = cb.dataset.qty;
+        const price   = cb.dataset.price;          // buying price (owner's selling price)
+        const suggested = cb.dataset.suggestedPrice; // existing shop price (or buying price)
+        const hasExisting = cb.dataset.hasExisting === 'true';
+
         html += `
             <tr>
                 <td>
@@ -569,8 +628,12 @@ function submitBulkApprove() {
                 <td>${qty}</td>
                 <td>TZS ${parseInt(price).toLocaleString()}</td>
                 <td>
-                    <input type="text" name="selling_prices[${itemId}]" class="form-control form-control-sm currency-input bulk-selling-price" data-buying-price="${price}" value="${price}" required>
+                    <input type="text" name="selling_prices[${itemId}]" class="form-control form-control-sm currency-input bulk-selling-price" data-buying-price="${price}" value="${suggested}" required>
                     <div class="text-danger small price-warning mt-1" style="display: none;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Selling price is less than buying price!</div>
+                    ${hasExisting
+                        ? `<span class="text-info" style="font-size:.72rem;"><i class="bi bi-tag-fill me-1"></i>Current shop price: <strong>TZS ${parseInt(suggested).toLocaleString()}</strong></span>`
+                        : `<span class="text-muted" style="font-size:.72rem;"><i class="bi bi-tag me-1"></i>New item — no existing shop price.</span>`
+                    }
                 </td>
             </tr>
         `;
@@ -592,12 +655,51 @@ function submitBulkApprove() {
 }
 
 function submitDeleteItem(url) {
-    if (confirm('Are you sure you want to delete this item? Its stock will be restored to Main Warehouse.')) {
-        const form = document.getElementById('deleteItemForm');
-        form.action = url;
-        form.submit();
-    }
+    Swal.fire({
+        title: 'Remove this item?',
+        text: 'Its stock quantity will be restored back to the Main Warehouse.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, remove it!',
+        cancelButtonText: 'Cancel',
+        background: '#161b22',
+        color: '#e6edf3'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            const form = document.getElementById('deleteItemForm');
+            form.action = url;
+            form.submit();
+        }
+    });
 }
+
+// Delete entire transfer handler
+$(document).ready(function() {
+    $('#deleteTransferBtn').on('click', function() {
+        const url = $(this).data('url');
+        const id  = $(this).data('id');
+        Swal.fire({
+            title: 'Delete Transfer #' + id + '?',
+            html: 'All pending/rejected items will have their stock <strong>returned to the Main Warehouse</strong>.<br>This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete transfer!',
+            cancelButtonText: 'Cancel',
+            background: '#161b22',
+            color: '#e6edf3'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                const form = document.getElementById('deleteTransferForm');
+                form.action = url;
+                form.submit();
+            }
+        });
+    });
+});
 
 // Instant price validation
 $(document).on('input', '.approve-item-selling-price, .bulk-selling-price', function() {

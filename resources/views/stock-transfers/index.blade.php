@@ -106,6 +106,14 @@
                         <a href="{{ route('stock-transfers.show', $transfer) }}" class="btn btn-sm btn-outline-custom">
                             <i class="bi bi-eye me-1"></i> View
                         </a>
+                        @if(auth()->user()->isOwner() && $transfer->items_count == 0)
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-delete-transfer"
+                            data-url="{{ route('stock-transfers.destroy', $transfer) }}"
+                            data-id="{{ $transfer->id }}"
+                            title="Delete empty transfer">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                        @endif
                     </td>
                 </tr>
                 @endforeach
@@ -129,6 +137,32 @@ $(function() {
             }
         });
     }
+
+    // Hidden delete form (avoid nested form issues)
+    $('body').append('<form id="deleteTransferForm" method="POST" style="display:none;"><input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE"></form>');
+
+    $(document).on('click', '.btn-delete-transfer', function() {
+        const url = $(this).data('url');
+        const id  = $(this).data('id');
+        Swal.fire({
+            title: 'Delete Transfer #' + id + '?',
+            text: 'This transfer has no items. It will be permanently deleted.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            background: '#161b22',
+            color: '#e6edf3'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                const form = document.getElementById('deleteTransferForm');
+                form.action = url;
+                form.submit();
+            }
+        });
+    });
 });
 </script>
 @endpush

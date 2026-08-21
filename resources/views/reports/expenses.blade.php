@@ -55,17 +55,25 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-6">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-wallet2"></i></div>
-            <div class="stat-value" style="color:#e94560;font-size:1.3rem;">TZS {{ number_format($totalAmount, 0) }}</div>
-            <div class="stat-label">Total Expenses ({{ ucfirst($period) }})</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Expenses ({{ ucfirst($period) }})</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalAmount, 0) }}</h3>
+                </div>
+                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-wallet2"></i></div>
+            </div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-receipt-cutoff"></i></div>
-            <div class="stat-value" style="color:#bc8cff;">{{ $expenses->count() }}</div>
-            <div class="stat-label">Expense Transactions</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #bc8cff !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Expense Transactions</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $expenses->count() }}</h3>
+                </div>
+                <div class="fs-2" style="color: #bc8cff; opacity: 0.25;"><i class="bi bi-receipt-cutoff"></i></div>
+            </div>
         </div>
     </div>
 </div>

@@ -8,12 +8,14 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h5 class="mb-0 fw-700">All Shops</h5>
-        <small style="color:var(--text-secondary);">Manage your retail branches</small>
+        <h5 class="mb-0 fw-700">@if(auth()->user()->isOwner()) All Shops @else My Shop Profile @endif</h5>
+        <small style="color:var(--text-secondary);">@if(auth()->user()->isOwner()) Manage your retail branches @else View and manage your shop profile details @endif</small>
     </div>
+    @if(auth()->user()->isOwner())
     <a href="{{ route('shops.create') }}" class="btn btn-accent">
         <i class="bi bi-plus-circle me-1"></i> Add Shop
     </a>
+    @endif
 </div>
 
 <div class="card">
@@ -61,6 +63,7 @@
                         <div class="d-flex gap-1">
                             <a href="{{ route('shops.show', $shop) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
                             <a href="{{ route('shops.edit', $shop) }}" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+                            @if(auth()->user()->isOwner())
                             <form method="POST" action="{{ route('shops.destroy', $shop) }}" id="del-shop-{{ $shop->id }}">
                                 @csrf @method('DELETE')
                                 <button type="button" class="btn btn-xs btn-outline-custom"
@@ -70,6 +73,7 @@
                                     <i class="bi bi-trash" style="color:#e94560;"></i>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

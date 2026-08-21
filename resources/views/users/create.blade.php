@@ -1,16 +1,33 @@
 @extends('layouts.app')
-@section('title', 'Register Employee')
-@section('page-title', 'Register Employee')
+@section('title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee')
+@section('page-title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee')
 @section('breadcrumb')
 <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Employees</a></li>
-<li class="breadcrumb-item active">Register</li>
+<li class="breadcrumb-item active">{{ auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register' }}</li>
 @endsection
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header"><i class="bi bi-person-plus-fill me-2" style="color:#e94560;"></i>Employee Registration</div>
+            <div class="card-header">
+                <i class="bi bi-person-plus-fill me-2" style="color:#e94560;"></i>
+                @if(auth()->user()->isShopAdmin())
+                    Add Seller — <span style="color:#58a6ff;">{{ auth()->user()->shop?->shop_name }}</span>
+                @else
+                    Employee Registration
+                @endif
+            </div>
             <div class="card-body">
+                @if($errors->any())
+                <div class="alert alert-danger border-0 rounded-3 mb-3" style="font-size:.83rem;">
+                    <ul class="mb-0 ps-3">
+                        @foreach($errors->all() as $e)
+                        <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
                 <form method="POST" action="{{ route('users.store') }}">
                     @csrf
                     <div class="row g-3">
@@ -26,6 +43,9 @@
                             <label class="form-label">Phone Number</label>
                             <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" placeholder="+255700000000">
                         </div>
+
+                        {{-- Role: owner can choose, shop_admin locked to seller --}}
+                        @if(auth()->user()->isOwner())
                         <div class="col-md-6">
                             <label class="form-label">System Role *</label>
                             <select name="role" class="form-select" required>
@@ -33,6 +53,12 @@
                                 <option value="seller" {{ old('role')==='seller' ? 'selected' : '' }}>Seller</option>
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" name="role" value="seller">
+                        @endif
+
+                        {{-- Shop: owner can choose, shop_admin locked to their own --}}
+                        @if(auth()->user()->isOwner())
                         <div class="col-md-6">
                             <label class="form-label">Assign to Shop</label>
                             <select name="shop_id" class="form-select">
@@ -42,26 +68,27 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" name="shop_id" value="{{ auth()->user()->shop_id }}">
+                        @endif
+
                         <div class="col-md-12">
-                            <div class="alert alert-info">
-                                Default password is <strong>password</strong> for all employees. Employee can change password after login.
+                            <div class="alert alert-info" style="font-size:.83rem;">
+                                Default password is <strong>password</strong>. Employee can change it after login.
                             </div>
                         </div>
+
+                        {{-- Hidden default password fields --}}
                         <div class="d-none">
-                            <div class="col-md-6">
-                                <label class="form-label">Password *</label>
-                                <input type="password" name="password" class="form-control" value="password" required minlength="6">
-                                <small class="text-muted">Default is pre-filled: <strong>password</strong></small>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Confirm Password *</label>
-                                <input type="password" name="password_confirmation" class="form-control" value="password" required minlength="6">
-                                <small class="text-muted">Match the default password</small>
-                            </div>
+                            <input type="password" name="password" value="password" required minlength="6">
+                            <input type="password" name="password_confirmation" value="password" required minlength="6">
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-accent"><i class="bi bi-check-circle me-1"></i>Register Employee</button>
+                        <button type="submit" class="btn btn-accent">
+                            <i class="bi bi-check-circle me-1"></i>
+                            {{ auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee' }}
+                        </button>
                         <a href="{{ route('users.index') }}" class="btn btn-outline-custom">Cancel</a>
                     </div>
                 </form>

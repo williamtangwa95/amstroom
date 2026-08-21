@@ -11,6 +11,16 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-pencil me-2" style="color:#e94560;"></i>Edit: {{ $user->name }}</div>
             <div class="card-body">
+                @if($errors->any())
+                <div class="alert alert-danger border-0 rounded-3 mb-3" style="font-size:.83rem;">
+                    <ul class="mb-0 ps-3">
+                        @foreach($errors->all() as $e)
+                        <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
                 <form method="POST" action="{{ route('users.update', $user) }}">
                     @csrf @method('PUT')
                     <div class="row g-3">
@@ -26,6 +36,9 @@
                             <label class="form-label">Phone Number</label>
                             <input type="text" name="phone" class="form-control" value="{{ old('phone', $user->phone) }}">
                         </div>
+
+                        {{-- Role --}}
+                        @if(auth()->user()->isOwner())
                         <div class="col-md-6">
                             <label class="form-label">System Role *</label>
                             <select name="role" class="form-select" required>
@@ -33,6 +46,20 @@
                                 <option value="seller" {{ old('role', $user->role)==='seller' ? 'selected' : '' }}>Seller</option>
                             </select>
                         </div>
+                        @else
+                        {{-- Shop admin: role is always seller, show as read-only badge --}}
+                        <input type="hidden" name="role" value="seller">
+                        <div class="col-md-6">
+                            <label class="form-label">System Role</label>
+                            <div class="form-control bg-light" style="font-size:.85rem;">
+                                <span class="role-pill role-seller">Seller</span>
+                                <small class="text-muted ms-1">(locked)</small>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Shop --}}
+                        @if(auth()->user()->isOwner())
                         <div class="col-md-6">
                             <label class="form-label">Assign to Shop</label>
                             <select name="shop_id" class="form-select">
@@ -42,8 +69,20 @@
                                 @endforeach
                             </select>
                         </div>
+                        @else
+                        <input type="hidden" name="shop_id" value="{{ auth()->user()->shop_id }}">
                         <div class="col-md-6">
-                            <label class="form-label">New Password (leave blank to keep current)</label>
+                            <label class="form-label">Assigned Shop</label>
+                            <div class="form-control bg-light" style="font-size:.85rem;">
+                                <i class="bi bi-shop me-1" style="color:#58a6ff;"></i>
+                                {{ auth()->user()->shop?->shop_name ?? '—' }}
+                                <small class="text-muted ms-1">(locked)</small>
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="col-md-6">
+                            <label class="form-label">New Password <small class="text-muted">(leave blank to keep current)</small></label>
                             <input type="password" name="password" class="form-control" minlength="6">
                         </div>
                         <div class="col-md-6">

@@ -75,68 +75,96 @@
 @if(auth()->user()->isOwner())
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-cash-stack"></i></div>
-            <div class="stat-value" style="color:#3fb950;font-size:1.3rem;">TZS {{ number_format($totalRevenue, 0) }}</div>
-            <div class="stat-label">Total Revenue ({{ ucfirst($period) }})</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Revenue ({{ ucfirst($period) }})</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalRevenue, 0) }}</h3>
+                </div>
+                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-cash-stack"></i></div>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(255,193,7,.12);color:#ffc107;"><i class="bi bi-graph-up-arrow"></i></div>
-            <div class="stat-value" style="color:#ffc107;font-size:1.3rem;">TZS {{ number_format($totalProfit, 0) }}</div>
-            <div class="stat-label">Total Profit ({{ ucfirst($period) }})</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f1c40f !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Profit ({{ ucfirst($period) }})</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalProfit, 0) }}</h3>
+                </div>
+                <div class="fs-2" style="color: #f1c40f; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(88,166,255,.12);color:#58a6ff;"><i class="bi bi-receipt"></i></div>
-            <div class="stat-value" style="color:#58a6ff;">{{ $sales->count() }}</div>
-            <div class="stat-label">Total Sales Transactions</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Sales Transactions</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $sales->count() }}</h3>
+                </div>
+                <div class="fs-2" style="color: #3498db; opacity: 0.25;"><i class="bi bi-receipt"></i></div>
+            </div>
         </div>
     </div>
 </div>
 @else
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-cash-stack"></i></div>
-            <div class="stat-value" style="color:#3fb950;font-size:1.15rem;">TZS {{ number_format($totalRevenue, 0) }}</div>
-            <div class="stat-label">Total Revenue ({{ ucfirst($period) }})</div>
-            <div class="small text-secondary mt-1" style="font-size:.7rem;">
-                Transactions: <strong>{{ $sales->count() }}</strong>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(255,193,7,.12);color:#ffc107;"><i class="bi bi-graph-up-arrow"></i></div>
-            <div class="stat-value" style="color:#ffc107;font-size:1.15rem;">TZS {{ number_format($totalProfit, 0) }}</div>
-            <div class="stat-label">Total Profit ({{ ucfirst($period) }})</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(188,140,255,.12);color:#bc8cff;"><i class="bi bi-person-badge-fill"></i></div>
-            <div class="stat-value" style="color:#bc8cff;font-size:1.05rem;line-height:1.2;">
-                <span style="font-size:.75rem;font-weight:normal;" class="text-secondary">Rev:</span> TZS {{ number_format($totalAdminRevenue, 0) }}
-                <div style="font-size:.72rem;font-weight:normal;" class="text-secondary mt-1">
-                    Profit: <strong>TZS {{ number_format($totalAdminProfit, 0) }}</strong>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Revenue ({{ ucfirst($period) }})</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.45rem;">TZS {{ number_format($totalRevenue, 0) }}</h3>
+                    <div class="small text-secondary mt-1" style="font-size:.7rem;">
+                        Transactions: <strong>{{ $sales->count() }}</strong>
+                    </div>
                 </div>
+                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-cash-stack"></i></div>
             </div>
-            <div class="stat-label">Admin Stock Summary</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-shop-window"></i></div>
-            <div class="stat-value" style="color:#d29922;font-size:1.05rem;line-height:1.2;">
-                <span style="font-size:.75rem;font-weight:normal;" class="text-secondary">Rev:</span> TZS {{ number_format($totalNormalRevenue, 0) }}
-                <div style="font-size:.72rem;font-weight:normal;" class="text-secondary mt-1">
-                    Profit: <strong>TZS {{ number_format($totalNormalProfit, 0) }}</strong>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f1c40f !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Profit ({{ ucfirst($period) }})</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.45rem;">TZS {{ number_format($totalProfit, 0) }}</h3>
                 </div>
+                <div class="fs-2" style="color: #f1c40f; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
             </div>
-            <div class="stat-label">Normal Stock Summary</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #bc8cff !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Admin Stock Summary</h6>
+                    <div class="text-dark fw-700" style="font-size:0.95rem;">
+                        <span class="text-secondary small font-normal">Rev:</span> TZS {{ number_format($totalAdminRevenue, 0) }}
+                        <div class="text-secondary small font-normal mt-1">
+                            Profit: <strong class="text-dark">TZS {{ number_format($totalAdminProfit, 0) }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="fs-2" style="color: #bc8cff; opacity: 0.25;"><i class="bi bi-person-badge-fill"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #d29922 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Normal Stock Summary</h6>
+                    <div class="text-dark fw-700" style="font-size:0.95rem;">
+                        <span class="text-secondary small font-normal">Rev:</span> TZS {{ number_format($totalNormalRevenue, 0) }}
+                        <div class="text-secondary small font-normal mt-1">
+                            Profit: <strong class="text-dark">TZS {{ number_format($totalNormalProfit, 0) }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="fs-2" style="color: #d29922; opacity: 0.25;"><i class="bi bi-shop-window"></i></div>
+            </div>
         </div>
     </div>
 </div>

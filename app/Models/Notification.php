@@ -79,6 +79,13 @@ class Notification extends Model
             }
         }
 
+        // 7. Handover Reports
+        if (stripos($this->title, 'Handover') !== false || stripos($this->message, 'handover') !== false) {
+            if (auth()->check()) {
+                return route('handovers.index');
+            }
+        }
+
         return null;
     }
 }

@@ -14,6 +14,7 @@ class Sale extends Model
         'shop_id', 'seller_id', 'customer_name', 'total_amount', 'payment_method', 'sale_date',
         'status', 'customer_id', 'customer_po_box', 'deliver_to',
         'delivery_date', 'delivery_time', 'validity_date', 'terms_of_payment', 'is_admin_stock',
+        'handover_report_id',
     ];
 
     protected $casts = [
@@ -47,6 +48,11 @@ class Sale extends Model
     public function items()
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function handoverReport()
+    {
+        return $this->belongsTo(HandoverReport::class);
     }
 
     public function getReportRevenueAttribute(): float

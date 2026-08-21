@@ -7,24 +7,36 @@
 @section('content')
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(210,153,34,.12);color:#d29922;"><i class="bi bi-clock-history"></i></div>
-            <div class="stat-value" style="color:#d29922;">{{ $stats['pending'] }}</div>
-            <div class="stat-label">Pending Requests</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f39c12 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Pending Requests</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['pending'] }}</h3>
+                </div>
+                <div class="fs-2" style="color: #f39c12; opacity: 0.25;"><i class="bi bi-clock-history"></i></div>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(63,185,80,.12);color:#3fb950;"><i class="bi bi-check-circle-fill"></i></div>
-            <div class="stat-value" style="color:#3fb950;">{{ $stats['approved'] }}</div>
-            <div class="stat-label">Approved & Transferred</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Approved & Transferred</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['approved'] }}</h3>
+                </div>
+                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-check-circle-fill"></i></div>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(233,69,96,.12);color:#e94560;"><i class="bi bi-x-circle-fill"></i></div>
-            <div class="stat-value" style="color:#e94560;">{{ $stats['rejected'] }}</div>
-            <div class="stat-label">Rejected Requests</div>
+        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
+            <div class="card-body d-flex align-items-center justify-content-between py-3">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Rejected Requests</h6>
+                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['rejected'] }}</h3>
+                </div>
+                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-x-circle-fill"></i></div>
+            </div>
         </div>
     </div>
 </div>
