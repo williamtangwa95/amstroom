@@ -6,6 +6,10 @@ use App\Models\Category;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ItemController extends Controller
 {
@@ -163,5 +167,206 @@ class ItemController extends Controller
         $component->delete();
 
         return back()->with('success', 'Component removed successfully.');
+    }
+
+    public function downloadTemplate()
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $headers = [
+            'Product Name',
+            'Category Name',
+            'Brand',
+            'Model',
+            'Specification',
+            'Warranty Period'
+        ];
+        
+        foreach ($headers as $colIndex => $header) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '1', $header);
+        }
+        
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+        
+        $sample = [
+            'Wireless Mouse M170',
+            'Computer Accessories',
+            'Logitech',
+            'M170',
+            '2.4GHz wireless, 10m range, USB nano receiver',
+            '1 Year'
+        ];
+        foreach ($sample as $colIndex => $val) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '2', $val);
+        }
+        
+        foreach (range(1, 6) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+        
+        $writer = new Xlsx($spreadsheet);
+        
+        return response()->streamDownload(function() use ($writer) {
+            $writer->save('php://output');
+        }, 'product_import_template.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0'
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $file = $request->file('excel_file');
+        
+        try {
+            $spreadsheet = IOFactory::load($file->getRealPath());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to read spreadsheet file. Please make sure the format is valid.');
+        }
+
+        if (count($rows) <= 1) {
+            return back()->with('error', 'The spreadsheet does not contain any data rows.');
+        }
+
+        $headers = array_map(function($h) {
+            return strtolower(trim($h));
+        }, $rows[0]);
+
+        $headerMap = [
+            'item_name' => ['product name', 'item name', 'product_name', 'item_name', 'name', 'product', 'item'],
+            'category_name' => ['category name', 'category', 'category_name', 'category_id'],
+            'brand' => ['brand'],
+            'model' => ['model'],
+            'specification' => ['specification', 'specifications', 'specification details', 'specs'],
+            'warranty_period' => ['warranty period', 'warranty_period', 'warranty'],
+        ];
+
+        $indices = [];
+        $missingRequired = [];
+        $requiredKeys = ['item_name', 'category_name'];
+
+        foreach ($headerMap as $key => $aliases) {
+            $indices[$key] = -1;
+            foreach ($aliases as $alias) {
+                $idx = array_search($alias, $headers);
+                if ($idx !== false) {
+                    $indices[$key] = $idx;
+                    break;
+                }
+            }
+            if ($indices[$key] === -1 && in_array($key, $requiredKeys)) {
+                $missingRequired[] = ucwords(str_replace('_', ' ', $key));
+            }
+        }
+
+        if (!empty($missingRequired)) {
+            return back()->with('error', 'Missing required columns in spreadsheet: ' . implode(', ', $missingRequired));
+        }
+
+        $errors = [];
+        $importData = [];
+
+        // First pass: validation
+        for ($i = 1; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            
+            $isEmptyRow = true;
+            foreach ($row as $cell) {
+                if ($cell !== null && trim($cell) !== '') {
+                    $isEmptyRow = false;
+                    break;
+                }
+            }
+            if ($isEmptyRow) {
+                continue;
+            }
+
+            $rowNum = $i + 1;
+            
+            $itemName = isset($row[$indices['item_name']]) ? trim($row[$indices['item_name']]) : '';
+            if (empty($itemName)) {
+                $errors[] = "Row {$rowNum}: Product Name is required.";
+                continue;
+            }
+
+            $categoryName = isset($row[$indices['category_name']]) ? trim($row[$indices['category_name']]) : '';
+            if (empty($categoryName)) {
+                $errors[] = "Row {$rowNum}: Category Name is required.";
+                continue;
+            }
+
+            $importData[] = [
+                'rowNum' => $rowNum,
+                'item_name' => $itemName,
+                'category_name' => $categoryName,
+                'brand' => $indices['brand'] !== -1 && isset($row[$indices['brand']]) ? trim($row[$indices['brand']]) : null,
+                'model' => $indices['model'] !== -1 && isset($row[$indices['model']]) ? trim($row[$indices['model']]) : null,
+                'specification' => $indices['specification'] !== -1 && isset($row[$indices['specification']]) ? trim($row[$indices['specification']]) : null,
+                'warranty_period' => $indices['warranty_period'] !== -1 && isset($row[$indices['warranty_period']]) ? trim($row[$indices['warranty_period']]) : null,
+            ];
+        }
+
+        if (!empty($errors)) {
+            return back()->with('error', 'Validation failed: ' . implode(' | ', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '... and ' . (count($errors) - 5) . ' more errors.' : ''));
+        }
+
+        if (empty($importData)) {
+            return back()->with('error', 'No valid rows found to import.');
+        }
+
+        try {
+            DB::transaction(function() use ($importData) {
+                foreach ($importData as $data) {
+                    // Check if category exists, otherwise create it
+                    $category = Category::where('is_admin_category', false)
+                        ->where('category_name', $data['category_name'])
+                        ->first();
+                    if (!$category) {
+                        $category = Category::create([
+                            'category_name' => $data['category_name'],
+                            'is_admin_category' => false
+                        ]);
+                    }
+
+                    // Check if item exists, otherwise create it
+                    $item = Item::where('is_admin_item', false)
+                        ->where('item_name', $data['item_name'])
+                        ->first();
+                    if (!$item) {
+                        Item::create([
+                            'item_name' => $data['item_name'],
+                            'category_id' => $category->id,
+                            'brand' => $data['brand'],
+                            'model' => $data['model'],
+                            'specification' => $data['specification'],
+                            'warranty_period' => $data['warranty_period'],
+                            'is_admin_item' => false
+                        ]);
+                    } else {
+                        // Update existing item attributes
+                        $item->update([
+                            'category_id' => $category->id,
+                            'brand' => $data['brand'] ?? $item->brand,
+                            'model' => $data['model'] ?? $item->model,
+                            'specification' => $data['specification'] ?? $item->specification,
+                            'warranty_period' => $data['warranty_period'] ?? $item->warranty_period,
+                        ]);
+                    }
+                }
+            });
+
+            return redirect()->route('items.index')->with('success', 'Products imported successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to import products: ' . $e->getMessage());
+        }
     }
 }

@@ -39,6 +39,8 @@
         <span class="badge bg-info text-dark">Approved (Awaiting Cash confirmation)</span>
         @elseif($handover->status === 'rejected')
         <span class="badge bg-danger">Rejected</span>
+        @elseif($handover->status === 'returned')
+        <span class="badge bg-warning text-dark">Returned for Modification</span>
         @elseif($handover->status === 'completed')
         <span class="badge bg-success">Completed</span>
         @endif
@@ -55,7 +57,12 @@
         </a>
 
         <!-- Admin Actions -->
-        @if(auth()->user()->isShopAdmin() && ($handover->status === 'draft' || $handover->status === 'rejected'))
+        @if(auth()->user()->isShopAdmin() && in_array($handover->status, ['draft', 'returned']))
+        <a href="{{ route('handovers.edit', $handover) }}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-pencil me-1"></i> Edit Report
+        </a>
+        @endif
+        @if(auth()->user()->isShopAdmin() && in_array($handover->status, ['draft', 'rejected', 'returned']))
         <form method="POST" action="{{ route('handovers.submit', $handover) }}" class="d-inline">
             @csrf
             <button type="submit" class="btn btn-sm btn-accent">
@@ -73,6 +80,9 @@
                     <i class="bi bi-check-lg me-1"></i> Approve
                 </button>
             </form>
+            <button type="button" class="btn btn-sm btn-warning text-dark" data-bs-toggle="modal" data-bs-target="#returnModal">
+                <i class="bi bi-arrow-left-right me-1"></i> Return for Modification
+            </button>
             <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
                 <i class="bi bi-x-circle me-1"></i> Reject
             </button>
@@ -90,6 +100,10 @@
 @if($handover->status === 'rejected')
 <div class="alert alert-danger py-2 px-3 mb-4 no-print">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Rejection Remarks:</strong> "{{ $handover->received_remarks }}"
+</div>
+@elseif($handover->status === 'returned')
+<div class="alert alert-warning py-2 px-3 mb-4 no-print">
+    <i class="bi bi-info-circle-fill me-2 text-dark"></i><strong class="text-dark">Modification Feedback:</strong> <span class="text-dark">"{{ $handover->received_remarks }}"</span>
 </div>
 @endif
 
@@ -123,9 +137,13 @@
                         <span class="small">Total Owner Sales:</span>
                         <span class="fw-bold">TZS {{ number_format($handover->total_owner_sales, 0) }}</span>
                     </div>
-                    <div class="d-flex justify-content-between text-muted mb-2">
+                    <div class="d-flex justify-content-between text-muted mb-1">
                         <span class="small">Total Expenses:</span>
                         <span class="fw-bold text-danger">- TZS {{ number_format($handover->total_expenses, 0) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted mb-2">
+                        <span class="small">Requested Commission:</span>
+                        <span class="fw-bold text-info">TZS {{ number_format($handover->commission_amount ?? 0, 0) }}</span>
                     </div>
                     <div class="d-flex justify-content-between border-top pt-2">
                         <span class="fw-bold">Admin Net Profit:</span>
@@ -327,6 +345,31 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="submit" class="btn btn-sm btn-danger">Confirm Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Modal (Owner) -->
+<div class="modal fade no-print" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('handovers.return', $handover) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="returnModalLabel">Return Handover Report for Modification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Modification Feedback / Reason <span class="text-danger">*</span></label>
+                        <textarea name="remarks" class="form-control" rows="3" placeholder="Explain what needs to be changed or corrected" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-warning">Confirm Return</button>
                 </div>
             </form>
         </div>

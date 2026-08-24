@@ -60,9 +60,13 @@ Route::middleware('auth')->group(function () {
         Route::post('shops/{shop}/assign-employee', [ShopController::class, 'assignEmployee'])->name('shops.assign-employee');
 
         // Categories
+        Route::get('categories/import-template', [CategoryController::class, 'downloadTemplate'])->name('categories.import-template');
+        Route::post('categories/import', [CategoryController::class, 'import'])->name('categories.import');
         Route::resource('categories', CategoryController::class);
 
         // Items
+        Route::get('items/import-template', [ItemController::class, 'downloadTemplate'])->name('items.import-template');
+        Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
         Route::resource('items', ItemController::class);
         Route::post('items/{item}/components', [ItemController::class, 'addComponent'])->name('items.add-component');
         Route::delete('items/{item}/components/{component}', [ItemController::class, 'removeComponent'])->name('items.remove-component');
@@ -154,9 +158,12 @@ Route::middleware('auth')->group(function () {
         Route::get('handovers/create', [HandoverReportController::class, 'create'])->name('handovers.create');
         Route::post('handovers', [HandoverReportController::class, 'store'])->name('handovers.store');
         Route::get('handovers/{handover}', [HandoverReportController::class, 'show'])->name('handovers.show');
+        Route::get('handovers/{handover}/edit', [HandoverReportController::class, 'edit'])->name('handovers.edit');
+        Route::put('handovers/{handover}', [HandoverReportController::class, 'update'])->name('handovers.update');
         Route::post('handovers/{handover}/submit', [HandoverReportController::class, 'submit'])->name('handovers.submit');
         Route::post('handovers/{handover}/approve', [HandoverReportController::class, 'approve'])->name('handovers.approve');
         Route::post('handovers/{handover}/reject', [HandoverReportController::class, 'reject'])->name('handovers.reject');
+        Route::post('handovers/{handover}/return', [HandoverReportController::class, 'returnForModification'])->name('handovers.return');
         Route::post('handovers/{handover}/confirm-receipt', [HandoverReportController::class, 'confirmReceipt'])->name('handovers.confirm-receipt');
         Route::delete('handovers/{handover}', [HandoverReportController::class, 'destroy'])->name('handovers.destroy');
         Route::get('handovers/{handover}/export-excel', [HandoverReportController::class, 'exportExcel'])->name('handovers.export-excel');

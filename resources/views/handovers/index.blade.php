@@ -73,6 +73,7 @@
                     <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Submitted</option>
                     <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    <option value="returned" {{ request('status') === 'returned' ? 'selected' : '' }}>Returned</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
                 </select>
             </div>
@@ -140,6 +141,8 @@
                             <span class="badge bg-primary">Submitted</span>
                             @elseif($ho->status === 'rejected')
                             <span class="badge bg-danger">Rejected</span>
+                            @elseif($ho->status === 'returned')
+                            <span class="badge bg-warning text-dark">Returned</span>
                             @elseif($ho->status === 'completed')
                             <span class="badge bg-success">Completed</span>
                             @endif
@@ -150,6 +153,11 @@
                                 <a href="{{ route('handovers.show', $ho) }}" class="btn btn-xs btn-outline-custom" title="View details">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if(auth()->user()->isShopAdmin() && in_array($ho->status, ['draft', 'returned']))
+                                <a href="{{ route('handovers.edit', $ho) }}" class="btn btn-xs btn-outline-warning" title="Edit Report">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                @endif
                                 <a href="{{ route('handovers.export-excel', $ho) }}" class="btn btn-xs btn-outline-success" title="Download Excel">
                                     <i class="bi bi-file-earmark-excel"></i>
                                 </a>

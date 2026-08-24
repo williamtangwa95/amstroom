@@ -325,4 +325,101 @@ class HandoverReportTest extends TestCase
         $this->assertEquals(900, $fresh->amount_received);
         $this->assertEquals($this->owner->id, $fresh->received_by);
     }
+
+    public function test_can_submit_handover_report_with_commission()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('handovers.store'), [
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'actual_amount'     => 1000,
+            'commission_amount' => 150,
+            'submit_action'     => 'submit',
+        ]);
+
+        $response->assertRedirect(route('handovers.index'));
+        $this->assertDatabaseHas('handover_reports', [
+            'actual_amount'     => 1000,
+            'commission_amount' => 150,
+            'status'            => 'submitted',
+        ]);
+    }
+
+    public function test_owner_can_return_handover_report_for_modification()
+    {
+        $handover = HandoverReport::create([
+            'handover_no'       => 'HO-TEST-RETURN',
+            'shop_id'           => $this->shop->id,
+            'shop_admin_id'     => $this->admin->id,
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'total_owner_sales' => 1000,
+            'total_admin_sales' => 0,
+            'admin_stock_cost'  => 0,
+            'total_expenses'    => 0,
+            'net_profit'        => 1000,
+            'expected_amount'   => 1000,
+            'actual_amount'     => 1000,
+            'difference'        => 0,
+            'difference_status' => 'exact',
+            'status'            => 'submitted',
+            'created_by'        => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->owner);
+        $response = $this->post(route('handovers.return', $handover), [
+            'remarks' => 'Please adjust commission details',
+        ]);
+        $response->assertRedirect();
+        
+        $fresh = $handover->fresh();
+        $this->assertEquals('returned', $fresh->status);
+        $this->assertEquals('Please adjust commission details', $fresh->received_remarks);
+    }
+
+    public function test_shop_admin_can_edit_and_update_returned_report()
+    {
+        $handover = HandoverReport::create([
+            'handover_no'       => 'HO-TEST-EDIT-RETURN',
+            'shop_id'           => $this->shop->id,
+            'shop_admin_id'     => $this->admin->id,
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'total_owner_sales' => 1000,
+            'total_admin_sales' => 0,
+            'admin_stock_cost'  => 0,
+            'total_expenses'    => 0,
+            'net_profit'        => 1000,
+            'expected_amount'   => 1000,
+            'actual_amount'     => 1000,
+            'difference'        => 0,
+            'difference_status' => 'exact',
+            'status'            => 'returned',
+            'created_by'        => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        // Edit page loads
+        $response = $this->get(route('handovers.edit', $handover));
+        $response->assertStatus(200);
+
+        // Update form submission (change actual amount and commission)
+        $response = $this->put(route('handovers.update', $handover), [
+            'actual_amount'     => 950,
+            'commission_amount' => 200,
+            'needs_reason'      => '1',
+            'difference_reason' => 'Expense paid directly',
+            'submit_action'     => 'submit',
+        ]);
+
+        $response->assertRedirect(route('handovers.show', $handover));
+        
+        $fresh = $handover->fresh();
+        $this->assertEquals('submitted', $fresh->status);
+        $this->assertEquals(950, $fresh->actual_amount);
+        $this->assertEquals(200, $fresh->commission_amount);
+        $this->assertEquals(-50, $fresh->difference);
+    }
 }

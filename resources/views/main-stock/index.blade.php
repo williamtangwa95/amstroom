@@ -31,37 +31,77 @@
 </div>
 @endif
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f39c12 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Cost Value</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalValue, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #f39c12; opacity: 0.25;"><i class="bi bi-currency-dollar"></i></div>
+@php
+    $totalInitialCost = $stocks->sum(fn($st) => $st->stocked_quantity * $st->buying_price);
+    $totalInitialSell = $stocks->sum(fn($st) => $st->stocked_quantity * $st->selling_price);
+    $totalRemainingCost = $stocks->sum(fn($st) => $st->remaining_quantity * $st->buying_price);
+    $totalRemainingSell = $stocks->sum(fn($st) => $st->remaining_quantity * $st->selling_price);
+    $totalInitialQty = $stocks->sum('stocked_quantity');
+    $totalRemainingQty = $stocks->sum('remaining_quantity');
+@endphp
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 mb-4">
+    <!-- Total Cost Value Card -->
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div class="overflow-hidden">
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalInitialCost, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Cost Value ({{ number_format($totalInitialQty) }} units)">Total Cost <span class="small">({{ number_format($totalInitialQty) }})</span></div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Sell Value</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalSellValue, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
+
+    <!-- Total Sell Value Card -->
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <div class="overflow-hidden">
+                <div class="stat-value mb-0 text-success" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalInitialSell, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Stock Batches</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stocks->count() }}</h3>
-                </div>
-                <div class="fs-2" style="color: #3498db; opacity: 0.25;"><i class="bi bi-box-seam-fill"></i></div>
+
+    <!-- Remain Stock Value Card -->
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="overflow-hidden">
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalRemainingCost, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($totalRemainingQty) }} units)">Remain Value <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remain Sell Value Card -->
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+                <i class="bi bi-piggy-bank"></i>
+            </div>
+            <div class="overflow-hidden">
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalRemainingSell, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Batches Card -->
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+                <i class="bi bi-layers"></i>
+            </div>
+            <div class="overflow-hidden">
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">{{ number_format($stocks->count()) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
             </div>
         </div>
     </div>

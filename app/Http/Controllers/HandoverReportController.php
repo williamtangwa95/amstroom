@@ -178,6 +178,7 @@ class HandoverReportController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'actual_amount' => 'required|numeric|min:0',
+            'commission_amount' => 'nullable|numeric|min:0',
             'difference_reason' => 'required_if:needs_reason,1',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -288,6 +289,7 @@ class HandoverReportController extends Controller
                 'total_expenses' => $totalExpenses,
                 'net_profit' => $netProfit,
                 'expected_amount' => $expectedAmount,
+                'commission_amount' => $request->commission_amount ?? 0,
                 'actual_amount' => $actualAmount,
                 'difference' => $difference,
                 'difference_status' => $differenceStatus,
@@ -356,8 +358,8 @@ class HandoverReportController extends Controller
     public function submit(HandoverReport $handover)
     {
         $user = auth()->user();
-        if ($handover->status !== 'draft' && $handover->status !== 'rejected') {
-            return back()->with('error', 'Only drafts or rejected reports can be submitted.');
+        if ($handover->status !== 'draft' && $handover->status !== 'rejected' && $handover->status !== 'returned') {
+            return back()->with('error', 'Only drafts, rejected, or returned reports can be submitted.');
         }
 
         $handover->update([
@@ -378,6 +380,170 @@ class HandoverReportController extends Controller
         }
 
         return back()->with('success', 'Handover report submitted successfully.');
+    }
+
+    public function edit(HandoverReport $handover)
+    {
+        $user = auth()->user();
+        if (!$user->isShopAdmin() || $handover->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized access to edit this handover report.');
+        }
+
+        if ($handover->status !== 'draft' && $handover->status !== 'returned') {
+            return redirect()->route('handovers.show', $handover)->with('error', 'Only drafts or returned reports can be edited.');
+        }
+
+        $shop = Shop::findOrFail($handover->shop_id);
+
+        $sales = Sale::with('items')
+            ->where('handover_report_id', $handover->id)
+            ->get();
+
+        $expenses = Expense::with(['category', 'recorder'])
+            ->where('handover_report_id', $handover->id)
+            ->get();
+
+        // Calculations
+        $totalOwnerSales = 0.0;
+        $totalAdminSales = 0.0;
+        $adminStockCost = 0.0;
+        $adminCostOfGoods = 0.0;
+        $adminViewSales = 0.0;
+
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+
+        foreach ($sales as $sale) {
+            foreach ($sale->items as $item) {
+                if ($item->is_admin_stock) {
+                    continue;
+                }
+                if ($isIndependent && $sale->shop_id !== null) {
+                    $itemRevenue = (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
+                } else {
+                    $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+                }
+                $totalOwnerSales += $itemRevenue;
+                $adminCostOfGoods += (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $adminViewSales += (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+            }
+        }
+
+        $totalExpenses = (float) $expenses->sum('amount');
+        $expectedAmount = $totalOwnerSales - $totalExpenses;
+        $netProfit = $adminViewSales - $adminCostOfGoods;
+
+        $shops = collect();
+
+        return view('handovers.edit', compact(
+            'handover', 'shop', 'shops', 'sales', 'expenses',
+            'totalOwnerSales', 'totalAdminSales', 'adminStockCost',
+            'totalExpenses', 'expectedAmount', 'netProfit'
+        ));
+    }
+
+    public function update(Request $request, HandoverReport $handover)
+    {
+        $user = auth()->user();
+        if (!$user->isShopAdmin() || $handover->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized access to edit this handover report.');
+        }
+
+        if ($handover->status !== 'draft' && $handover->status !== 'returned') {
+            return redirect()->route('handovers.show', $handover)->with('error', 'Only drafts or returned reports can be edited.');
+        }
+
+        $request->validate([
+            'actual_amount' => 'required|numeric|min:0',
+            'commission_amount' => 'nullable|numeric|min:0',
+            'difference_reason' => 'required_if:needs_reason,1',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $actualAmount = (float) $request->actual_amount;
+        $expectedAmount = (float) $handover->expected_amount;
+        $difference = $actualAmount - $expectedAmount;
+
+        $differenceStatus = 'exact';
+        if ($difference < -0.01) {
+            $differenceStatus = 'shortage';
+        } elseif ($difference > 0.01) {
+            $differenceStatus = 'excess';
+        }
+
+        // Handle attachment upload
+        $attachmentPath = $handover->attachment_path;
+        if ($request->hasFile('attachment')) {
+            if ($attachmentPath) {
+                Storage::disk('public')->delete($attachmentPath);
+            }
+            $attachmentPath = $request->file('attachment')->store('handover_attachments', 'public');
+        }
+
+        $status = $request->input('submit_action') === 'submit' ? 'submitted' : 'draft';
+
+        $updateData = [
+            'actual_amount' => $actualAmount,
+            'commission_amount' => $request->commission_amount ?? 0,
+            'difference' => $difference,
+            'difference_status' => $differenceStatus,
+            'difference_reason' => $request->difference_reason,
+            'notes' => $request->notes,
+            'attachment_path' => $attachmentPath,
+            'status' => $status,
+        ];
+
+        if ($status === 'submitted') {
+            $updateData['submitted_at'] = now();
+        }
+
+        $handover->update($updateData);
+
+        // Notify Owners if status is submitted
+        if ($status === 'submitted') {
+            $owners = \App\Models\User::where('role', 'owner')->get();
+            foreach ($owners as $owner) {
+                \App\Models\Notification::create([
+                    'user_id' => $owner->id,
+                    'title' => 'Resubmitted Handover Report',
+                    'message' => "Shop Admin {$user->name} resubmitted Handover Report: {$handover->handover_no} for shop {$handover->shop->shop_name}.",
+                ]);
+            }
+        }
+
+        // Log activity
+        ActivityLog::log(
+            strtoupper($status),
+            ($status === 'submitted' ? 'Resubmitted' : 'Updated draft') . " Handover Report: {$handover->handover_no}",
+            $handover
+        );
+
+        return redirect()->route('handovers.show', $handover)->with('success', 'Handover report updated successfully.');
+    }
+
+    public function returnForModification(HandoverReport $handover, Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner()) {
+            abort(403, 'Only owners can return handover reports for modification.');
+        }
+
+        $request->validate(['remarks' => 'required|string']);
+
+        $handover->update([
+            'status' => 'returned',
+            'received_remarks' => $request->remarks,
+        ]);
+
+        ActivityLog::log('RETURNED', "Returned Handover Report for modification: {$handover->handover_no}. Reason: {$request->remarks}", $handover);
+
+        // Notify Shop Admin
+        \App\Models\Notification::create([
+            'user_id' => $handover->shop_admin_id,
+            'title' => 'Handover Report Returned for Modification',
+            'message' => "Your Handover Report {$handover->handover_no} was returned by the Owner for modification with remarks: \"{$request->remarks}\".",
+        ]);
+
+        return back()->with('success', 'Handover report returned for modification.');
     }
 
     public function approve(HandoverReport $handover)
@@ -553,8 +719,10 @@ class HandoverReportController extends Controller
         $sheet->setCellValue('B11', (float)$handover->total_owner_sales);
         $sheet->setCellValue('A12', 'Total Expenses:');
         $sheet->setCellValue('B12', (float)$handover->total_expenses);
+        $sheet->setCellValue('A13', 'Requested Commission:');
+        $sheet->setCellValue('B13', (float)$handover->commission_amount);
 
-        $rowNum = 13;
+        $rowNum = 14;
 
         $sheet->getStyle('A' . $rowNum . ':B' . $rowNum)->getFont()->setBold(true);
         $sheet->setCellValue('A' . $rowNum, 'Expected Amount to Submit:');

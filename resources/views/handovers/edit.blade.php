@@ -1,53 +1,34 @@
 @extends('layouts.app')
-@section('title', 'Generate Handover')
-@section('page-title', 'Generate Sales Cash Handover')
+@section('title', 'Edit Handover')
+@section('page-title', 'Edit Handover Report: ' . $handover->handover_no)
 @section('breadcrumb')
 <li class="breadcrumb-item"><a href="{{ route('handovers.index') }}">Handovers</a></li>
-<li class="breadcrumb-item active">New Report</li>
+<li class="breadcrumb-item"><a href="{{ route('handovers.show', $handover) }}">{{ $handover->handover_no }}</a></li>
+<li class="breadcrumb-item active">Edit</li>
 @endsection
 
 @section('content')
-@if($overlapExists)
-<div class="alert alert-danger py-2 px-3 mb-4" style="background:rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Overlap Alert:</strong> A handover report already covers some or all of the selected dates. Please adjust the range to prevent duplicates.
-</div>
-@endif
-
 <div class="row g-4">
     <!-- Calculation & Input Column -->
     <div class="col-md-5">
-        <!-- Date Selector -->
+        <!-- Handover Period Details -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header"><i class="bi bi-calendar-event me-2" style="color:var(--accent);"></i>Handover Period</div>
             <div class="card-body">
-                <form method="GET" action="{{ route('handovers.create') }}">
-                    @if(auth()->user()->isOwner())
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Select Shop</label>
-                        <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                            @foreach($shops as $s)
-                            <option value="{{ $s->id }}" {{ $shop->id == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
-                            @endforeach
-                        </select>
+                <div class="mb-3">
+                    <span class="text-muted small">Shop:</span>
+                    <div class="fw-bold">{{ $shop->shop_name }}</div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <span class="text-muted small">Start Date:</span>
+                        <div class="fw-bold">{{ $handover->start_date->format('Y-m-d') }}</div>
                     </div>
-                    @else
-                    <input type="hidden" name="shop_id" value="{{ $shop->id }}">
-                    @endif
-
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">Start Date</label>
-                            <input type="date" name="start_date" class="form-control form-control-sm" value="{{ $startDate }}" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">End Date</label>
-                            <input type="date" name="end_date" class="form-control form-control-sm" value="{{ $endDate }}" required>
-                        </div>
+                    <div class="col-6">
+                        <span class="text-muted small">End Date:</span>
+                        <div class="fw-bold">{{ $handover->end_date->format('Y-m-d') }}</div>
                     </div>
-                    <button type="submit" class="btn btn-sm btn-outline-custom w-100 mt-3">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Calculate Figures
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -55,11 +36,9 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header"><i class="bi bi-cash-coin me-2" style="color:#ffb700;"></i>Settlement Calculations</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('handovers.store') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('handovers.update', $handover) }}" enctype="multipart/form-data">
                     @csrf
-                    <input type="hidden" name="shop_id" value="{{ $shop->id }}">
-                    <input type="hidden" name="start_date" value="{{ $startDate }}">
-                    <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    @method('PUT')
 
                     <!-- Stats Breakdown -->
                     <div class="mb-3 py-2 border-bottom">
@@ -89,8 +68,8 @@
                         <label class="form-label small fw-bold">Actual Amount Submitted <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">TZS</span>
-                            <input type="text" id="actual_amount_display" class="form-control" placeholder="Enter submitted cash" value="{{ old('actual_amount') ? number_format((float)old('actual_amount'), 0, '.', ',') : '' }}" required>
-                            <input type="hidden" name="actual_amount" id="actual_amount" value="{{ old('actual_amount') }}">
+                            <input type="text" id="actual_amount_display" class="form-control" placeholder="Enter submitted cash" value="{{ old('actual_amount', $handover->actual_amount) ? number_format((float)old('actual_amount', $handover->actual_amount), 0, '.', ',') : '' }}" required>
+                            <input type="hidden" name="actual_amount" id="actual_amount" value="{{ old('actual_amount', $handover->actual_amount) }}">
                         </div>
                     </div>
 
@@ -99,45 +78,61 @@
                         <label class="form-label small fw-bold">Requested Commission to be Paid</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">TZS</span>
-                            <input type="text" id="commission_amount_display" class="form-control" placeholder="Enter requested commission (optional)" value="{{ old('commission_amount') ? number_format((float)old('commission_amount'), 0, '.', ',') : '' }}">
-                            <input type="hidden" name="commission_amount" id="commission_amount" value="{{ old('commission_amount') }}">
+                            <input type="text" id="commission_amount_display" class="form-control" placeholder="Enter requested commission (optional)" value="{{ old('commission_amount', $handover->commission_amount) ? number_format((float)old('commission_amount', $handover->commission_amount), 0, '.', ',') : '' }}">
+                            <input type="hidden" name="commission_amount" id="commission_amount" value="{{ old('commission_amount', $handover->commission_amount) }}">
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span class="small fw-bold">Difference Status:</span>
-                            <span id="difference_text" class="text-muted fw-bold">Exact Match</span>
+                            @php
+                                $diff = $handover->difference;
+                                $diffText = "Exact Match";
+                                $diffClass = "text-muted fw-bold";
+                                if ($handover->difference_status === 'shortage') {
+                                    $diffText = "Shortage: TZS " . number_format(abs($diff), 0);
+                                    $diffClass = "text-danger fw-bold";
+                                } elseif ($handover->difference_status === 'excess') {
+                                    $diffText = "Excess: TZS " . number_format($diff, 0);
+                                    $diffClass = "text-success fw-bold";
+                                }
+                            @endphp
+                            <span id="difference_text" class="{{ $diffClass }}">{{ $diffText }}</span>
                         </div>
                     </div>
 
                     <!-- Difference Reason (Mandatory on shortage/excess) -->
-                    <input type="hidden" id="needs_reason" name="needs_reason" value="0">
-                    <div class="mb-3" id="difference_reason_div" style="display: none;">
+                    <input type="hidden" id="needs_reason" name="needs_reason" value="{{ $handover->difference_status !== 'exact' ? '1' : '0' }}">
+                    <div class="mb-3" id="difference_reason_div" style="display: {{ $handover->difference_status !== 'exact' ? 'block' : 'none' }};">
                         <label class="form-label small fw-bold">Difference Reason <span class="text-danger">*</span></label>
                         <select name="difference_reason" class="form-select form-select-sm">
                             <option value="">-- Select Reason --</option>
-                            <option value="Expense paid directly">Expense paid directly</option>
-                            <option value="Stock discrepancy">Stock discrepancy</option>
-                            <option value="Manual cash adjustment">Manual cash adjustment</option>
-                            <option value="Unresolved mismatch">Unresolved mismatch</option>
-                            <option value="Other">Other</option>
+                            <option value="Expense paid directly" {{ old('difference_reason', $handover->difference_reason) === 'Expense paid directly' ? 'selected' : '' }}>Expense paid directly</option>
+                            <option value="Stock discrepancy" {{ old('difference_reason', $handover->difference_reason) === 'Stock discrepancy' ? 'selected' : '' }}>Stock discrepancy</option>
+                            <option value="Manual cash adjustment" {{ old('difference_reason', $handover->difference_reason) === 'Manual cash adjustment' ? 'selected' : '' }}>Manual cash adjustment</option>
+                            <option value="Unresolved mismatch" {{ old('difference_reason', $handover->difference_reason) === 'Unresolved mismatch' ? 'selected' : '' }}>Unresolved mismatch</option>
+                            <option value="Other" {{ old('difference_reason', $handover->difference_reason) === 'Other' ? 'selected' : '' }}>Other</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Explanation / Notes</label>
-                        <textarea name="notes" class="form-control" rows="2" placeholder="Add details or remarks">{{ old('notes') }}</textarea>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Add details or remarks">{{ old('notes', $handover->notes) }}</textarea>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label small fw-bold">Supporting Evidence / Attachment</label>
                         <input type="file" name="attachment" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
-                        <div class="form-text small" style="font-size: 0.65rem;">Accepted types: PDF, PNG, JPG, JPEG (Max 5MB). Upload bank receipt, Airtel Money/M-Pesa statement, invoice, or defect proof.</div>
+                        <div class="form-text small" style="font-size: 0.65rem;">Accepted types: PDF, PNG, JPG, JPEG (Max 5MB). Leave empty to keep existing attachment.</div>
+                        @if($handover->attachment_path)
+                        <div class="mt-2 small text-muted">
+                            <i class="bi bi-file-earmark-check"></i> Current: <a href="{{ asset('storage/' . $handover->attachment_path) }}" target="_blank">View existing file</a>
+                        </div>
+                        @endif
                     </div>
 
                     <!-- Buttons -->
-                    @if(!$overlapExists)
                     <div class="d-flex gap-2">
                         <button type="submit" name="submit_action" value="draft" class="btn btn-outline-secondary w-50">
                             <i class="bi bi-save me-1"></i> Save Draft
@@ -146,9 +141,6 @@
                             <i class="bi bi-check-circle me-1"></i> Submit Report
                         </button>
                     </div>
-                    @else
-                    <button type="button" class="btn btn-secondary w-100" disabled>Overlapping Dates Detected</button>
-                    @endif
                 </form>
             </div>
         </div>

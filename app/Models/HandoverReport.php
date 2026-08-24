@@ -14,7 +14,7 @@ class HandoverReport extends Model
     protected $fillable = [
         'handover_no', 'shop_id', 'shop_admin_id', 'start_date', 'end_date',
         'total_owner_sales', 'total_admin_sales', 'admin_stock_cost', 'total_expenses', 'net_profit',
-        'expected_amount', 'actual_amount', 'difference', 'difference_status',
+        'expected_amount', 'commission_amount', 'actual_amount', 'difference', 'difference_status',
         'difference_reason', 'notes', 'attachment_path', 'status',
         'created_by', 'submitted_at', 'approved_by', 'approved_at',
         'received_by', 'received_at', 'received_remarks', 'amount_received'
@@ -29,6 +29,7 @@ class HandoverReport extends Model
         'total_expenses'    => 'decimal:2',
         'net_profit'        => 'decimal:2',
         'expected_amount'   => 'decimal:2',
+        'commission_amount' => 'decimal:2',
         'actual_amount'     => 'decimal:2',
         'difference'        => 'decimal:2',
         'submitted_at'      => 'datetime',

@@ -81,6 +81,7 @@
                                     data-id="{{ $stock->id }}"
                                     data-name="{{ $stock->item->item_name }}"
                                     data-price="{{ $stock->selling_price }}"
+                                    data-buying-price="{{ $stock->buying_price }}"
                                     data-stock="{{ $stock->remaining_quantity }}"
                                     data-price-pending="{{ $pendingPrice ? 'true' : 'false' }}"
                                     data-pending-price="{{ $pendingPrice ?? 0 }}"
@@ -269,6 +270,7 @@
             const id = this.dataset.id;
             const name = this.dataset.name;
             const price = parseFloat(this.dataset.price);
+            const buyingPrice = parseFloat(this.dataset.buyingPrice) || 0;
             const maxStock = parseInt(this.dataset.stock);
             const isPending = this.dataset.pricePending === 'true';
             const pendingPrice = parseFloat(this.dataset.pendingPrice);
@@ -316,6 +318,7 @@
                     id,
                     name,
                     price,
+                    buyingPrice,
                     qty: 1,
                     maxStock,
                     negotiatedPrice: price,
@@ -331,6 +334,7 @@
     function renderCart() {
         const list = document.getElementById('cartItemsList');
         const keys = Object.keys(cart);
+        const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
 
         if (keys.length === 0) {
             list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1"></i>Cart is empty. Select products from the left.</div>`;
@@ -396,6 +400,8 @@
                 `;
             }
 
+            const displayMinPrice = isOwnerOrAdmin ? (item.buyingPrice || 0) : (item.price || 0);
+
             html += `
             <div class="cart-item-row d-flex flex-column pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -403,7 +409,7 @@
                     ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
                     <div style="flex:1;min-width:0;" class="pe-2">
                         <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name} ${item.isCustom ? '<span style="font-size:.6rem;background:#e3b341;color:#000;padding:1px 5px;border-radius:3px;margin-left:3px;">CUSTOM</span>' : ''}</div>
-                        <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${item.price.toLocaleString()}</div>
+                        <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${displayMinPrice.toLocaleString()}</div>
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
@@ -547,12 +553,15 @@
                 }
                 
                 // Validate negotiable price floor for completed sales
-                if (cart[id].negotiatedPrice < cart[id].price) {
+                const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
+                const minAllowedPrice = isOwnerOrAdmin ? (cart[id].buyingPrice || 0) : (cart[id].price || 0);
+                if (cart[id].negotiatedPrice < minAllowedPrice) {
                     e.preventDefault();
+                    const priceType = isOwnerOrAdmin ? 'buying' : 'dedicated selling';
                     Swal.fire({
                         icon: 'error',
                         title: 'Price Floor Violation',
-                        text: `Price for ${cart[id].name} cannot be less than dedicated selling price TZS ${cart[id].price.toLocaleString()}.`,
+                        text: `Price for ${cart[id].name} cannot be less than ${priceType} price TZS ${minAllowedPrice.toLocaleString()}.`,
                         background: '#161b22',
                         color: '#e6edf3'
                     });

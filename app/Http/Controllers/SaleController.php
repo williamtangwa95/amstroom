@@ -245,8 +245,16 @@ class SaleController extends Controller
                 }
 
                 $submittedPrice = floatval($cartItem['price']);
-                if (!$isDraftProforma && $submittedPrice < floatval($stock->selling_price)) {
-                    throw new \Exception("Price for {$stock->item->item_name} cannot be less than dedicated selling price TZS " . number_format($stock->selling_price, 0));
+                if (!$isDraftProforma) {
+                    if ($user->isOwner() || $user->isShopAdmin()) {
+                        if ($submittedPrice < floatval($stock->buying_price)) {
+                            throw new \Exception("Price for {$stock->item->item_name} cannot be less than buying price TZS " . number_format($stock->buying_price, 0));
+                        }
+                    } else {
+                        if ($submittedPrice < floatval($stock->selling_price)) {
+                            throw new \Exception("Price for {$stock->item->item_name} cannot be less than dedicated selling price TZS " . number_format($stock->selling_price, 0));
+                        }
+                    }
                 }
 
                 $ownerCostPrice = 0.0; $ownerRealizedSp = 0.0;
