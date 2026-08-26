@@ -106,12 +106,12 @@
                         <a href="{{ route('stock-transfers.show', $transfer) }}" class="btn btn-sm btn-outline-custom">
                             <i class="bi bi-eye me-1"></i> View
                         </a>
-                        @if(auth()->user()->isOwner() && $transfer->items_count == 0)
+                        @if(auth()->user()->isOwner() && $transfer->received_items_count == 0)
                         <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-delete-transfer"
                             data-url="{{ route('stock-transfers.destroy', $transfer) }}"
                             data-id="{{ $transfer->id }}"
-                            title="Delete empty transfer">
-                            <i class="bi bi-trash-fill"></i>
+                            title="Delete transfer and return stock to Main Warehouse">
+                            <i class="bi bi-trash-fill me-1"></i> Delete
                         </button>
                         @endif
                     </td>
@@ -146,12 +146,12 @@ $(function() {
         const id  = $(this).data('id');
         Swal.fire({
             title: 'Delete Transfer #' + id + '?',
-            text: 'This transfer has no items. It will be permanently deleted.',
+            html: 'All pending/rejected items will have their stock <strong>returned to the Main Warehouse</strong>.<br>This action cannot be undone.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, delete it!',
+            confirmButtonText: 'Yes, delete transfer!',
             cancelButtonText: 'Cancel',
             background: '#161b22',
             color: '#e6edf3'
