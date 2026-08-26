@@ -1304,6 +1304,83 @@ class ShopStockController extends Controller
             ->with('success', 'Shop stock batch deleted successfully.');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'exists:shop_stocks,id',
+        ]);
+
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($request->ids as $id) {
+            $shopStock = ShopStock::find($id);
+            if (!$shopStock) {
+                continue;
+            }
+
+            // Authorization check
+            if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
+                $skippedCount++;
+                continue;
+            }
+
+            // Restrict Shop Admin from deleting stock posted by the Owner
+            if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
+                $skippedCount++;
+                continue;
+            }
+
+            // Restrict deletion if stock quantity has been modified or sold
+            if ($shopStock->quantity != $shopStock->remaining_quantity) {
+                $skippedCount++;
+                continue;
+            }
+
+            $itemId       = $shopStock->item_id;
+            $quantity     = $shopStock->quantity;
+            $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
+            $isAdminStock = $shopStock->is_admin_stock;
+
+            $shopStock->delete();
+            $deletedCount++;
+
+            StockLog::create([
+                'item_id'          => $itemId,
+                'from_location'    => $shopName,
+                'to_location'      => 'Supplier (Deleted)',
+                'quantity'         => $quantity,
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => Auth::id(),
+                'date'             => now(),
+                'notes'            => 'Shop stock batch deleted via bulk delete.',
+                'is_admin_stock'   => $isAdminStock,
+            ]);
+        }
+
+        if ($deletedCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No selected stock batches could be deleted. Note: Batches with sold items or requiring higher privileges cannot be deleted.'
+            ], 422);
+        }
+
+        $message = "Successfully deleted {$deletedCount} stock batch(es).";
+        if ($skippedCount > 0) {
+            $message .= " ({$skippedCount} batch(es) were skipped because items were sold or unauthorized).";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'deleted_count' => $deletedCount,
+            'skipped_count' => $skippedCount
+        ]);
+    }
+
     public function requestEdit(Request $request, ShopStock $shopStock)
     {
         $user = Auth::user();

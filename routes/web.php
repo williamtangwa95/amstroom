@@ -149,6 +149,7 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');
         Route::get('shop-stock/{shopStock}/edit', [ShopStockController::class, 'edit'])->name('shop-stock.edit');
         Route::put('shop-stock/{shopStock}', [ShopStockController::class, 'update'])->name('shop-stock.update');
+        Route::delete('shop-stock/bulk', [ShopStockController::class, 'bulkDestroy'])->name('shop-stock.bulk-destroy');
         Route::delete('shop-stock/{shopStock}', [ShopStockController::class, 'destroy'])->name('shop-stock.destroy');
         Route::post('shop-stock/{shopStock}/request-edit', [ShopStockController::class, 'requestEdit'])->name('shop-stock.request-edit');
         Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');

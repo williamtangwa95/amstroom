@@ -204,9 +204,14 @@
         <i class="bi bi-check2-square text-accent fs-5"></i>
         <span class="fw-600 small" id="selectedCountText" style="color:var(--text-primary);">0 items selected</span>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
+        @if(auth()->user()->isOwner())
         <button type="button" class="btn btn-xs btn-accent px-3 py-1" id="bulkEnableBtn" style="font-size: .75rem;">Enable Custom Components</button>
-        <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
+        <button type="button" class="btn btn-xs btn-outline-warning px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
+        @endif
+        <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDeleteBtn" style="font-size: .75rem;">
+            <i class="bi bi-trash me-1"></i> Delete Selected
+        </button>
     </div>
 </div>
 
@@ -2003,10 +2008,13 @@
                 });
         });
 
-        function updateBulkActionsBar() {
+        function getSelectedStockIds() {
             const checkedIds = [];
             $('.stock-checkbox:checked').each(function() {
-                checkedIds.push($(this).data('id'));
+                const id = $(this).data('id');
+                if (id && !checkedIds.includes(id)) {
+                    checkedIds.push(id);
+                }
             });
 
             $('.stock-checkbox-parent:checked').each(function() {
@@ -2019,7 +2027,11 @@
                     });
                 }
             });
+            return checkedIds;
+        }
 
+        function updateBulkActionsBar() {
+            const checkedIds = getSelectedStockIds();
             const count = checkedIds.length;
             if (count > 0) {
                 $('#selectedCountText').html(`<strong>${count}</strong> item(s) selected`);
@@ -2055,22 +2067,7 @@
         });
 
         function sendBulkUpdate(enabled) {
-            const checkedIds = [];
-            $('.stock-checkbox:checked').each(function() {
-                checkedIds.push($(this).data('id'));
-            });
-
-            $('.stock-checkbox-parent:checked').each(function() {
-                const ids = $(this).data('ids');
-                if (Array.isArray(ids)) {
-                    ids.forEach(id => {
-                        if (!checkedIds.includes(id)) {
-                            checkedIds.push(id);
-                        }
-                    });
-                }
-            });
-
+            const checkedIds = getSelectedStockIds();
             if (checkedIds.length === 0) return;
 
             Swal.fire({
@@ -2102,7 +2099,7 @@
                         location.reload();
                     });
                 })
-.fail(function(err) {
+                .fail(function(err) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
@@ -2111,6 +2108,83 @@
                         color: '#e6edf3'
                     });
                 });
+        }
+
+        function sendBulkDelete() {
+            const checkedIds = getSelectedStockIds();
+
+            if (checkedIds.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Selection',
+                    text: 'Please select at least one stock item to delete.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Delete Selected Stock Batches?',
+                text: `Are you sure you want to delete ${checkedIds.length} selected stock batch(es)? This action cannot be undone.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete selected!',
+                cancelButtonText: 'Cancel',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Deleting...',
+                        html: 'Please wait while selected stock items are being deleted.',
+                        allowOutsideClick: false,
+                        background: '#161b22',
+                        color: '#e6edf3',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: "{{ route('shop-stock.bulk-destroy') }}",
+                        type: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            _method: 'DELETE',
+                            ids: checkedIds
+                        },
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted!',
+                                text: res.message || 'Selected stock batches deleted successfully.',
+                                timer: 1800,
+                                showConfirmButton: false,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        },
+                        error: function(xhr) {
+                            let errorMsg = 'Failed to delete selected stock batches. Please try again.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Delete Failed',
+                                text: errorMsg,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            });
+                        }
+                    });
+                }
+            });
         }
 
         @if(auth()->user()->allow_stock_addition)
@@ -2431,6 +2505,7 @@
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
         @endif
+        $('#bulkDeleteBtn').on('click', sendBulkDelete);
 
         $(document).on('click', '.confirm-delete-btn', function(e) {
             e.preventDefault();
