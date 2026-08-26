@@ -488,7 +488,7 @@ class StockTransferController extends Controller
     }
 
     /**
-     * Owner: Delete a pending or rejected transfer item and restore stock to main warehouse.
+     * Owner: Delete a transfer item (pending, rejected, or received) and restore stock to main warehouse.
      */
     public function deleteItem(StockTransferItem $transferItem)
     {
@@ -498,32 +498,59 @@ class StockTransferController extends Controller
             abort(403, 'Only the owner can delete transfer items.');
         }
 
-        if ($transferItem->status === 'received') {
-            return back()->with('error', 'Received items cannot be deleted.');
-        }
-
         $transfer = $transferItem->transfer;
         if ($transfer) {
             $transfer->load('shop');
         }
 
-        $transferId     = $transfer?->id;
+        $transferId      = $transfer?->id;
         $transferDeleted = false;
 
         DB::transaction(function () use ($transferItem, $transfer, $user, &$transferDeleted) {
-            // Restore stock to main warehouse
-            $this->restoreMainStock($transferItem->item_id, $transferItem->quantity);
+            if ($transferItem->status === 'received' && $transfer) {
+                // Deduct from shop stock
+                $shopStock = ShopStock::where('shop_id', $transfer->to_shop)
+                    ->where('item_id', $transferItem->item_id)
+                    ->first();
 
-            StockLog::create([
-                'item_id'          => $transferItem->item_id,
-                'from_location'    => 'Main Warehouse',
-                'to_location'      => $transfer->shop?->shop_name ?? 'Shop',
-                'quantity'         => $transferItem->quantity,
-                'transaction_type' => 'ADJUSTMENT',
-                'performed_by'     => $user->id,
-                'date'             => now()->toDateString(),
-                'notes'            => "Transfer item removed & stock returned to Main Warehouse (Transfer #{$transfer->id})",
-            ]);
+                if ($shopStock) {
+                    $shopStock->quantity = max(0, $shopStock->quantity - $transferItem->quantity);
+                    $shopStock->remaining_quantity = max(0, $shopStock->remaining_quantity - $transferItem->quantity);
+                    if ($shopStock->quantity <= 0 && $shopStock->remaining_quantity <= 0) {
+                        $shopStock->delete();
+                    } else {
+                        $shopStock->save();
+                    }
+                }
+
+                // Restore stock to main warehouse
+                $this->restoreMainStock($transferItem->item_id, $transferItem->quantity);
+
+                StockLog::create([
+                    'item_id'          => $transferItem->item_id,
+                    'from_location'    => $transfer->shop?->shop_name ?? 'Shop',
+                    'to_location'      => 'Main Warehouse (Item Deleted)',
+                    'quantity'         => $transferItem->quantity,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now()->toDateString(),
+                    'notes'            => "Received transfer item removed from shop stock & returned to Main Warehouse (Transfer #{$transfer->id})",
+                ]);
+            } else {
+                // Restore stock to main warehouse
+                $this->restoreMainStock($transferItem->item_id, $transferItem->quantity);
+
+                StockLog::create([
+                    'item_id'          => $transferItem->item_id,
+                    'from_location'    => 'Main Warehouse',
+                    'to_location'      => $transfer->shop?->shop_name ?? 'Shop',
+                    'quantity'         => $transferItem->quantity,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now()->toDateString(),
+                    'notes'            => "Transfer item removed & stock returned to Main Warehouse (Transfer #{$transfer->id})",
+                ]);
+            }
 
             $transferItem->delete();
 
@@ -546,7 +573,7 @@ class StockTransferController extends Controller
     }
 
     /**
-     * Owner: Delete an empty transfer (no items).
+     * Owner: Delete a transfer (even if fully or partially received).
      */
     public function destroyTransfer(StockTransfer $stockTransfer)
     {
@@ -556,29 +583,53 @@ class StockTransferController extends Controller
             abort(403, 'Only the owner can delete transfers.');
         }
 
-        // Safety: only allow deletion if all items are non-received (or transfer is empty)
-        $receivedCount = $stockTransfer->items()->where('status', 'received')->count();
-        if ($receivedCount > 0) {
-            return back()->with('error', 'Cannot delete a transfer that has received items.');
-        }
-
         $itemsCount = $stockTransfer->items()->count();
 
         DB::transaction(function () use ($stockTransfer, $user) {
-            // Restore warehouse stock for any pending/rejected items
             foreach ($stockTransfer->items as $item) {
-                $this->restoreMainStock($item->item_id, $item->quantity);
+                if ($item->status === 'received') {
+                    // Revert shop stock for received items
+                    $shopStock = ShopStock::where('shop_id', $stockTransfer->to_shop)
+                        ->where('item_id', $item->item_id)
+                        ->first();
 
-                StockLog::create([
-                    'item_id'          => $item->item_id,
-                    'from_location'    => 'Main Warehouse',
-                    'to_location'      => $stockTransfer->shop?->shop_name ?? 'Shop',
-                    'quantity'         => $item->quantity,
-                    'transaction_type' => 'ADJUSTMENT',
-                    'performed_by'     => $user->id,
-                    'date'             => now()->toDateString(),
-                    'notes'            => "Transfer #{$stockTransfer->id} deleted — stock returned to Main Warehouse.",
-                ]);
+                    if ($shopStock) {
+                        $shopStock->quantity = max(0, $shopStock->quantity - $item->quantity);
+                        $shopStock->remaining_quantity = max(0, $shopStock->remaining_quantity - $item->quantity);
+                        if ($shopStock->quantity <= 0 && $shopStock->remaining_quantity <= 0) {
+                            $shopStock->delete();
+                        } else {
+                            $shopStock->save();
+                        }
+                    }
+
+                    $this->restoreMainStock($item->item_id, $item->quantity);
+
+                    StockLog::create([
+                        'item_id'          => $item->item_id,
+                        'from_location'    => $stockTransfer->shop?->shop_name ?? 'Shop',
+                        'to_location'      => 'Main Warehouse (Transfer Deleted)',
+                        'quantity'         => $item->quantity,
+                        'transaction_type' => 'ADJUSTMENT',
+                        'performed_by'     => $user->id,
+                        'date'             => now()->toDateString(),
+                        'notes'            => "Transfer #{$stockTransfer->id} deleted — received item stock removed from shop stock and returned to Main Warehouse.",
+                    ]);
+                } else {
+                    // Restore warehouse stock for pending/rejected items
+                    $this->restoreMainStock($item->item_id, $item->quantity);
+
+                    StockLog::create([
+                        'item_id'          => $item->item_id,
+                        'from_location'    => 'Main Warehouse',
+                        'to_location'      => $stockTransfer->shop?->shop_name ?? 'Shop',
+                        'quantity'         => $item->quantity,
+                        'transaction_type' => 'ADJUSTMENT',
+                        'performed_by'     => $user->id,
+                        'date'             => now()->toDateString(),
+                        'notes'            => "Transfer #{$stockTransfer->id} deleted — stock returned to Main Warehouse.",
+                    ]);
+                }
             }
 
             $stockTransfer->items()->delete();

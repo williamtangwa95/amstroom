@@ -142,8 +142,8 @@
                         </button>
                     @endif
 
-                    {{-- Delete Transfer button (owner only, no received items) --}}
-                    @if($isOwner && $stockTransfer->items->where('status','received')->count() === 0)
+                    {{-- Delete Transfer button (owner only) --}}
+                    @if($isOwner)
                         <button type="button" class="btn btn-sm btn-outline-danger" id="deleteTransferBtn"
                             data-url="{{ route('stock-transfers.destroy', $stockTransfer) }}"
                             data-id="{{ $stockTransfer->id }}"
@@ -273,12 +273,14 @@
                                                     </button>
                                                 @endif
 
-                                                {{-- Owner Actions (Edit / Delete for pending or rejected items) --}}
-                                                @if($isOwner && in_array($ti->status, ['pending', 'rejected']))
+                                                {{-- Owner Actions (Edit / Delete for items) --}}
+                                                @if($isOwner)
+                                                    @if(in_array($ti->status, ['pending', 'rejected']))
                                                     <button type="button" class="btn btn-sm btn-outline-primary px-2 py-1" title="Edit Item"
                                                             data-bs-toggle="modal" data-bs-target="#editItemModal{{ $ti->id }}">
                                                         <i class="bi bi-pencil-fill"></i>
                                                     </button>
+                                                    @endif
                                                     <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1" title="Delete Item"
                                                             onclick="submitDeleteItem('{{ route('stock-transfers.delete-item', $ti) }}')">
                                                         <i class="bi bi-trash-fill"></i>
@@ -682,7 +684,7 @@ $(document).ready(function() {
         const id  = $(this).data('id');
         Swal.fire({
             title: 'Delete Transfer #' + id + '?',
-            html: 'All pending/rejected items will have their stock <strong>returned to the Main Warehouse</strong>.<br>This action cannot be undone.',
+            html: 'All transfer items (including received stock) will be removed and stock <strong>returned to the Main Warehouse</strong>.<br>This action cannot be undone.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
