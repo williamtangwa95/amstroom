@@ -485,8 +485,7 @@
                                                             @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
                                                             <a href="{{ route('shop-stock.edit', $st) }}" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>
 
-                                                            @if(auth()->user()->isOwner() || $st->is_admin_stock)
-                                                            @if($st->quantity == $st->remaining_quantity)
+                                                            @if(auth()->user()->isOwner() || ($st->is_admin_stock && $st->quantity == $st->remaining_quantity))
                                                             <form action="{{ route('shop-stock.destroy', $st) }}" method="POST" class="d-inline delete-stock-form">
                                                                 @csrf
                                                                 @method('DELETE')
@@ -494,7 +493,6 @@
                                                                     <i class="bi bi-trash"></i>
                                                                 </button>
                                                             </form>
-                                                            @endif
                                                             @endif
 
                                                             @if(!auth()->user()->isOwner() && !$st->is_admin_stock)
@@ -710,8 +708,7 @@
                             @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))
                             <a href="{{ route('shop-stock.edit', $firstSt) }}" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>
 
-                            @if(auth()->user()->isOwner() || $firstSt->is_admin_stock)
-                            @if($firstSt->quantity == $firstSt->remaining_quantity)
+                            @if(auth()->user()->isOwner() || ($firstSt->is_admin_stock && $firstSt->quantity == $firstSt->remaining_quantity))
                             <form action="{{ route('shop-stock.destroy', $firstSt) }}" method="POST" class="d-inline delete-stock-form">
                                 @csrf
                                 @method('DELETE')
@@ -719,7 +716,6 @@
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
-                            @endif
                             @endif
 
                             @if(!auth()->user()->isOwner() && !$firstSt->is_admin_stock)
