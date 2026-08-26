@@ -1275,14 +1275,13 @@ class ShopStockController extends Controller
                 ->with('error', 'You cannot delete stock batches posted by the owner.');
         }
 
-        // Restrict Shop Admin if quantity != remaining_quantity
-        if (!$user->isOwner() && $shopStock->quantity != $shopStock->remaining_quantity) {
+        if ($shopStock->quantity != $shopStock->remaining_quantity) {
             return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
                 ->with('error', 'Cannot delete stock batch because some items have already been sold or modified.');
         }
 
         $itemId = $shopStock->item_id;
-        $quantity = $shopStock->remaining_quantity;
+        $quantity = $shopStock->quantity;
         $shopName = $shopStock->shop->shop_name;
         $shopId = $shopStock->shop_id;
         $isAdminStock = $shopStock->is_admin_stock;
@@ -1335,14 +1334,14 @@ class ShopStockController extends Controller
                 continue;
             }
 
-            // Restrict Shop Admin if stock quantity has been modified or sold
-            if (!$user->isOwner() && $shopStock->quantity != $shopStock->remaining_quantity) {
+            // Restrict deletion if stock quantity has been modified or sold
+            if ($shopStock->quantity != $shopStock->remaining_quantity) {
                 $skippedCount++;
                 continue;
             }
 
             $itemId       = $shopStock->item_id;
-            $quantity     = $shopStock->remaining_quantity;
+            $quantity     = $shopStock->quantity;
             $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
             $isAdminStock = $shopStock->is_admin_stock;
 

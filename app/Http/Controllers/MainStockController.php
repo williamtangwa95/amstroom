@@ -196,8 +196,13 @@ class MainStockController extends Controller
 
     public function destroy(MainStock $mainStock)
     {
+        if ($mainStock->stocked_quantity != $mainStock->remaining_quantity) {
+            return redirect()->route('main-stock.index')
+                ->with('error', 'Cannot delete stock batch because some items have already been transferred or sold.');
+        }
+
         $itemId = $mainStock->item_id;
-        $quantity = $mainStock->remaining_quantity;
+        $quantity = $mainStock->stocked_quantity;
 
         $mainStock->delete();
 
@@ -214,51 +219,6 @@ class MainStockController extends Controller
 
         return redirect()->route('main-stock.index')
             ->with('success', 'Stock batch deleted successfully.');
-    }
-
-    public function bulkDestroy(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user->isOwner()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $request->validate([
-            'ids'   => 'required|array',
-            'ids.*' => 'exists:main_stocks,id',
-        ]);
-
-        $deletedCount = 0;
-
-        foreach ($request->ids as $id) {
-            $mainStock = MainStock::find($id);
-            if (!$mainStock) {
-                continue;
-            }
-
-            $itemId   = $mainStock->item_id;
-            $quantity = $mainStock->remaining_quantity;
-
-            $mainStock->delete();
-            $deletedCount++;
-
-            StockLog::create([
-                'item_id'          => $itemId,
-                'from_location'    => 'Main Warehouse',
-                'to_location'      => 'Supplier (Deleted)',
-                'quantity'         => $quantity,
-                'transaction_type' => 'ADJUSTMENT',
-                'performed_by'     => Auth::id(),
-                'date'             => now(),
-                'notes'            => 'Main stock batch deleted via bulk delete.',
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Successfully deleted {$deletedCount} main stock batch(es).",
-            'deleted_count' => $deletedCount
-        ]);
     }
 
     public function downloadTemplate()
