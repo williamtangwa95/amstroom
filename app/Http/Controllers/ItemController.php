@@ -35,7 +35,7 @@ class ItemController extends Controller
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
             'warranty_period'=> 'nullable|string|max:50',
-            'image'          => 'nullable|image|max:1024',
+            'image'          => 'nullable|image|max:15360',
         ]);
 
         $data = $request->only(
@@ -81,7 +81,7 @@ class ItemController extends Controller
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
             'warranty_period'=> 'nullable|string|max:50',
-            'image'          => 'nullable|image|max:1024',
+            'image'          => 'nullable|image|max:15360',
         ]);
 
         $data = $request->only(
@@ -114,7 +114,7 @@ class ItemController extends Controller
     public function uploadImage(Request $request, Item $item)
     {
         $request->validate([
-            'image' => 'required|image|max:1024', // max 1MB (1024KB)
+            'image' => 'required|image|max:15360', // max 15MB (compressed automatically)
         ]);
 
         if ($request->hasFile('image')) {

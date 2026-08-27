@@ -103,7 +103,7 @@ class SettingController extends Controller
             $request->validate([
                 'system_name'        => 'required|string|max:150',
                 'slogan'             => 'nullable|string|max:255',
-                'logo'               => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'logo'               => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
                 'printer_enabled'    => 'required|in:0,1',
                 'store_pricing_mode' => 'required|in:DEPENDENT,INDEPENDENT',
                 'company_tin'        => 'nullable|string|max:100',
@@ -193,7 +193,7 @@ class SettingController extends Controller
             $request->validate([
                 'system_name' => 'required|string|max:150',
                 'slogan'      => 'nullable|string|max:255',
-                'logo'        => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'logo'        => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
                 'printer_enabled' => 'required|in:0,1',
                 'company_tin'        => 'nullable|string|max:100',
                 'company_address'    => 'nullable|string|max:255',

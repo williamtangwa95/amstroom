@@ -1859,8 +1859,8 @@
                                 </div>
                                 <div class="flex-grow-1 overflow-hidden">
                                     <div class="fw-600 text-truncate small preview-file-name" style="color: var(--text-primary);"></div>
-                                    <div class="text-muted small preview-file-size" style="font-size: 0.72rem;"></div>
-                                    <div class="badge bg-success mt-1" style="font-size: 0.68rem;"><i class="bi bi-eye me-1"></i>New Image Preview</div>
+                                    <div class="preview-file-size" style="font-size: 0.75rem;"></div>
+                                    <div class="badge bg-success mt-1" style="font-size: 0.68rem;"><i class="bi bi-magic me-1"></i>WebP Compression Preview</div>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-outline-danger remove-preview-btn py-0 px-2" style="font-size: 0.75rem;" title="Clear selected photo">
                                     <i class="bi bi-x-circle me-1"></i>Remove
@@ -1876,12 +1876,55 @@
                     previewContainer.find('.image-preview-thumb').attr('src', evt.target.result);
                     previewContainer.find('.preview-file-name').text(file.name);
                     
-                    const formattedSize = file.size > 1048576 
+                    const origSizeStr = file.size > 1048576 
                         ? (file.size / 1048576).toFixed(2) + ' MB' 
                         : (file.size / 1024).toFixed(1) + ' KB';
-                    previewContainer.find('.preview-file-size').text(formattedSize);
                     
+                    previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> <span class="spinner-border spinner-border-sm text-accent ms-1" style="width:0.7rem;height:0.7rem;" role="status"></span> <span class="text-muted" style="font-size:0.68rem;">Calculating WebP...</span>`);
                     previewContainer.slideDown(200);
+
+                    // Client-side WebP compression estimation using Canvas
+                    const tempImg = new Image();
+                    tempImg.onload = function() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            let width = tempImg.width;
+                            let height = tempImg.height;
+                            const maxWidth = 1200;
+                            
+                            if (width > maxWidth) {
+                                height = Math.round((height / width) * maxWidth);
+                                width = maxWidth;
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(tempImg, 0, 0, width, height);
+                            
+                            canvas.toBlob(function(blob) {
+                                if (blob) {
+                                    const compSizeStr = blob.size > 1048576 
+                                        ? (blob.size / 1048576).toFixed(2) + ' MB' 
+                                        : (blob.size / 1024).toFixed(1) + ' KB';
+                                    
+                                    const savedPct = Math.max(0, Math.round(((file.size - blob.size) / file.size) * 100));
+                                    
+                                    previewContainer.find('.preview-file-size').html(`
+                                        <span class="text-muted text-decoration-line-through me-1">Original: ${origSizeStr}</span>
+                                        <i class="bi bi-arrow-right text-accent mx-1"></i>
+                                        <strong class="text-success">WebP: ~${compSizeStr}</strong>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:0.65rem;">-${savedPct}% compressed</span>
+                                    `);
+                                } else {
+                                    previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> (Auto-compresses on upload)`);
+                                }
+                            }, 'image/webp', 0.8);
+                        } catch (err) {
+                            previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> (Auto-compresses on upload)`);
+                        }
+                    };
+                    tempImg.src = evt.target.result;
                 };
                 reader.readAsDataURL(file);
             } else if (!file) {

@@ -40,7 +40,7 @@ class ShopController extends Controller
             'phone'     => 'nullable|string|max:20',
             'email'     => 'nullable|email|max:100',
             'slogan'    => 'nullable|string|max:255',
-            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
             'status'    => 'required|in:active,inactive',
         ]);
 
@@ -94,7 +94,7 @@ class ShopController extends Controller
             'phone'     => 'nullable|string|max:20',
             'email'     => 'nullable|email|max:100',
             'slogan'    => 'nullable|string|max:255',
-            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
         ];
 
         if ($user->isOwner()) {

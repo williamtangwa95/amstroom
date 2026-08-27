@@ -30,7 +30,7 @@ class ProfileController extends Controller
             'name'   => 'required|string|max:150',
             'email'  => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'phone'  => 'nullable|string|max:20',
-            'avatar' => 'nullable|image|max:1024', // max 1MB
+            'avatar' => 'nullable|image|max:15360', // max 15MB (compressed automatically)
         ]);
 
         $data = $request->only('name', 'email', 'phone');
