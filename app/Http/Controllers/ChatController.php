@@ -336,7 +336,7 @@ class ChatController extends Controller
             'brand' => $product->brand,
             'model' => $product->model,
             'specification' => $product->specification,
-            'image_url' => $product->image_path ? asset('storage/' . $product->image_path) : null,
+            'image_url' => $product->image_path ? asset('media/' . $product->image_path) : null,
             'note' => $note,
             'stocks' => $stockDetails
         ];

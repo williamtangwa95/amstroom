@@ -62,7 +62,7 @@ class NotificationController extends Controller
         $customRingtone = Setting::get('notification_sound_user_' . $user->id);
         $ringtoneUrl = null;
         if ($customRingtone && Storage::disk('public')->exists($customRingtone)) {
-            $ringtoneUrl = asset('storage/' . $customRingtone);
+            $ringtoneUrl = asset('media/' . $customRingtone);
         }
 
         return response()->json([

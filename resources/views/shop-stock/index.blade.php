@@ -68,7 +68,7 @@
 </div>
 @endif
 
-@if(auth()->user()->isOwner())
+@if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
 @php
     $totalStockValue = 0;
     $totalExpectedProfit = 0;
@@ -84,8 +84,8 @@
                 $sp = $st->item->getDynamicPriceForMainStore('selling_price');
             } else {
                 $msStock = \App\Models\MainStock::where('item_id', $st->item_id)->orderByDesc('date_received')->first();
-                $bp = $msStock ? $msStock->buying_price : $st->buying_price;
-                $sp = $msStock ? $msStock->selling_price : $st->selling_price;
+                $bp = ($st->buying_price > 0) ? $st->buying_price : ($msStock ? $msStock->buying_price : $st->item->buying_price);
+                $sp = ($st->selling_price > 0) ? $st->selling_price : ($msStock ? $msStock->selling_price : $st->item->selling_price);
             }
         } else {
             $bp = $st->buying_price;
@@ -185,6 +185,7 @@
     </div>
 </div>
 
+@if(auth()->user()->isOwner())
 <div class="card mb-4">
     <div class="card-body py-2">
         <form method="GET" action="{{ route('shop-stock.index') }}" class="row align-items-center g-2">
@@ -200,6 +201,7 @@
         </form>
     </div>
 </div>
+@endif
 @endif
 
 <div class="d-flex align-items-center justify-content-between mb-3 px-3 py-2 rounded border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
