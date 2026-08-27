@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -260,7 +261,7 @@ class HandoverReportController extends Controller
         // Handle attachment upload
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('handover_attachments', 'public');
+            $attachmentPath = ImageCompressor::compressAndStore($request->file('attachment'), 'handover_attachments', 'public', 1200, 80);
         }
 
         // Unique Handover ID formatting (guaranteed unique by checking DB existence in a sequence loop, including soft deleted)
@@ -476,7 +477,7 @@ class HandoverReportController extends Controller
             if ($attachmentPath) {
                 Storage::disk('public')->delete($attachmentPath);
             }
-            $attachmentPath = $request->file('attachment')->store('handover_attachments', 'public');
+            $attachmentPath = ImageCompressor::compressAndStore($request->file('attachment'), 'handover_attachments', 'public', 1200, 80);
         }
 
         $status = $request->input('submit_action') === 'submit' ? 'submitted' : 'draft';

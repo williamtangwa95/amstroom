@@ -1837,6 +1837,72 @@
                 this.value = this.value.replace(/,/g, '');
             });
         });
+
+        // Global Photo Preview Before Upload Handler
+        $(document).on('change', 'input[type="file"]', function(e) {
+            const input = this;
+            const file = input.files && input.files[0];
+            const targetElement = $(input).closest('.input-group').length ? $(input).closest('.input-group') : $(input);
+            
+            if (file && file.type && file.type.match(/^image\//)) {
+                let previewContainer = targetElement.siblings('.image-upload-preview-container');
+                if (previewContainer.length === 0 && $(input).siblings('.image-upload-preview-container').length) {
+                    previewContainer = $(input).siblings('.image-upload-preview-container');
+                }
+                
+                if (previewContainer.length === 0) {
+                    previewContainer = $(`
+                        <div class="image-upload-preview-container mt-2">
+                            <div class="d-flex align-items-center gap-3 p-2 rounded border" style="background: var(--body-bg); border-color: var(--card-border) !important;">
+                                <div class="position-relative">
+                                    <img class="image-preview-thumb rounded" style="max-height: 110px; max-width: 160px; object-fit: contain; background:#fff; padding:3px; border:1px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" src="" alt="Preview">
+                                </div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-600 text-truncate small preview-file-name" style="color: var(--text-primary);"></div>
+                                    <div class="text-muted small preview-file-size" style="font-size: 0.72rem;"></div>
+                                    <div class="badge bg-success mt-1" style="font-size: 0.68rem;"><i class="bi bi-eye me-1"></i>New Image Preview</div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-preview-btn py-0 px-2" style="font-size: 0.75rem;" title="Clear selected photo">
+                                    <i class="bi bi-x-circle me-1"></i>Remove
+                                </button>
+                            </div>
+                        </div>
+                    `);
+                    targetElement.after(previewContainer);
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    previewContainer.find('.image-preview-thumb').attr('src', evt.target.result);
+                    previewContainer.find('.preview-file-name').text(file.name);
+                    
+                    const formattedSize = file.size > 1048576 
+                        ? (file.size / 1048576).toFixed(2) + ' MB' 
+                        : (file.size / 1024).toFixed(1) + ' KB';
+                    previewContainer.find('.preview-file-size').text(formattedSize);
+                    
+                    previewContainer.slideDown(200);
+                };
+                reader.readAsDataURL(file);
+            } else if (!file) {
+                const previewContainer = targetElement.parent().find('.image-upload-preview-container');
+                if (previewContainer.length) {
+                    previewContainer.slideUp(150, function() {
+                        $(this).remove();
+                    });
+                }
+            }
+        });
+
+        $(document).on('click', '.remove-preview-btn', function() {
+            const container = $(this).closest('.image-upload-preview-container');
+            const parent = container.parent();
+            const input = parent.find('input[type="file"]');
+            input.val('');
+            container.slideUp(150, function() {
+                $(this).remove();
+            });
+        });
     </script>
 
     @stack('scripts')

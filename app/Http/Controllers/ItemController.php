@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Item;
+use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,7 @@ class ItemController extends Controller
         );
 
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('items', 'public');
+            $data['image_path'] = ImageCompressor::compressAndStore($request->file('image'), 'items', 'public', 1200, 80);
         }
 
         Item::create($data);
@@ -91,7 +92,7 @@ class ItemController extends Controller
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('items', 'public');
+            $data['image_path'] = ImageCompressor::compressAndStore($request->file('image'), 'items', 'public', 1200, 80);
         }
 
         $item->update($data);
@@ -120,7 +121,7 @@ class ItemController extends Controller
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
             }
-            $path = $request->file('image')->store('items', 'public');
+            $path = ImageCompressor::compressAndStore($request->file('image'), 'items', 'public', 1200, 80);
             $item->update(['image_path' => $path]);
 
             return back()->with('success', 'Product image uploaded successfully.');

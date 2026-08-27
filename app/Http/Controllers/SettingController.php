@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\Sale;
 use App\Models\ShopStock;
 use App\Models\MainStock;
+use App\Helpers\ImageCompressor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -182,7 +183,7 @@ class SettingController extends Controller
                     Storage::disk('public')->delete($oldLogo);
                 }
 
-                $path = $request->file('logo')->store('logos', 'public');
+                $path = ImageCompressor::compressAndStore($request->file('logo'), 'logos', 'public', 800, 85);
                 Setting::set('logo', $path);
             }
             
@@ -232,7 +233,7 @@ class SettingController extends Controller
                     Storage::disk('public')->delete($shop->logo);
                 }
 
-                $path = $request->file('logo')->store('logos', 'public');
+                $path = ImageCompressor::compressAndStore($request->file('logo'), 'logos', 'public', 800, 85);
                 $shop->logo = $path;
             }
             $shop->save();

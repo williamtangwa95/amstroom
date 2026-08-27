@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Shop;
 use App\Models\User;
+use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
@@ -44,7 +45,7 @@ class ShopController extends Controller
         ]);
 
         if ($request->hasFile('logo')) {
-            $data['logo'] = $request->file('logo')->store('shop_logos', 'public');
+            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'shop_logos', 'public', 800, 85);
         }
 
         Shop::create($data);
@@ -106,7 +107,7 @@ class ShopController extends Controller
             if ($shop->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($shop->logo)) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($shop->logo);
             }
-            $data['logo'] = $request->file('logo')->store('shop_logos', 'public');
+            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'shop_logos', 'public', 800, 85);
         }
 
         $shop->update($data);
