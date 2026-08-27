@@ -1978,6 +1978,7 @@
                 });
             }
         });
+        @endif
         // Toggle shop components POS visibility per product (delegated for all DataTables pages)
         $(document).on('change', '.toggle-components-btn', function() {
             const isChecked = $(this).is(':checked');
