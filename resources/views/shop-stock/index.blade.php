@@ -31,6 +31,9 @@
     </div>
     <div class="d-flex align-items-center gap-2">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Available Stock
+        </a>
         <button type="button" class="btn btn-outline-custom btn-sm" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
             <i class="bi bi-file-earmark-excel me-1"></i> Upload Stock
         </button>
@@ -1132,7 +1135,8 @@
 
                     <div class="alert alert-info py-2 px-3 mb-0" style="font-size:0.8rem; background: rgba(0, 136, 204, 0.08); border-color: rgba(0, 136, 204, 0.15); color: #005f9e;">
                         <i class="bi bi-info-circle-fill me-2"></i><strong>Tip:</strong> Need a starting point?
-                        <a href="{{ route('shop-stock.import-template') }}" class="fw-bold text-accent text-decoration-none ms-1"><i class="bi bi-download me-1"></i>Download Template (.xlsx)</a>
+                        <a href="{{ route('shop-stock.import-template') }}" class="fw-bold text-accent text-decoration-none ms-1 me-2"><i class="bi bi-download me-1"></i>Download Template (.xlsx)</a> or
+                        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="fw-bold text-success text-decoration-none ms-1"><i class="bi bi-file-earmark-arrow-down me-1"></i>Download Available Stock (.xlsx)</a>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--card-border);">

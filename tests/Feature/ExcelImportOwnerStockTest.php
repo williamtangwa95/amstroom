@@ -115,4 +115,14 @@ class ExcelImportOwnerStockTest extends TestCase
             'status' => 'received',
         ]);
     }
+
+    public function test_user_can_export_available_stock()
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('shop-stock.export-available'));
+
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    }
 }

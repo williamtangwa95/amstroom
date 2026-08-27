@@ -146,6 +146,7 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-stock/admin-stock', [ShopStockController::class, 'storeAdminStock'])->name('shop-stock.store-admin-stock');
         Route::post('shop-stock/owner-stock', [ShopStockController::class, 'storeOwnerStock'])->name('shop-stock.store-owner-stock');
         Route::get('shop-stock/import-template', [ShopStockController::class, 'downloadTemplate'])->name('shop-stock.import-template');
+        Route::get('shop-stock/export-available', [ShopStockController::class, 'exportAvailableStock'])->name('shop-stock.export-available');
         Route::post('shop-stock/import', [ShopStockController::class, 'import'])->name('shop-stock.import');
         Route::get('shop-stock/{shopStock}/edit', [ShopStockController::class, 'edit'])->name('shop-stock.edit');
         Route::put('shop-stock/{shopStock}', [ShopStockController::class, 'update'])->name('shop-stock.update');

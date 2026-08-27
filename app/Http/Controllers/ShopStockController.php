@@ -808,12 +808,93 @@ class ShopStockController extends Controller
         
         $writer = new Xlsx($spreadsheet);
         
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="shop_stock_import_template.xlsx"');
-        header('Cache-Control: max-age=0');
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, 'shop_stock_import_template.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0'
+        ]);
+    }
+
+    public function exportAvailableStock(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
+
+        $query = ShopStock::with('item.category', 'shop');
+
+        if ($shopId) {
+            $query->where('shop_id', $shopId);
+        }
+
+        if ($user->isOwner()) {
+            $query->where('is_admin_stock', false);
+        }
+
+        $stocks = $query->latest()->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
         
-        $writer->save('php://output');
-        exit;
+        $headers = [
+            'Item Name',
+            'Category Name',
+            'Brand',
+            'Model',
+            'Specification',
+            'Buying Price',
+            'Selling Price',
+            'Quantity',
+            'Date Received'
+        ];
+        
+        foreach ($headers as $colIndex => $header) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '1', $header);
+        }
+        
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        
+        $rowNumber = 2;
+        foreach ($stocks as $st) {
+            $qty = $st->remaining_quantity;
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $item = $st->item;
+            $sheet->setCellValue('A' . $rowNumber, $item ? $item->item_name : '');
+            $sheet->setCellValue('B' . $rowNumber, ($item && $item->category) ? $item->category->category_name : '');
+            $sheet->setCellValue('C' . $rowNumber, $item ? $item->brand : '');
+            $sheet->setCellValue('D' . $rowNumber, $item ? $item->model : '');
+            $sheet->setCellValue('E' . $rowNumber, $item ? $item->specification : '');
+            $sheet->setCellValue('F' . $rowNumber, $st->buying_price);
+            $sheet->setCellValue('G' . $rowNumber, $st->selling_price);
+            $sheet->setCellValue('H' . $rowNumber, $qty);
+            $sheet->setCellValue('I' . $rowNumber, $st->date_received ? $st->date_received->format('Y-m-d') : date('Y-m-d'));
+            $rowNumber++;
+        }
+        
+        foreach (range(1, 9) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+        
+        $writer = new Xlsx($spreadsheet);
+        
+        $shop = $shopId ? Shop::find($shopId) : null;
+        $shopSlug = $shop ? \Illuminate\Support\Str::slug($shop->shop_name, '_') : 'all_shops';
+        $filename = "available_shop_stock_{$shopSlug}_" . date('Y-m-d') . ".xlsx";
+        
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0'
+        ]);
     }
 
     public function import(Request $request)
