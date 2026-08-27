@@ -1394,71 +1394,91 @@ class ShopStockController extends Controller
             'ids.*' => 'exists:shop_stocks,id',
         ]);
 
-        $deletedCount = 0;
-        $skippedCount = 0;
+        $errors = [];
+        $validStocks = [];
 
         foreach ($request->ids as $id) {
-            $shopStock = ShopStock::find($id);
+            $shopStock = ShopStock::with('item', 'shop')->find($id);
             if (!$shopStock) {
                 continue;
             }
 
+            $itemName = $shopStock->item?->item_name ?? 'Product';
+
             // Authorization check
             if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
-                $skippedCount++;
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): You are not authorized to delete stock from another shop.";
                 continue;
             }
 
             // Restrict Shop Admin from deleting stock posted by the Owner
             if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-                $skippedCount++;
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Shop Admins cannot delete stock posted by the Owner.";
                 continue;
             }
 
             // Restrict deletion if stock quantity has been modified or sold
             if ($shopStock->quantity != $shopStock->remaining_quantity) {
-                $skippedCount++;
+                $soldQty = max(0, $shopStock->quantity - $shopStock->remaining_quantity);
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): {$soldQty} unit(s) have already been sold or modified.";
                 continue;
             }
 
-            $itemId       = $shopStock->item_id;
-            $quantity     = $shopStock->quantity;
-            $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
-            $isAdminStock = $shopStock->is_admin_stock;
+            // Check pending requests
+            if ($shopStock->is_price_pending || !is_null($shopStock->pending_quantity_request)) {
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Has an active pending price or quantity approval request.";
+                continue;
+            }
 
-            $shopStock->delete();
-            $deletedCount++;
-
-            StockLog::create([
-                'item_id'          => $itemId,
-                'from_location'    => $shopName,
-                'to_location'      => 'Supplier (Deleted)',
-                'quantity'         => $quantity,
-                'transaction_type' => 'ADJUSTMENT',
-                'performed_by'     => Auth::id(),
-                'date'             => now(),
-                'notes'            => 'Shop stock batch deleted via bulk delete.',
-                'is_admin_stock'   => $isAdminStock,
-            ]);
+            $validStocks[] = $shopStock;
         }
 
-        if ($deletedCount === 0) {
+        // If any error exists, block the entire bulk deletion operation
+        if (!empty($errors)) {
             return response()->json([
                 'success' => false,
-                'message' => 'No selected stock batches could be deleted. Note: Batches with sold items or requiring higher privileges cannot be deleted.'
+                'message' => 'Bulk deletion blocked! The selected items contain stock that cannot be deleted:',
+                'errors'  => $errors,
             ], 422);
         }
 
-        $message = "Successfully deleted {$deletedCount} stock batch(es).";
-        if ($skippedCount > 0) {
-            $message .= " ({$skippedCount} batch(es) were skipped because items were sold or unauthorized).";
+        if (empty($validStocks)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid stock items were selected for deletion.',
+            ], 422);
         }
 
+        $deletedCount = 0;
+
+        \DB::transaction(function () use ($validStocks, $user, &$deletedCount) {
+            foreach ($validStocks as $shopStock) {
+                $itemId       = $shopStock->item_id;
+                $quantity     = $shopStock->quantity;
+                $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
+                $isAdminStock = $shopStock->is_admin_stock;
+
+                $shopStock->delete();
+                $deletedCount++;
+
+                StockLog::create([
+                    'item_id'          => $itemId,
+                    'from_location'    => $shopName,
+                    'to_location'      => 'Supplier (Deleted)',
+                    'quantity'         => $quantity,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => 'Shop stock batch deleted via bulk delete.',
+                    'is_admin_stock'   => $isAdminStock,
+                ]);
+            }
+        });
+
         return response()->json([
-            'success' => true,
-            'message' => $message,
+            'success'       => true,
+            'message'       => "Successfully deleted {$deletedCount} stock batch(es).",
             'deleted_count' => $deletedCount,
-            'skipped_count' => $skippedCount
         ]);
     }
 

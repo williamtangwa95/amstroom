@@ -2177,15 +2177,26 @@
                         },
                         error: function(xhr) {
                             let errorMsg = 'Failed to delete selected stock batches. Please try again.';
-                            if (xhr.responseJSON && xhr.responseJSON.message) {
-                                errorMsg = xhr.responseJSON.message;
+                            let htmlContent = '';
+                            
+                            if (xhr.responseJSON) {
+                                if (xhr.responseJSON.message) {
+                                    errorMsg = xhr.responseJSON.message;
+                                }
+                                if (xhr.responseJSON.errors && Array.isArray(xhr.responseJSON.errors) && xhr.responseJSON.errors.length > 0) {
+                                    htmlContent = '<div class="text-start mt-2 p-2 rounded" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); max-height: 220px; overflow-y: auto; font-size: 0.8rem; color: #f87171;"><ul class="mb-0 ps-3">' +
+                                        xhr.responseJSON.errors.map(err => `<li>${err}</li>`).join('') +
+                                        '</ul></div>';
+                                }
                             }
+                            
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Delete Failed',
-                                text: errorMsg,
+                                title: 'Bulk Delete Restricted',
+                                html: htmlContent ? `<div class="mb-2 fw-semibold">${errorMsg}</div>${htmlContent}` : errorMsg,
                                 background: '#161b22',
-                                color: '#e6edf3'
+                                color: '#e6edf3',
+                                confirmButtonColor: '#e94560'
                             });
                         }
                     });
