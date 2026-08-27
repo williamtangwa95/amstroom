@@ -13,7 +13,61 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::where('is_admin_category', false)->withCount('items')->latest()->get();
+        $user = auth()->user();
+        $categoriesQuery = Category::query();
+
+        if ($user && $user->isShopAdmin()) {
+            $categoriesQuery->where(function ($q) use ($user) {
+                $q->where('is_admin_category', false)
+                  ->orWhere(function ($sq) use ($user) {
+                      $sq->where('is_admin_category', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            });
+
+            $categoriesQuery->withCount(['items' => function ($q) use ($user) {
+                $q->where(function ($sq) use ($user) {
+                    $sq->where('is_admin_item', false)
+                       ->orWhere(function ($ssq) use ($user) {
+                           $ssq->where('is_admin_item', true)
+                               ->where('shop_id', $user->shop_id);
+                       });
+                });
+            }]);
+
+            $categoriesQuery->withCount(['items as available_items_count' => function ($q) use ($user) {
+                $q->where(function ($sq) use ($user) {
+                    $sq->where('is_admin_item', false)
+                       ->orWhere(function ($ssq) use ($user) {
+                           $ssq->where('is_admin_item', true)
+                               ->where('shop_id', $user->shop_id);
+                       });
+                })->whereHas('shopStocks', function ($sq) use ($user) {
+                    $sq->where('shop_id', $user->shop_id)
+                       ->where('remaining_quantity', '>', 0);
+                });
+            }]);
+        } else {
+            $categoriesQuery->where('is_admin_category', false);
+
+            $categoriesQuery->withCount(['items' => function ($q) {
+                $q->where('is_admin_item', false);
+            }]);
+
+            $categoriesQuery->withCount(['items as available_items_count' => function ($q) {
+                $q->where('is_admin_item', false)
+                  ->where(function ($sq) {
+                      $sq->whereHas('mainStocks', function ($msq) {
+                          $msq->where('remaining_quantity', '>', 0);
+                      })->orWhereHas('shopStocks', function ($ssq) {
+                          $ssq->where('remaining_quantity', '>', 0);
+                      });
+                  });
+            }]);
+        }
+
+        $categories = $categoriesQuery->latest()->get();
+
         return view('categories.index', compact('categories'));
     }
 

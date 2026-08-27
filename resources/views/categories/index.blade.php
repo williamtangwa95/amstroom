@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h5 class="mb-0 fw-700">Categories</h5>
-        <small style="color:var(--text-secondary);">Organize products into categories</small>
+        <small style="color:var(--text-secondary);">Manage product categories and subcategories</small>
     </div>
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadCategoriesModal">
@@ -29,7 +29,11 @@
                     <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
                     <td><strong style="font-size:.85rem;">{{ $cat->category_name }}</strong></td>
                     <td style="font-size:.8rem;color:var(--text-secondary);">{{ Str::limit($cat->description, 60) ?: '—' }}</td>
-                    <td><span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">{{ $cat->items_count }}</span></td>
+                    <td>
+                        <span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;" title="{{ $cat->available_items_count }} in stock / {{ $cat->items_count }} total">
+                            {{ $cat->available_items_count }} available / {{ $cat->items_count }} total
+                        </span>
+                    </td>
                     <td style="font-size:.75rem;color:var(--text-secondary);">{{ $cat->created_at->format('M d, Y') }}</td>
                     <td>
                         <div class="d-flex gap-1">
