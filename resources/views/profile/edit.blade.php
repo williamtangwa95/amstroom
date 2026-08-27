@@ -123,26 +123,41 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label for="current_password" class="form-label fw-600">Current Password <span class="text-danger">*</span></label>
-                            <input type="password" name="current_password" id="current_password"
-                                   class="form-control @error('current_password') is-invalid @enderror" required placeholder="••••••••">
-                            @error('current_password')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div class="input-group">
+                                <input type="password" name="current_password" id="current_password"
+                                       class="form-control @error('current_password') is-invalid @enderror" required placeholder="••••••••">
+                                <button class="btn btn-outline-secondary text-muted toggle-password-visibility" type="button" data-target="current_password" title="Show/hide password" style="border-color: var(--card-border);">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                @error('current_password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
 
                         <div class="col-md-6">
                             <label for="password" class="form-label fw-600">New Password <span class="text-danger">*</span></label>
-                            <input type="password" name="password" id="password"
-                                   class="form-control @error('password') is-invalid @enderror" required placeholder="At least 6 characters">
-                            @error('password')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div class="input-group">
+                                <input type="password" name="password" id="password"
+                                       class="form-control @error('password') is-invalid @enderror" required placeholder="At least 6 characters">
+                                <button class="btn btn-outline-secondary text-muted toggle-password-visibility" type="button" data-target="password" title="Show/hide password" style="border-color: var(--card-border);">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                @error('password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
 
                         <div class="col-md-6">
                             <label for="password_confirmation" class="form-label fw-600">Confirm New Password <span class="text-danger">*</span></label>
-                            <input type="password" name="password_confirmation" id="password_confirmation"
-                                   class="form-control" required placeholder="Confirm new password">
+                            <div class="input-group">
+                                <input type="password" name="password_confirmation" id="password_confirmation"
+                                       class="form-control" required placeholder="Confirm new password">
+                                <button class="btn btn-outline-secondary text-muted toggle-password-visibility" type="button" data-target="password_confirmation" title="Show/hide password" style="border-color: var(--card-border);">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -157,3 +172,21 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    $(document).on('click', '.toggle-password-visibility', function() {
+        const targetId = $(this).data('target');
+        const input = $('#' + targetId);
+        const icon = $(this).find('i');
+
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('bi-eye').addClass('bi-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('bi-eye-slash').addClass('bi-eye');
+        }
+    });
+</script>
+@endpush
