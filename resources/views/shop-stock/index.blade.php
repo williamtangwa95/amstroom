@@ -23,34 +23,43 @@
     #shopStockTable .toggle-child-details {
         padding: 3px 8px !important;
     }
+    .hover-lift {
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .hover-lift:hover {
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+    }
 </style>
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
     <div>
-        <h5 class="mb-0 fw-700">Shop Inventory</h5>
-        <small style="color:var(--text-secondary);">Available products in retail shops</small>
+        <h5 class="mb-0 fw-700" style="color: var(--text-primary); font-size: 1.25rem;">Shop Inventory</h5>
+        <small style="color: var(--text-secondary); font-size: 0.82rem;">Available products in retail shops</small>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn btn-outline-success btn-sm">
-            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Available Stock
+        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn btn-sm btn-outline-success border-success-subtle text-success fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" style="font-size: 0.82rem;">
+            <i class="bi bi-file-earmark-arrow-down-fill me-1.5"></i> Download Available Stock
         </a>
-        <button type="button" class="btn btn-outline-custom btn-sm" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
-            <i class="bi bi-file-earmark-excel me-1"></i> Upload Stock
+        <button type="button" class="btn btn-sm btn-outline-secondary border-secondary-subtle fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal" style="font-size: 0.82rem; color: var(--text-primary);">
+            <i class="bi bi-file-earmark-excel-fill me-1.5 text-success"></i> Upload Stock
         </button>
         @endif
+
         @if(auth()->user()->isShopAdmin())
             @if(auth()->user()->allow_stock_addition)
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
-                <i class="bi bi-plus-circle me-1"></i> Add Owner Stock
+            <button type="button" class="btn btn-sm btn-success text-white fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal" style="font-size: 0.82rem; background: linear-gradient(135deg, #10b981, #059669); border: none;">
+                <i class="bi bi-plus-lg me-1.5"></i> Add Owner Stock
             </button>
             @endif
-            <button type="button" class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
-                <i class="bi bi-plus-circle me-1"></i> Add Admin Stock
+            <button type="button" class="btn btn-sm btn-accent text-white fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#addAdminStockModal" style="font-size: 0.82rem; background: linear-gradient(135deg, #0284c7, #0369a1); border: none;">
+                <i class="bi bi-plus-circle-fill me-1.5"></i> Add Admin Stock
             </button>
         @endif
+
         @if($lowStockItems > 0)
-        <div class="alert alert-warning py-1 px-3 mb-0" style="font-size:.8rem;">
-            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ $lowStockItems }} item(s) low in stock!
+        <div class="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-600 shadow-xs" style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ $lowStockItems }} item(s) low in stock!
         </div>
         @endif
     </div>
