@@ -1978,8 +1978,8 @@
                 });
             }
         });
-        // Toggle shop components POS visibility per product
-        $('.toggle-components-btn').on('change', function() {
+        // Toggle shop components POS visibility per product (delegated for all DataTables pages)
+        $(document).on('change', '.toggle-components-btn', function() {
             const isChecked = $(this).is(':checked');
             const shopStockId = $(this).data('id');
             const self = $(this);
@@ -2015,25 +2015,35 @@
         });
 
         function getSelectedStockIds() {
-            const checkedIds = [];
-            $('.stock-checkbox:checked').each(function() {
-                const id = $(this).data('id');
-                if (id && !checkedIds.includes(id)) {
-                    checkedIds.push(id);
-                }
-            });
+            const checkedIds = new Set();
 
-            $('.stock-checkbox-parent:checked').each(function() {
-                const ids = $(this).data('ids');
-                if (Array.isArray(ids)) {
-                    ids.forEach(id => {
-                        if (!checkedIds.includes(id)) {
-                            checkedIds.push(id);
-                        }
-                    });
-                }
-            });
-            return checkedIds;
+            if (typeof table !== 'undefined' && table) {
+                table.$('.stock-checkbox:checked').each(function() {
+                    const id = $(this).data('id');
+                    if (id) checkedIds.add(id);
+                });
+
+                table.$('.stock-checkbox-parent:checked').each(function() {
+                    const ids = $(this).data('ids');
+                    if (Array.isArray(ids)) {
+                        ids.forEach(id => checkedIds.add(id));
+                    }
+                });
+            } else {
+                $('.stock-checkbox:checked').each(function() {
+                    const id = $(this).data('id');
+                    if (id) checkedIds.add(id);
+                });
+
+                $('.stock-checkbox-parent:checked').each(function() {
+                    const ids = $(this).data('ids');
+                    if (Array.isArray(ids)) {
+                        ids.forEach(id => checkedIds.add(id));
+                    }
+                });
+            }
+
+            return Array.from(checkedIds);
         }
 
         function updateBulkActionsBar() {
@@ -2047,8 +2057,16 @@
             }
         }
 
+        table.on('draw', function() {
+            updateBulkActionsBar();
+        });
+
         $('#checkAllStocks').on('change', function() {
             const isChecked = $(this).is(':checked');
+            if (typeof table !== 'undefined' && table) {
+                table.$('.stock-checkbox:not(:disabled)').prop('checked', isChecked);
+                table.$('.stock-checkbox-parent:not(:disabled)').prop('checked', isChecked);
+            }
             $('.stock-checkbox:not(:disabled)').prop('checked', isChecked);
             $('.stock-checkbox-parent:not(:disabled)').prop('checked', isChecked);
             $('#shopStockTable tbody .stock-checkbox:not(:disabled)').prop('checked', isChecked);
@@ -2519,6 +2537,7 @@
         });
         @endif
 
+        @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
         @endif
