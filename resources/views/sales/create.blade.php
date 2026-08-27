@@ -37,7 +37,7 @@
                         <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important; opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
                             <div class="d-flex gap-2">
                                 @if($stock->item->image_path)
-                                <img src="{{ asset('storage/' . $stock->item->image_path) }}"
+                                <img src="{{ asset('media/' . $stock->item->image_path) }}"
                                      alt="{{ $stock->item->item_name }}"
                                      class="rounded border img-lightbox"
                                      style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;"

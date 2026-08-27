@@ -260,3 +260,23 @@ Route::middleware('auth')->group(function () {
         Route::get('admin/logs/visitors', [ReportController::class, 'visitorAnalytics'])->name('reports.visitors');
     });
 });
+
+// ─── PUBLIC MEDIA FILE SERVING ───────────────────────────────────────────────
+// Guaranteed file delivery for uploaded avatars, logos, product photos and attachments
+// bypassing Laravel's internal signed storage.local 403 checks
+Route::get('media/{path}', function ($path) {
+    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        return \Illuminate\Support\Facades\Storage::disk('public')->response($path);
+    }
+
+    $filePath = storage_path('app/public/' . $path);
+    if (!file_exists($filePath)) {
+        $filePath = storage_path('app/' . $path);
+    }
+
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+
+    return response()->file($filePath);
+})->where('path', '.*')->name('media.file');

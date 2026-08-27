@@ -127,7 +127,7 @@
                         <div class="form-text small" style="font-size: 0.65rem;">Accepted types: PDF, PNG, JPG, JPEG (Max 5MB). Leave empty to keep existing attachment.</div>
                         @if($handover->attachment_path)
                         <div class="mt-2 small text-muted">
-                            <i class="bi bi-file-earmark-check"></i> Current: <a href="{{ asset('storage/' . $handover->attachment_path) }}" target="_blank">View existing file</a>
+                            <i class="bi bi-file-earmark-check"></i> Current: <a href="{{ asset('media/' . $handover->attachment_path) }}" target="_blank">View existing file</a>
                         </div>
                         @endif
                     </div>

@@ -61,7 +61,7 @@
                             <label class="form-label d-block fw-600 mb-2">Current System Logo</label>
                             <div class="d-inline-flex flex-column align-items-center p-3 rounded-4 bg-light border">
                                 @if($logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($logo))
-                                    <img src="{{ asset('storage/' . $logo) }}" alt="System Logo" class="img-fluid rounded-3 mb-2" style="max-height: 80px; object-fit: contain;">
+                                    <img src="{{ asset('media/' . $logo) }}" alt="System Logo" class="img-fluid rounded-3 mb-2" style="max-height: 80px; object-fit: contain;">
                                 @else
                                     <div class="brand-icon-preview rounded-3 d-flex align-items-center justify-content-center bg-white text-primary shadow-sm mb-2" style="width: 70px; height: 70px; font-size: 2rem;">
                                         <i class="bi bi-pc-display-horizontal"></i>
@@ -312,7 +312,7 @@
     document.getElementById('btnTestSound')?.addEventListener('click', function() {
         let audio = null;
         @if($notificationRingtone && \Illuminate\Support\Facades\Storage::disk('public')->exists($notificationRingtone))
-            audio = new Audio("{{ asset('storage/' . $notificationRingtone) }}");
+            audio = new Audio("{{ asset('media/' . $notificationRingtone) }}");
         @endif
         
         playChime(audio);

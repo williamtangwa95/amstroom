@@ -281,7 +281,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             @if($firstSt->item->image_path)
-                            <img src="{{ asset('storage/' . $firstSt->item->image_path) }}"
+                            <img src="{{ asset('media/' . $firstSt->item->image_path) }}"
                                 alt="{{ $firstSt->item->item_name }}"
                                 class="rounded img-lightbox"
                                 style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);"
@@ -565,7 +565,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             @if($firstSt->item->image_path)
-                            <img src="{{ asset('storage/' . $firstSt->item->image_path) }}"
+                            <img src="{{ asset('media/' . $firstSt->item->image_path) }}"
                                 alt="{{ $firstSt->item->item_name }}"
                                 class="rounded img-lightbox"
                                 style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);"

@@ -64,13 +64,13 @@
                                data-name="{{ $user->name }}" 
                                data-shop="{{ $user->shop ? $user->shop->shop_name : 'Owner / Main Store' }}"
                                data-role="{{ str_replace('_', ' ', $user->role) }}"
-                               data-avatar="{{ $user->avatar_path ? asset('storage/' . $user->avatar_path) : '' }}"
+                               data-avatar="{{ $user->avatar_path ? asset('media/' . $user->avatar_path) : '' }}"
                                data-phone="{{ $user->phone }}">
                                 <input type="checkbox" class="multi-send-checkbox form-check-input me-2 d-none flex-shrink-0" value="{{ $user->id }}" style="margin-top:3px;">
                                 <div class="d-flex align-items-center">
                                     <div class="position-relative me-2.5">
                                         @if($user->avatar_path)
-                                            <img src="{{ asset('storage/' . $user->avatar_path) }}" alt="{{ $user->name }}" class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
+                                            <img src="{{ asset('media/' . $user->avatar_path) }}" alt="{{ $user->name }}" class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
                                         @else
                                             <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center fw-700" style="width: 34px; height: 34px; font-size: 0.85rem;">
                                                 {{ strtoupper(substr($user->name, 0, 1)) }}
@@ -951,7 +951,7 @@
                                data-brand="${item.brand || '-'}"
                                data-model="${item.model || '-'}"
                                data-spec="${item.specification || '-'}"
-                               data-img="${item.image_path ? '/storage/' + item.image_path : ''}">
+                               data-img="${item.image_path ? '/media/' + item.image_path : ''}">
                                <div class="fw-700 text-dark" style="font-size:0.8rem;">${item.item_name}</div>
                                <div class="text-secondary" style="font-size:0.7rem;">Brand: ${item.brand || '-'} &bull; Model: ${item.model || '-'}</div>
                             </a>

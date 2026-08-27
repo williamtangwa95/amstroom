@@ -46,7 +46,7 @@
                             <label class="form-label">Product Image (Optional, Max 1MB)</label>
                             @if($item->image_path)
                             <div class="mb-2">
-                                <img src="{{ asset('storage/' . $item->image_path) }}" alt="{{ $item->item_name }}" class="rounded img-thumbnail" style="max-height: 100px;">
+                                <img src="{{ asset('media/' . $item->image_path) }}" alt="{{ $item->item_name }}" class="rounded img-thumbnail" style="max-height: 100px;">
                             </div>
                             @endif
                             <input type="file" name="image" class="form-control" accept="image/*">

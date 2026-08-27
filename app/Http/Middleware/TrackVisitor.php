@@ -38,6 +38,7 @@ class TrackVisitor
         if ($request->is('notifications/poll') ||
             $request->is('chats/messages') ||
             $request->is('chats/unread-badge') ||
+            $request->is('storage/*') ||
             $request->is('up') ||
             $request->is('api/*') ||
             $request->ajax() ||

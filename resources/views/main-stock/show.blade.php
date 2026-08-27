@@ -16,7 +16,7 @@
             <div class="card-body">
                 @if($mainStock->item->image_path)
                     <div class="text-center mb-3">
-                        <img src="{{ asset('storage/' . $mainStock->item->image_path) }}" alt="{{ $mainStock->item->item_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
+                        <img src="{{ asset('media/' . $mainStock->item->image_path) }}" alt="{{ $mainStock->item->item_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
                     </div>
                 @else
                     <div class="text-center mb-3 py-4 bg-light rounded border text-muted">

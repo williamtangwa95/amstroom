@@ -195,7 +195,7 @@
                 @if($handover->attachment_path)
                 <div class="mb-3 no-print">
                     <span class="text-muted small d-block mb-1">Supporting Evidence / Attachment:</span>
-                    <a href="{{ asset('storage/' . $handover->attachment_path) }}" target="_blank" class="btn btn-xs btn-outline-custom w-100 py-2">
+                    <a href="{{ asset('media/' . $handover->attachment_path) }}" target="_blank" class="btn btn-xs btn-outline-custom w-100 py-2">
                         <i class="bi bi-file-earmark-arrow-down me-1"></i> View / Download Attachment
                     </a>
                 </div>

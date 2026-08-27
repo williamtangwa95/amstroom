@@ -28,7 +28,7 @@
                             <label class="form-label">Shop Logo (Optional)</label>
                             @if($shop->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($shop->logo))
                             <div class="mb-2 p-2 border rounded bg-light d-inline-block">
-                                <img src="{{ asset('storage/' . $shop->logo) }}" alt="Shop Logo" style="max-height: 50px; object-fit: contain;">
+                                <img src="{{ asset('media/' . $shop->logo) }}" alt="Shop Logo" style="max-height: 50px; object-fit: contain;">
                                 <div class="text-muted" style="font-size:.7rem;">Current Shop Logo</div>
                             </div>
                             @endif

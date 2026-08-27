@@ -143,7 +143,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             @if($stock->item->image_path)
-                                <img src="{{ asset('storage/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);">
+                                <img src="{{ asset('media/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);">
                             @else
                                 <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 32px; height: 32px; border: 1px solid var(--card-border);">
                                     <i class="bi bi-image" style="font-size: 0.8rem;"></i>

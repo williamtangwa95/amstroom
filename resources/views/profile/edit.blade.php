@@ -13,7 +13,7 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body text-center p-4">
                 @if($user->avatar_path)
-                    <img src="{{ asset('storage/' . $user->avatar_path) }}" alt="{{ $user->name }}" class="mx-auto mb-3 rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 2px solid var(--accent);">
+                    <img src="{{ asset('media/' . $user->avatar_path) }}" alt="{{ $user->name }}" class="mx-auto mb-3 rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 2px solid var(--accent);">
                 @else
                     <div class="avatar-circle mx-auto mb-3 text-white d-flex align-items-center justify-content-center rounded-circle shadow-sm"
                          style="width: 80px; height: 80px; font-size: 2.2rem; background: linear-gradient(135deg, #0088cc, #005f9e);">

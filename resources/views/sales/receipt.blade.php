@@ -188,7 +188,7 @@
         @endphp
         @if($logo)
             <div class="logo-wrapper">
-                <img src="{{ asset('storage/' . $logo) }}" class="logo" alt="Logo">
+                <img src="{{ asset('media/' . $logo) }}" class="logo" alt="Logo">
             </div>
         @else
             <h2 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 800; letter-spacing: 0.5px; color: #1A202C;">AMSTROOM</h2>

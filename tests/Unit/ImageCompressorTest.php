@@ -3,12 +3,16 @@
 namespace Tests\Unit;
 
 use App\Helpers\ImageCompressor;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ImageCompressorTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_image_compressor_compresses_photo_to_webp()
     {
         Storage::fake('public');
@@ -41,5 +45,24 @@ class ImageCompressorTest extends TestCase
         if (file_exists($tempPath)) {
             @unlink($tempPath);
         }
+    }
+
+    public function test_storage_fallback_route_serves_image_file()
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('avatars/test_avatar.webp', 'fake_webp_data');
+
+        $user = User::create([
+            'name'     => 'Test User',
+            'email'    => 'test_user_img@example.com',
+            'password' => bcrypt('password'),
+            'role'     => 'owner',
+            'status'   => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->get('/media/avatars/test_avatar.webp');
+
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'image/webp');
     }
 }

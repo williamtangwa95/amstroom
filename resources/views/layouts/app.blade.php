@@ -1425,7 +1425,7 @@
 
                 <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none" title="Manage Profile: {{ auth()->user()->name }}">
                     @if(auth()->user()->avatar_path)
-                    <img src="{{ asset('storage/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent);">
+                    <img src="{{ asset('media/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent);">
                     @else
                     <i class="bi bi-person-circle text-primary"></i>
                     @endif
