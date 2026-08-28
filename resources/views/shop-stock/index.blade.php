@@ -93,8 +93,13 @@
                 $sp = $st->item->getDynamicPriceForMainStore('selling_price');
             } else {
                 $msStock = \App\Models\MainStock::where('item_id', $st->item_id)->orderByDesc('date_received')->first();
-                $bp = ($st->buying_price > 0) ? $st->buying_price : ($msStock ? $msStock->buying_price : $st->item->buying_price);
-                $sp = ($st->selling_price > 0) ? $st->selling_price : ($msStock ? $msStock->selling_price : $st->item->selling_price);
+                if (auth()->user()->isOwner()) {
+                    $bp = $msStock ? $msStock->buying_price : ($st->buying_price > 0 ? $st->buying_price : $st->item->buying_price);
+                    $sp = $msStock ? $msStock->selling_price : ($st->selling_price > 0 ? $st->selling_price : $st->item->selling_price);
+                } else {
+                    $bp = ($st->buying_price > 0) ? $st->buying_price : ($msStock ? $msStock->buying_price : $st->item->buying_price);
+                    $sp = ($st->selling_price > 0) ? $st->selling_price : ($msStock ? $msStock->selling_price : $st->item->selling_price);
+                }
             }
         } else {
             $bp = $st->buying_price;
@@ -523,6 +528,32 @@
                                                             @endif
                                                         </div>
 
+                                                        <!-- Display delete request panel in-row if pending delete -->
+                                                        @if(auth()->user()->isOwner() && $st->is_delete_pending)
+                                                        <div class="mt-2 p-2 rounded border border-danger text-start" style="background: rgba(233, 69, 96, 0.05); max-width: 320px;">
+                                                            <div class="text-danger fw-700 small mb-1">
+                                                                <i class="bi bi-trash-fill"></i> Pending Deletion Request
+                                                            </div>
+                                                            <div class="small text-secondary mb-2" style="font-size: .75rem; line-height: 1.3;">
+                                                                <strong>Reason:</strong> "{{ $st->pending_delete_reason ?? 'Deletion requested by admin' }}"
+                                                            </div>
+                                                            <div class="d-flex gap-2">
+                                                                <form action="{{ route('shop-stock.approve-delete', $st) }}" method="POST" class="d-inline">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-xs btn-danger px-2 py-0.5" style="font-size: .65rem;"><i class="bi bi-check-lg me-1"></i> Approve Delete</button>
+                                                                </form>
+                                                                <form action="{{ route('shop-stock.reject-delete', $st) }}" method="POST" class="d-inline">
+                                                                    @csrf
+                                                                    <button type="submit" class="btn btn-xs btn-outline-secondary px-2 py-0.5" style="font-size: .65rem;">Reject</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                        @elseif(auth()->user()->isShopAdmin() && $st->is_delete_pending)
+                                                        <div class="mt-1 text-danger small fw-600 d-flex align-items-center gap-1 text-start" style="font-size: .7rem;" title="Reason: {{ $st->pending_delete_reason }}">
+                                                            <i class="bi bi-hourglass-split"></i> Deletion Pending Owner Approval
+                                                        </div>
+                                                        @endif
+
                                                         <!-- Display edit request panel in-row if pending -->
                                                         @if(auth()->user()->isOwner() && !is_null($st->pending_quantity_request))
                                                         <div class="mt-2 p-2 rounded border border-warning text-start" style="background: rgba(245, 158, 11, 0.05); max-width: 320px;">
@@ -747,6 +778,32 @@
                             </div>
                             @endif
                         </div>
+
+                        <!-- Display delete request panel in-row if pending delete -->
+                        @if(auth()->user()->isOwner() && $firstSt->is_delete_pending)
+                        <div class="mt-2 p-2 rounded border border-danger text-start" style="background: rgba(233, 69, 96, 0.05); max-width: 320px;">
+                            <div class="text-danger fw-700 small mb-1">
+                                <i class="bi bi-trash-fill"></i> Pending Deletion Request
+                            </div>
+                            <div class="small text-secondary mb-2" style="font-size: .75rem; line-height: 1.3;">
+                                <strong>Reason:</strong> "{{ $firstSt->pending_delete_reason ?? 'Deletion requested by admin' }}"
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form action="{{ route('shop-stock.approve-delete', $firstSt) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-danger px-2 py-0.5" style="font-size: .65rem;"><i class="bi bi-check-lg me-1"></i> Approve Delete</button>
+                                </form>
+                                <form action="{{ route('shop-stock.reject-delete', $firstSt) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-outline-secondary px-2 py-0.5" style="font-size: .65rem;">Reject</button>
+                                </form>
+                            </div>
+                        </div>
+                        @elseif(auth()->user()->isShopAdmin() && $firstSt->is_delete_pending)
+                        <div class="mt-1 text-danger small fw-600 d-flex align-items-center gap-1 text-start" style="font-size: .7rem;" title="Reason: {{ $firstSt->pending_delete_reason }}">
+                            <i class="bi bi-hourglass-split"></i> Deletion Pending Owner Approval
+                        </div>
+                        @endif
                     </td>
                 </tr>
                 @endif

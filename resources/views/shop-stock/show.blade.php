@@ -25,7 +25,18 @@
                 <table class="table table-borderless" style="font-size:.85rem;">
                     <tr><th style="color:var(--text-secondary);width:40%;">Shop</th><td><strong>{{ $shopStock->shop->shop_name }}</strong></td></tr>
                     <tr><th style="color:var(--text-secondary);">Category</th><td>{{ $shopStock->item->category->category_name }}</td></tr>
+                    @php
+                        $msStock = \App\Models\MainStock::where('item_id', $shopStock->item_id)->orderByDesc('date_received')->first();
+                        $displayBp = (auth()->user()->isOwner() && $msStock) ? $msStock->buying_price : $shopStock->buying_price;
+                        $displaySp = (auth()->user()->isOwner() && $msStock) ? $msStock->selling_price : $shopStock->selling_price;
+                    @endphp
+                    @if(auth()->user()->isOwner())
+                    <tr><th style="color:var(--text-secondary);">Main Store Buying Price (BP)</th><td><strong style="color:var(--text-secondary);">TZS {{ number_format($displayBp, 0) }}</strong></td></tr>
+                    <tr><th style="color:var(--text-secondary);">Main Store Selling Price (SP)</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($displaySp, 0) }}</strong></td></tr>
+                    <tr><th style="color:var(--text-secondary);">Shop Retail Price</th><td><span class="text-info">TZS {{ number_format($shopStock->selling_price, 0) }}</span></td></tr>
+                    @else
                     <tr><th style="color:var(--text-secondary);">Selling Price</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($shopStock->selling_price, 0) }}</strong></td></tr>
+                    @endif
                     <tr><th style="color:var(--text-secondary);">Initial Qty</th><td>{{ $shopStock->quantity }}</td></tr>
                     <tr><th style="color:var(--text-secondary);">Remaining Qty</th>
                         <td>

@@ -153,6 +153,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('shop-stock/bulk', [ShopStockController::class, 'bulkDestroy'])->name('shop-stock.bulk-destroy');
         Route::delete('shop-stock/{shopStock}', [ShopStockController::class, 'destroy'])->name('shop-stock.destroy');
         Route::post('shop-stock/{shopStock}/request-edit', [ShopStockController::class, 'requestEdit'])->name('shop-stock.request-edit');
+        Route::post('shop-stock/{shopStock}/approve-delete', [ShopStockController::class, 'approveDelete'])->name('shop-stock.approve-delete');
+        Route::post('shop-stock/{shopStock}/reject-delete', [ShopStockController::class, 'rejectDelete'])->name('shop-stock.reject-delete');
         Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');
 
         // Handover Reports

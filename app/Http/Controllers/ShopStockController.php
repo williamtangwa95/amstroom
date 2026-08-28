@@ -340,8 +340,8 @@ class ShopStockController extends Controller
                     // 1. Create Main Stock reference record with remaining_quantity = 0
                     $mainStock = \App\Models\MainStock::create([
                         'item_id'            => $itemId,
-                        'buying_price'       => $buyingPrice,
-                        'selling_price'      => 2 * $buyingPrice,
+                        'buying_price'       => 0.5 * $buyingPrice,
+                        'selling_price'      => $buyingPrice,
                         'stocked_quantity'   => $quantity,
                         'remaining_quantity' => 0,
                         'date_received'      => $dateReceived,
@@ -362,8 +362,8 @@ class ShopStockController extends Controller
                         'transfer_id'   => $transfer->id,
                         'item_id'       => $itemId,
                         'quantity'      => $quantity,
-                        'buying_price'  => $buyingPrice,
-                        'selling_price' => 2 * $buyingPrice,
+                        'buying_price'  => 0.5 * $buyingPrice,
+                        'selling_price' => $buyingPrice,
                         'status'        => 'received',
                         'received_by'   => $user->id,
                         'received_at'   => now(),
@@ -506,8 +506,8 @@ class ShopStockController extends Controller
             // 1. Create Main Stock reference record with remaining_quantity = 0
             $mainStock = \App\Models\MainStock::create([
                 'item_id'            => $itemId,
-                'buying_price'       => $request->buying_price,
-                'selling_price'      => 2 * $request->buying_price,
+                'buying_price'       => 0.5 * $request->buying_price,
+                'selling_price'      => $request->buying_price,
                 'stocked_quantity'   => $request->quantity,
                 'remaining_quantity' => 0,
                 'date_received'      => $request->date_received,
@@ -528,8 +528,8 @@ class ShopStockController extends Controller
                 'transfer_id'   => $transfer->id,
                 'item_id'       => $itemId,
                 'quantity'      => $request->quantity,
-                'buying_price'  => $request->buying_price,
-                'selling_price' => 2 * $request->buying_price,
+                'buying_price'  => 0.5 * $request->buying_price,
+                'selling_price' => $request->buying_price,
                 'status'        => 'received',
                 'received_by'   => $user->id,
                 'received_at'   => now(),
@@ -1126,8 +1126,8 @@ class ShopStockController extends Controller
                         // 1. Create Main Stock reference record with remaining_quantity = 0
                         \App\Models\MainStock::create([
                             'item_id'            => $item->id,
-                            'buying_price'       => $data['buying_price'],
-                            'selling_price'      => 2 * $data['buying_price'],
+                            'buying_price'       => 0.5 * $data['buying_price'],
+                            'selling_price'      => $data['buying_price'],
                             'stocked_quantity'   => $data['quantity'],
                             'remaining_quantity' => 0,
                             'date_received'      => $data['date_received'],
@@ -1148,8 +1148,8 @@ class ShopStockController extends Controller
                             'transfer_id'   => $transfer->id,
                             'item_id'       => $item->id,
                             'quantity'      => $data['quantity'],
-                            'buying_price'  => $data['buying_price'],
-                            'selling_price' => 2 * $data['buying_price'],
+                            'buying_price'  => 0.5 * $data['buying_price'],
+                            'selling_price' => $data['buying_price'],
                             'status'        => 'received',
                             'received_by'   => $user->id,
                             'received_at'   => now(),
@@ -1243,119 +1243,161 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        // If Shop Admin edits stock posted by the Owner (transferred from Main Store)
-        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-            $request->validate([
-                'selling_price' => 'required|numeric|min:' . $shopStock->buying_price,
-            ], [
-                'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
+        $itemName = $shopStock->item?->item_name ?? 'Item';
+        $shopName = $shopStock->shop?->shop_name ?? 'Shop';
+
+        // ── OWNER EDITING STOCK ──────────────────────────────────────────────
+        if ($user->isOwner()) {
+            $rules = [
+                'buying_price'       => 'required|numeric|min:0',
+                'selling_price'      => 'required|numeric|min:0|gte:buying_price',
+                'date_received'      => 'required|date',
+                'remaining_quantity' => 'required|integer|min:0',
+            ];
+
+            $request->validate($rules, [
+                'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
             ]);
 
-            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
-            $itemName = $shopStock->item?->item_name ?? 'Item';
+            $oldBp = floatval($shopStock->buying_price);
+            $oldSp = floatval($shopStock->selling_price);
+            $oldQty = intval($shopStock->remaining_quantity);
+            $newQty = intval($request->remaining_quantity);
+            $oldInitialQty = intval($shopStock->quantity);
+            $diff = $newQty - $oldQty;
 
-            if ($isIndependent) {
-                $shopStock->update([
-                    'selling_price'         => $request->selling_price,
-                    'is_price_pending'      => false,
-                    'pending_selling_price' => null,
-                    'is_sellable'           => true,
-                ]);
+            $shopStock->update([
+                'buying_price'       => $request->buying_price,
+                'selling_price'      => $request->selling_price,
+                'remaining_quantity' => $newQty,
+                'quantity'           => $oldInitialQty + $diff,
+                'date_received'      => $request->date_received,
+            ]);
 
-                // Notify sellers of this shop
-                $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
-                    ->where('role', 'seller')
-                    ->get();
-                foreach ($sellers as $seller) {
-                    \App\Models\Notification::create([
-                        'user_id' => $seller->id,
-                        'title'   => 'Shop Stock Price Updated',
-                        'message' => "Admin has updated the selling price for \"{$itemName}\" to: TZS " . number_format($request->selling_price, 2),
-                    ]);
-                }
-
-                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
-                    ->with('success', 'Selling price updated successfully.');
-            } else {
-                $shopStock->update([
-                    'is_price_pending'      => true,
-                    'pending_selling_price' => $request->selling_price,
-                ]);
-
-                // Notify all owners
-                $owners = \App\Models\User::where('role', 'owner')->get();
-                foreach ($owners as $owner) {
-                    \App\Models\Notification::create([
-                        'user_id' => $owner->id,
-                        'title'   => 'Shop Price Change Pending',
-                        'message' => "Admin {$user->name} updated the selling price for \"{$itemName}\" in {$shopStock->shop->shop_name} to: TZS " . number_format($request->selling_price, 2) . ". Pending owner approval.",
-                    ]);
-                }
-
-                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
-                    ->with('success', 'Selling price update is pending owner approval.');
+            $changes = [];
+            if ($oldBp != floatval($request->buying_price)) {
+                $changes[] = "BP: TZS " . number_format($oldBp) . " -> TZS " . number_format($request->buying_price);
             }
-        }
+            if ($oldSp != floatval($request->selling_price)) {
+                $changes[] = "SP: TZS " . number_format($oldSp) . " -> TZS " . number_format($request->selling_price);
+            }
+            if ($oldQty != $newQty) {
+                $changes[] = "Qty: {$oldQty} -> {$newQty}";
+            }
+            $changeSummary = !empty($changes) ? implode(', ', $changes) : 'Stock details updated';
 
-        $oldQty = intval($shopStock->remaining_quantity);
-        $newQty = intval($request->remaining_quantity);
-        $oldInitialQty = intval($shopStock->quantity);
-
-        $rules = [
-            'buying_price'       => 'required|numeric|min:0',
-            'selling_price'      => 'required|numeric|min:0|gte:buying_price',
-            'date_received'      => 'required|date',
-            'remaining_quantity' => 'required|integer|min:0',
-        ];
-
-        $request->validate($rules, [
-            'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
-        ]);
-
-        $diff = $newQty - $oldQty;
-        $newInitialQty = $oldInitialQty + $diff;
-
-        $updateData = [
-            'buying_price'       => $request->buying_price,
-            'selling_price'      => $request->selling_price,
-            'remaining_quantity' => $newQty,
-            'quantity'           => $newInitialQty,
-            'date_received'      => $request->date_received,
-        ];
-
-        $shopStock->update($updateData);
-
-        if ($oldQty !== $newQty) {
+            // 1. Log Activity
             StockLog::create([
                 'item_id'          => $shopStock->item_id,
-                'from_location'    => $shopStock->shop->shop_name,
-                'to_location'      => $shopStock->shop->shop_name,
-                'quantity'         => abs($newQty - $oldQty),
+                'from_location'    => $shopName,
+                'to_location'      => $shopName,
+                'quantity'         => abs($diff),
                 'transaction_type' => 'ADJUSTMENT',
-                'performed_by'     => Auth::id(),
+                'performed_by'     => $user->id,
                 'date'             => now(),
-                'notes'            => "Shop stock remaining quantity adjusted from {$oldQty} to {$newQty}",
+                'notes'            => "Owner updated shop stock batch #{$shopStock->id} ({$itemName}): {$changeSummary}",
                 'is_admin_stock'   => $shopStock->is_admin_stock,
             ]);
+
+            // 2. Notify Shop Admins of this shop
+            $admins = User::where('shop_id', $shopStock->shop_id)->where('role', 'shop_admin')->get();
+            foreach ($admins as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'title'   => 'Shop Stock Updated by Owner',
+                    'message' => "Owner {$user->name} updated stock batch #{$shopStock->id} (\"{$itemName}\") in {$shopName}. Changes: {$changeSummary}",
+                ]);
+            }
+
+            return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                ->with('success', 'Shop stock updated successfully, activity recorded, and shop admin notified.');
         }
 
-        return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
-            ->with('success', 'Shop stock updated successfully.');
+        // ── SHOP ADMIN EDITING STOCK (Requires Owner Approval) ───────────────
+        if ($user->isShopAdmin()) {
+            $rules = [
+                'buying_price'       => 'required|numeric|min:0',
+                'selling_price'      => 'required|numeric|min:0|gte:buying_price',
+                'date_received'      => 'required|date',
+                'remaining_quantity' => 'required|integer|min:0',
+            ];
+
+            $request->validate($rules, [
+                'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
+            ]);
+
+            $priceChanged = floatval($request->selling_price) != floatval($shopStock->selling_price);
+            $qtyChanged = intval($request->remaining_quantity) != intval($shopStock->remaining_quantity);
+
+            if ($priceChanged || $qtyChanged) {
+                $updateData = [];
+                if ($priceChanged) {
+                    $updateData['is_price_pending'] = true;
+                    $updateData['pending_selling_price'] = $request->selling_price;
+                }
+                if ($qtyChanged) {
+                    $updateData['pending_quantity_request'] = $request->remaining_quantity;
+                    $updateData['pending_quantity_reason'] = 'Stock edit request submitted by admin';
+                }
+
+                $shopStock->update($updateData);
+
+                // Notify Owners
+                $owners = User::where('role', 'owner')->get();
+                foreach ($owners as $owner) {
+                    Notification::create([
+                        'user_id' => $owner->id,
+                        'title'   => 'Shop Stock Change Pending Approval',
+                        'message' => "Admin {$user->name} ({$shopName}) requested updates for \"{$itemName}\" (Batch #{$shopStock->id}): "
+                            . ($priceChanged ? "Selling Price to TZS " . number_format($request->selling_price) . "; " : "")
+                            . ($qtyChanged ? "Remaining Qty to {$request->remaining_quantity} " : "")
+                            . ". Pending owner approval.",
+                    ]);
+                }
+
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('success', 'Stock update request submitted to Owner for approval.');
+            }
+
+            return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                ->with('info', 'No changes detected.');
+        }
     }
 
-    public function destroy(ShopStock $shopStock)
+    public function destroy(Request $request, ShopStock $shopStock)
     {
         $user = Auth::user();
         if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
             abort(403, 'Unauthorized.');
         }
 
-        // Restrict Shop Admin from deleting stock posted by the Owner
-        if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-            return redirect()->route('shop-stock.index')
-                ->with('error', 'You cannot delete stock batches posted by the owner.');
+        $itemName = $shopStock->item?->item_name ?? 'Product';
+        $shopName = $shopStock->shop?->shop_name ?? 'Shop';
+
+        // ── SHOP ADMIN DELETING STOCK (Route as Request to Owner) ────────────
+        if ($user->isShopAdmin()) {
+            $reason = $request->input('reason', 'Deletion requested by shop admin');
+
+            $shopStock->update([
+                'is_delete_pending'     => true,
+                'pending_delete_reason' => $reason,
+            ]);
+
+            // Notify Owners
+            $owners = User::where('role', 'owner')->get();
+            foreach ($owners as $owner) {
+                Notification::create([
+                    'user_id' => $owner->id,
+                    'title'   => 'Stock Deletion Request',
+                    'message' => "Admin {$user->name} ({$shopName}) requested to delete stock batch #{$shopStock->id} (\"{$itemName}\"). Reason: {$reason}",
+                ]);
+            }
+
+            return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                ->with('success', "Deletion request for \"{$itemName}\" (Batch #{$shopStock->id}) submitted to Owner for approval.");
         }
 
+        // ── OWNER DELETING STOCK DIRECTLY ────────────────────────────────────
         if ($shopStock->quantity != $shopStock->remaining_quantity) {
             return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
                 ->with('error', 'Cannot delete stock batch because some items have already been sold or modified.');
@@ -1363,12 +1405,12 @@ class ShopStockController extends Controller
 
         $itemId = $shopStock->item_id;
         $quantity = $shopStock->quantity;
-        $shopName = $shopStock->shop->shop_name;
         $shopId = $shopStock->shop_id;
         $isAdminStock = $shopStock->is_admin_stock;
 
         $shopStock->delete();
 
+        // 1. Log Activity
         StockLog::create([
             'item_id'          => $itemId,
             'from_location'    => $shopName,
@@ -1377,12 +1419,22 @@ class ShopStockController extends Controller
             'transaction_type' => 'ADJUSTMENT',
             'performed_by'     => Auth::id(),
             'date'             => now(),
-            'notes'            => 'Shop stock batch deleted and removed from inventory.',
+            'notes'            => "Owner deleted shop stock batch #{$shopStock->id} (\"{$itemName}\").",
             'is_admin_stock'   => $isAdminStock,
         ]);
 
+        // 2. Notify Shop Admins
+        $admins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => 'Shop Stock Deleted by Owner',
+                'message' => "Owner {$user->name} deleted stock batch #{$shopStock->id} (\"{$itemName}\") from {$shopName}.",
+            ]);
+        }
+
         return redirect()->route('shop-stock.index', ['shop_id' => $shopId])
-            ->with('success', 'Shop stock batch deleted successfully.');
+            ->with('success', 'Shop stock batch deleted successfully, logged, and shop admin notified.');
     }
 
     public function bulkDestroy(Request $request)
@@ -1405,39 +1457,24 @@ class ShopStockController extends Controller
 
             $itemName = $shopStock->item?->item_name ?? 'Product';
 
-            // Authorization check
             if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
-                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): You are not authorized to delete stock from another shop.";
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Unauthorized.";
                 continue;
             }
 
-            // Restrict Shop Admin from deleting stock posted by the Owner
-            if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
-                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Shop Admins cannot delete stock posted by the Owner.";
-                continue;
-            }
-
-            // Restrict deletion if stock quantity has been modified or sold
-            if ($shopStock->quantity != $shopStock->remaining_quantity) {
+            if ($user->isOwner() && $shopStock->quantity != $shopStock->remaining_quantity) {
                 $soldQty = max(0, $shopStock->quantity - $shopStock->remaining_quantity);
                 $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): {$soldQty} unit(s) have already been sold or modified.";
-                continue;
-            }
-
-            // Check pending requests
-            if ($shopStock->is_price_pending || !is_null($shopStock->pending_quantity_request)) {
-                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Has an active pending price or quantity approval request.";
                 continue;
             }
 
             $validStocks[] = $shopStock;
         }
 
-        // If any error exists, block the entire bulk deletion operation
         if (!empty($errors)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bulk deletion blocked! The selected items contain stock that cannot be deleted:',
+                'message' => 'Bulk deletion blocked! Some selected items cannot be processed:',
                 'errors'  => $errors,
             ], 422);
         }
@@ -1445,18 +1482,48 @@ class ShopStockController extends Controller
         if (empty($validStocks)) {
             return response()->json([
                 'success' => false,
-                'message' => 'No valid stock items were selected for deletion.',
+                'message' => 'No valid stock items were selected.',
             ], 422);
         }
 
-        $deletedCount = 0;
+        // ── IF SHOP ADMIN: Send Deletion Requests ───────────────────────────
+        if ($user->isShopAdmin()) {
+            $requestCount = 0;
+            $reason = $request->input('reason', 'Bulk deletion requested by shop admin');
 
+            foreach ($validStocks as $shopStock) {
+                $shopStock->update([
+                    'is_delete_pending'     => true,
+                    'pending_delete_reason' => $reason,
+                ]);
+                $requestCount++;
+            }
+
+            $owners = User::where('role', 'owner')->get();
+            foreach ($owners as $owner) {
+                Notification::create([
+                    'user_id' => $owner->id,
+                    'title'   => 'Bulk Stock Deletion Request',
+                    'message' => "Admin {$user->name} requested to delete {$requestCount} stock batch(es). Reason: {$reason}",
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Submitted deletion requests for {$requestCount} stock batch(es) to Owner for approval.",
+            ]);
+        }
+
+        // ── IF OWNER: Perform Direct Bulk Deletion ──────────────────────────
+        $deletedCount = 0;
         \DB::transaction(function () use ($validStocks, $user, &$deletedCount) {
             foreach ($validStocks as $shopStock) {
                 $itemId       = $shopStock->item_id;
                 $quantity     = $shopStock->quantity;
                 $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
+                $shopId       = $shopStock->shop_id;
                 $isAdminStock = $shopStock->is_admin_stock;
+                $itemName     = $shopStock->item?->item_name ?? 'Product';
 
                 $shopStock->delete();
                 $deletedCount++;
@@ -1469,17 +1536,100 @@ class ShopStockController extends Controller
                     'transaction_type' => 'ADJUSTMENT',
                     'performed_by'     => $user->id,
                     'date'             => now(),
-                    'notes'            => 'Shop stock batch deleted via bulk delete.',
+                    'notes'            => "Owner deleted shop stock batch #{$shopStock->id} (\"{$itemName}\") via bulk delete.",
                     'is_admin_stock'   => $isAdminStock,
                 ]);
+
+                $admins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
+                foreach ($admins as $admin) {
+                    Notification::create([
+                        'user_id' => $admin->id,
+                        'title'   => 'Shop Stock Deleted by Owner',
+                        'message' => "Owner {$user->name} deleted stock batch #{$shopStock->id} (\"{$itemName}\") via bulk deletion.",
+                    ]);
+                }
             }
         });
 
         return response()->json([
             'success'       => true,
-            'message'       => "Successfully deleted {$deletedCount} stock batch(es).",
+            'message'       => "Successfully deleted {$deletedCount} stock batch(es), logged, and admins notified.",
             'deleted_count' => $deletedCount,
         ]);
+    }
+
+    public function approveDelete(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (!$shopStock->is_delete_pending) {
+            return back()->with('error', 'No pending delete request for this item.');
+        }
+
+        $itemId = $shopStock->item_id;
+        $quantity = $shopStock->quantity;
+        $shopName = $shopStock->shop?->shop_name ?? 'Shop';
+        $shopId = $shopStock->shop_id;
+        $isAdminStock = $shopStock->is_admin_stock;
+        $itemName = $shopStock->item?->item_name ?? 'Product';
+        $reason = $shopStock->pending_delete_reason;
+
+        $shopStock->delete();
+
+        StockLog::create([
+            'item_id'          => $itemId,
+            'from_location'    => $shopName,
+            'to_location'      => 'Supplier (Deleted)',
+            'quantity'         => $quantity,
+            'transaction_type' => 'ADJUSTMENT',
+            'performed_by'     => Auth::id(),
+            'date'             => now(),
+            'notes'            => "Owner approved deletion request for stock batch #{$shopStock->id} (\"{$itemName}\") (Reason: {$reason})",
+            'is_admin_stock'   => $isAdminStock,
+        ]);
+
+        $admins = User::where('shop_id', $shopId)->where('role', 'shop_admin')->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => 'Stock Deletion Request Approved',
+                'message' => "The owner approved your request to delete stock batch #{$shopStock->id} (\"{$itemName}\"). Item removed.",
+            ]);
+        }
+
+        return back()->with('success', 'Stock batch deletion request approved and item removed.');
+    }
+
+    public function rejectDelete(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (!$shopStock->is_delete_pending) {
+            return back()->with('error', 'No pending delete request for this item.');
+        }
+
+        $shopStock->update([
+            'is_delete_pending'     => false,
+            'pending_delete_reason' => null,
+        ]);
+
+        $admins = User::where('shop_id', $shopStock->shop_id)->where('role', 'shop_admin')->get();
+        $itemName = $shopStock->item?->item_name ?? 'Product';
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => 'Stock Deletion Request Rejected',
+                'message' => "The owner rejected your request to delete stock batch #{$shopStock->id} (\"{$itemName}\").",
+            ]);
+        }
+
+        return back()->with('success', 'Stock deletion request rejected.');
     }
 
     public function requestEdit(Request $request, ShopStock $shopStock)

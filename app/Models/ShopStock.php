@@ -16,6 +16,7 @@ class ShopStock extends Model
         'quantity', 'remaining_quantity', 'low_stock_alert', 'date_received',
         'is_price_pending', 'pending_selling_price', 'is_sellable', 'is_admin_stock', 'allow_components',
         'pending_quantity_request', 'pending_quantity_reason',
+        'is_delete_pending', 'pending_delete_reason',
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class ShopStock extends Model
         'is_sellable' => 'boolean',
         'is_admin_stock' => 'boolean',
         'allow_components' => 'boolean',
+        'is_delete_pending' => 'boolean',
     ];
 
     public function shop()
