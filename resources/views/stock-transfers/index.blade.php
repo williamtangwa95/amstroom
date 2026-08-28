@@ -12,11 +12,16 @@
         <h6 class="mb-0 fw-700">
             <i class="bi bi-truck text-primary me-2"></i>All Stock Transfers
         </h6>
-        @if(auth()->user()->isOwner())
-            <a href="{{ route('stock-transfers.create') }}" class="btn btn-sm btn-accent">
-                <i class="bi bi-plus-circle-fill me-1"></i> Assign Stock to Shop
-            </a>
-        @endif
+        <div class="d-flex align-items-center gap-2">
+            @if(auth()->user()->isOwner())
+                <button type="button" id="btnBulkDeleteTransfers" class="btn btn-sm btn-outline-danger d-none">
+                    <i class="bi bi-trash-fill me-1"></i> Delete Selected (<span id="selectedTransfersCount">0</span>)
+                </button>
+                <a href="{{ route('stock-transfers.create') }}" class="btn btn-sm btn-accent">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Assign Stock to Shop
+                </a>
+            @endif
+        </div>
     </div>
 
     <div class="card-body p-0">
@@ -51,6 +56,11 @@
         <table class="table table-hover mb-0" id="transfersTable">
             <thead>
                 <tr>
+                    @if(auth()->user()->isOwner())
+                        <th style="width: 40px;" class="no-sort">
+                            <input type="checkbox" id="selectAllTransfers" style="cursor:pointer;">
+                        </th>
+                    @endif
                     <th>No</th>
                     <th>Transfer Date</th>
                     <th>Destination Shop</th>
@@ -63,6 +73,11 @@
             <tbody>
                 @foreach($transfers as $transfer)
                 <tr>
+                    @if(auth()->user()->isOwner())
+                        <td>
+                            <input type="checkbox" class="transfer-checkbox" value="{{ $transfer->id }}" style="cursor:pointer;">
+                        </td>
+                    @endif
                     <td class="fw-600">{{ $loop->iteration }}</td>
                     <td>{{ $transfer->transfer_date->format('M d, Y') }}</td>
                     <td>
@@ -126,10 +141,13 @@
 @push('scripts')
 <script>
 $(function() {
+    const isOwner = {{ auth()->user()->isOwner() ? 'true' : 'false' }};
+    const nonSortableTargets = isOwner ? [0, 4, 6, 7] : [3, 5, 6];
+
     if ($.fn.DataTable) {
         $('#transfersTable').DataTable({
-            order: [[0, 'desc']],
-            columnDefs: [{ orderable: false, targets: [3, 5, 6] }],
+            order: [[isOwner ? 1 : 0, 'desc']],
+            columnDefs: [{ orderable: false, targets: nonSortableTargets }],
             language: {
                 search: '',
                 searchPlaceholder: 'Search transfers...',
@@ -138,9 +156,32 @@ $(function() {
         });
     }
 
-    // Hidden delete form (avoid nested form issues)
+    // Hidden forms (avoid nested form issues)
     $('body').append('<form id="deleteTransferForm" method="POST" style="display:none;"><input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE"></form>');
+    $('body').append('<form id="bulkDeleteTransfersForm" action="{{ route("stock-transfers.bulk-destroy") }}" method="POST" style="display:none;"><input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE"></form>');
 
+    // Handle Select All Transfers Checkbox
+    $(document).on('change', '#selectAllTransfers', function() {
+        const isChecked = $(this).is(':checked');
+        $('.transfer-checkbox').prop('checked', isChecked).trigger('change');
+    });
+
+    // Handle Individual Transfer Checkbox Change
+    $(document).on('change', '.transfer-checkbox', function() {
+        const totalCheckboxes = $('.transfer-checkbox').length;
+        const checkedCheckboxes = $('.transfer-checkbox:checked').length;
+
+        $('#selectAllTransfers').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
+        $('#selectedTransfersCount').text(checkedCheckboxes);
+
+        if (checkedCheckboxes > 0) {
+            $('#btnBulkDeleteTransfers').removeClass('d-none');
+        } else {
+            $('#btnBulkDeleteTransfers').addClass('d-none');
+        }
+    });
+
+    // Handle Single Transfer Delete
     $(document).on('click', '.btn-delete-transfer', function() {
         const url = $(this).data('url');
         const id  = $(this).data('id');
@@ -160,6 +201,37 @@ $(function() {
                 const form = document.getElementById('deleteTransferForm');
                 form.action = url;
                 form.submit();
+            }
+        });
+    });
+
+    // Handle Bulk Delete Transfers Action
+    $(document).on('click', '#btnBulkDeleteTransfers', function() {
+        const selectedIds = $('.transfer-checkbox:checked').map(function() {
+            return $(this).val();
+        }).get();
+
+        if (selectedIds.length === 0) return;
+
+        Swal.fire({
+            title: 'Delete ' + selectedIds.length + ' Transfer(s)?',
+            html: 'All transfer items for the ' + selectedIds.length + ' selected transfer(s) will be removed and their stock <strong>returned to the Main Warehouse</strong>.<br>This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete selected transfers!',
+            cancelButtonText: 'Cancel',
+            background: '#161b22',
+            color: '#e6edf3'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                const $form = $('#bulkDeleteTransfersForm');
+                $form.find('input[name="ids[]"]').remove();
+                selectedIds.forEach(function(id) {
+                    $form.append('<input type="hidden" name="ids[]" value="' + id + '">');
+                });
+                $form.submit();
             }
         });
     });

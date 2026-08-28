@@ -644,6 +644,88 @@ class StockTransferController extends Controller
     }
 
     /**
+     * Owner: Bulk delete transfers (revert shop stock if received & restore main warehouse stock).
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isOwner()) {
+            abort(403, 'Only the owner can delete transfers.');
+        }
+
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'exists:stock_transfers,id',
+        ]);
+
+        $deletedCount = 0;
+        $totalItemsCount = 0;
+
+        DB::transaction(function () use ($request, $user, &$deletedCount, &$totalItemsCount) {
+            $transfers = StockTransfer::with('items', 'shop')->whereIn('id', $request->ids)->get();
+
+            foreach ($transfers as $stockTransfer) {
+                $totalItemsCount += $stockTransfer->items->count();
+
+                foreach ($stockTransfer->items as $item) {
+                    if ($item->status === 'received') {
+                        // Revert shop stock for received items
+                        $shopStock = ShopStock::where('shop_id', $stockTransfer->to_shop)
+                            ->where('item_id', $item->item_id)
+                            ->first();
+
+                        if ($shopStock) {
+                            $shopStock->quantity = max(0, $shopStock->quantity - $item->quantity);
+                            $shopStock->remaining_quantity = max(0, $shopStock->remaining_quantity - $item->quantity);
+                            if ($shopStock->quantity <= 0 && $shopStock->remaining_quantity <= 0) {
+                                $shopStock->delete();
+                            } else {
+                                $shopStock->save();
+                            }
+                        }
+
+                        $this->restoreMainStock($item->item_id, $item->quantity);
+
+                        StockLog::create([
+                            'item_id'          => $item->item_id,
+                            'from_location'    => $stockTransfer->shop?->shop_name ?? 'Shop',
+                            'to_location'      => 'Main Warehouse (Bulk Delete)',
+                            'quantity'         => $item->quantity,
+                            'transaction_type' => 'ADJUSTMENT',
+                            'performed_by'     => $user->id,
+                            'date'             => now()->toDateString(),
+                            'notes'            => "Transfer #{$stockTransfer->id} bulk deleted — received item stock removed from shop stock and returned to Main Warehouse.",
+                        ]);
+                    } else {
+                        // Restore warehouse stock for pending/rejected items
+                        $this->restoreMainStock($item->item_id, $item->quantity);
+
+                        StockLog::create([
+                            'item_id'          => $item->item_id,
+                            'from_location'    => 'Main Warehouse',
+                            'to_location'      => $stockTransfer->shop?->shop_name ?? 'Shop',
+                            'quantity'         => $item->quantity,
+                            'transaction_type' => 'ADJUSTMENT',
+                            'performed_by'     => $user->id,
+                            'date'             => now()->toDateString(),
+                            'notes'            => "Transfer #{$stockTransfer->id} bulk deleted — stock returned to Main Warehouse.",
+                        ]);
+                    }
+                }
+
+                $stockTransfer->items()->delete();
+                $stockTransfer->delete();
+                $deletedCount++;
+            }
+        });
+
+        $msg = "Successfully deleted {$deletedCount} stock transfer(s). Stock for {$totalItemsCount} item(s) has been returned to the Main Warehouse.";
+
+        return redirect()->route('stock-transfers.index')->with('success', $msg);
+    }
+
+    /**
      * Owner: Add another item to an existing stock transfer.
      */
     public function addItem(Request $request, StockTransfer $stockTransfer)

@@ -131,6 +131,7 @@ Route::middleware('auth')->group(function () {
         Route::put('stock-transfers/item/{transferItem}', [StockTransferController::class, 'updateItem'])->name('stock-transfers.update-item');
         Route::delete('stock-transfers/item/{transferItem}', [StockTransferController::class, 'deleteItem'])->name('stock-transfers.delete-item');
         Route::post('stock-transfers/{stockTransfer}/add-item', [StockTransferController::class, 'addItem'])->name('stock-transfers.add-item');
+        Route::delete('stock-transfers/bulk-destroy', [StockTransferController::class, 'bulkDestroy'])->name('stock-transfers.bulk-destroy');
         Route::delete('stock-transfers/{stockTransfer}', [StockTransferController::class, 'destroyTransfer'])->name('stock-transfers.destroy');
 
         // Shop Admin: Approve/Reject/Revert sale returns
