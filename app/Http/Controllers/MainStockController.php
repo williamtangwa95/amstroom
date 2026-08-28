@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\MainStock;
 use App\Models\StockLog;
 use App\Models\Category;
+use App\Services\MainStoreStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class MainStockController extends Controller
         return view('main-stock.create', compact('items'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, MainStoreStockService $stockService)
     {
         $request->validate([
             'item_id'          => 'required|exists:items,id',
@@ -46,28 +47,18 @@ class MainStockController extends Controller
             'selling_price.gte' => 'The selling price must be greater than or equal to the buying price.',
         ]);
 
-        $stock = MainStock::create([
-            'item_id'           => $request->item_id,
-            'buying_price'      => $request->buying_price,
-            'selling_price'     => $request->selling_price,
-            'stocked_quantity'  => $request->stocked_quantity,
-            'remaining_quantity'=> $request->stocked_quantity,
-            'date_received'     => $request->date_received,
-        ]);
-
-        StockLog::create([
-            'item_id'          => $stock->item_id,
-            'from_location'    => 'Supplier',
-            'to_location'      => 'Main Warehouse',
-            'quantity'         => $stock->stocked_quantity,
-            'transaction_type' => 'STOCK_RECEIVED',
-            'performed_by'     => Auth::id(),
-            'date'             => $stock->date_received,
-            'notes'            => 'Initial stock received',
-        ]);
+        $result = $stockService->processStockAddition(
+            (int) $request->item_id,
+            (int) $request->stocked_quantity,
+            (float) $request->buying_price,
+            (float) $request->selling_price,
+            $request->date_received,
+            Auth::id(),
+            'Manual Main Store addition'
+        );
 
         return redirect()->route('main-stock.index')
-            ->with('success', 'Stock added to main warehouse successfully.');
+            ->with('success', $result['flash_message']);
     }
 
     public function show(MainStock $mainStock)
@@ -94,8 +85,8 @@ class MainStockController extends Controller
     public function update(Request $request, MainStock $mainStock)
     {
         $oldQty = intval($mainStock->remaining_quantity);
-        $newQty = intval($request->remaining_quantity);
         $oldInitialQty = intval($mainStock->stocked_quantity);
+        $newQty = $request->has('remaining_quantity') ? intval($request->remaining_quantity) : $oldQty;
 
         $rules = [
             'buying_price'       => 'required|numeric|min:0',
@@ -103,10 +94,12 @@ class MainStockController extends Controller
             'date_received'      => 'required|date',
         ];
 
-        if ($oldQty === $oldInitialQty) {
-            $rules['remaining_quantity'] = 'required|integer|min:0';
-        } else {
-            $rules['remaining_quantity'] = 'required|integer|min:0|max:' . $oldInitialQty;
+        if ($request->has('remaining_quantity')) {
+            if ($oldQty === $oldInitialQty) {
+                $rules['remaining_quantity'] = 'required|integer|min:0';
+            } else {
+                $rules['remaining_quantity'] = 'required|integer|min:0|max:' . $oldInitialQty;
+            }
         }
 
         $request->validate($rules, [
@@ -120,11 +113,11 @@ class MainStockController extends Controller
         $updateData = [
             'buying_price'       => $request->buying_price,
             'selling_price'      => $request->selling_price,
-            'remaining_quantity' => $request->remaining_quantity,
+            'remaining_quantity' => $newQty,
             'date_received'      => $request->date_received,
         ];
 
-        if ($oldQty === $oldInitialQty) {
+        if ($request->has('remaining_quantity') && $oldQty === $oldInitialQty) {
             $updateData['stocked_quantity'] = $newQty;
         }
 
@@ -432,8 +425,9 @@ class MainStockController extends Controller
         }
 
         // Second pass: database insertion in transaction
+        $stockService = app(MainStoreStockService::class);
         try {
-            DB::transaction(function () use ($importData) {
+            DB::transaction(function () use ($importData, $stockService) {
                 foreach ($importData as $data) {
                     $item = $data['item_object'];
 
@@ -461,25 +455,15 @@ class MainStockController extends Controller
                         ]);
                     }
 
-                    MainStock::create([
-                        'item_id' => $item->id,
-                        'buying_price' => $data['buying_price'],
-                        'selling_price' => $data['selling_price'],
-                        'stocked_quantity' => $data['quantity'],
-                        'remaining_quantity' => $data['quantity'],
-                        'date_received' => $data['date_received'],
-                    ]);
-
-                    StockLog::create([
-                        'item_id' => $item->id,
-                        'from_location' => 'Supplier',
-                        'to_location' => 'Main Warehouse',
-                        'quantity' => $data['quantity'],
-                        'transaction_type' => 'STOCK_RECEIVED',
-                        'performed_by' => Auth::id(),
-                        'date' => $data['date_received'],
-                        'notes' => 'Imported from Excel',
-                    ]);
+                    $stockService->processStockAddition(
+                        (int) $item->id,
+                        (int) $data['quantity'],
+                        (float) $data['buying_price'],
+                        (float) $data['selling_price'],
+                        $data['date_received'],
+                        Auth::id(),
+                        'Imported from Excel'
+                    );
                 }
             });
         } catch (\Exception $e) {

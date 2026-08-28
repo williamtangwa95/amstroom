@@ -79,18 +79,18 @@ class PriceFormulaAdjustmentTest extends TestCase
         $response->assertRedirect(route('shop-stock.index'));
         $response->assertSessionHas('success');
 
-        // MainStock buying_price should be 5000, selling_price should be 10000 (2 * buying_price)
+        // MainStock buying_price should be 2500, selling_price should be 5000
         $this->assertDatabaseHas('main_stocks', [
             'item_id'       => $this->item->id,
-            'buying_price'  => 5000,
-            'selling_price' => 10000,
+            'buying_price'  => 2500,
+            'selling_price' => 5000,
         ]);
 
-        // StockTransferItem buying_price should be 5000, selling_price should be 10000
+        // StockTransferItem buying_price should be 2500, selling_price should be 5000
         $this->assertDatabaseHas('stock_transfer_items', [
             'item_id'       => $this->item->id,
-            'buying_price'  => 5000,
-            'selling_price' => 10000,
+            'buying_price'  => 2500,
+            'selling_price' => 5000,
         ]);
 
         // ShopStock buying_price should be 5000, selling_price should be 8000
@@ -245,8 +245,8 @@ class PriceFormulaAdjustmentTest extends TestCase
         ]);
         $this->assertDatabaseHas('main_stocks', [
             'item_id' => $this->item->id,
-            'buying_price' => 4000,
-            'selling_price' => 8000, // 2 * 4000
+            'buying_price' => 2000,
+            'selling_price' => 4000,
         ]);
 
         // Check second item
@@ -261,8 +261,8 @@ class PriceFormulaAdjustmentTest extends TestCase
         ]);
         $this->assertDatabaseHas('main_stocks', [
             'item_id' => $newItem->id,
-            'buying_price' => 8000,
-            'selling_price' => 16000, // 2 * 8000
+            'buying_price' => 4000,
+            'selling_price' => 8000,
         ]);
     }
 }

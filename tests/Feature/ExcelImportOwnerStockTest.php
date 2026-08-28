@@ -105,7 +105,8 @@ class ExcelImportOwnerStockTest extends TestCase
 
         // Verify MainStock reference record was created
         $this->assertDatabaseHas('main_stocks', [
-            'buying_price' => 45000,
+            'buying_price' => 22500,
+            'selling_price' => 45000,
             'stocked_quantity' => 5,
         ]);
 

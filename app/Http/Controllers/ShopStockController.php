@@ -337,16 +337,19 @@ class ShopStockController extends Controller
                         $itemId = $prod['item_id'];
                     }
 
-                    // 1. Create Main Stock reference record with remaining_quantity = 0
-                    $mainStock = \App\Models\MainStock::create([
-                        'item_id'            => $itemId,
-                        'buying_price'       => 0.5 * $buyingPrice,
-                        'selling_price'      => $buyingPrice,
-                        'stocked_quantity'   => $quantity,
-                        'remaining_quantity' => 0,
-                        'date_received'      => $dateReceived,
-                        'is_price_pending'   => false,
-                    ]);
+                    // 1. Create/update Main Stock reference record
+                    $stockService = app(\App\Services\MainStoreStockService::class);
+                    $msResult = $stockService->processStockAddition(
+                        (int) $itemId,
+                        (int) $quantity,
+                        (float) (0.5 * $buyingPrice),
+                        (float) $buyingPrice,
+                        $dateReceived,
+                        $user->id,
+                        'Owner stock added directly to shop',
+                        true
+                    );
+                    $mainStock = $msResult['main_stock'];
 
                     // 2. Create Stock Transfer record (status = received)
                     $transfer = \App\Models\StockTransfer::create([
@@ -503,16 +506,19 @@ class ShopStockController extends Controller
                 $itemId = $request->item_id;
             }
 
-            // 1. Create Main Stock reference record with remaining_quantity = 0
-            $mainStock = \App\Models\MainStock::create([
-                'item_id'            => $itemId,
-                'buying_price'       => 0.5 * $request->buying_price,
-                'selling_price'      => $request->buying_price,
-                'stocked_quantity'   => $request->quantity,
-                'remaining_quantity' => 0,
-                'date_received'      => $request->date_received,
-                'is_price_pending'   => false,
-            ]);
+            // 1. Create/update Main Stock reference record
+            $stockService = app(\App\Services\MainStoreStockService::class);
+            $msResult = $stockService->processStockAddition(
+                (int) $itemId,
+                (int) $request->quantity,
+                (float) (0.5 * $request->buying_price),
+                (float) $request->buying_price,
+                $request->date_received,
+                $user->id,
+                'Owner stock added directly to shop',
+                true
+            );
+            $mainStock = $msResult['main_stock'];
 
             // 2. Create Stock Transfer record (status = received)
             $transfer = \App\Models\StockTransfer::create([
@@ -1123,16 +1129,19 @@ class ShopStockController extends Controller
                     }
 
                     if ($isShopAdminOwnerStock) {
-                        // 1. Create Main Stock reference record with remaining_quantity = 0
-                        \App\Models\MainStock::create([
-                            'item_id'            => $item->id,
-                            'buying_price'       => 0.5 * $data['buying_price'],
-                            'selling_price'      => $data['buying_price'],
-                            'stocked_quantity'   => $data['quantity'],
-                            'remaining_quantity' => 0,
-                            'date_received'      => $data['date_received'],
-                            'is_price_pending'   => false,
-                        ]);
+                        // 1. Create/update Main Stock reference record
+                        $stockService = app(\App\Services\MainStoreStockService::class);
+                        $msResult = $stockService->processStockAddition(
+                            (int) $item->id,
+                            (int) $data['quantity'],
+                            (float) (0.5 * $data['buying_price']),
+                            (float) $data['buying_price'],
+                            $data['date_received'],
+                            $user->id,
+                            'Owner stock added directly to shop via Excel',
+                            true
+                        );
+                        $mainStock = $msResult['main_stock'];
 
                         // 2. Create Stock Transfer record (status = received)
                         $transfer = \App\Models\StockTransfer::create([
