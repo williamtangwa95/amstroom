@@ -78,6 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::get('main-stock/create', [MainStockController::class, 'create'])->name('main-stock.create');
         Route::post('main-stock', [MainStockController::class, 'store'])->name('main-stock.store');
         Route::get('main-stock/history', [MainStockController::class, 'history'])->name('main-stock.history');
+        Route::delete('main-stock/bulk-destroy', [MainStockController::class, 'bulkDestroy'])->name('main-stock.bulk-destroy');
         Route::get('main-stock/{mainStock}', [MainStockController::class, 'show'])->name('main-stock.show');
         Route::get('main-stock/{mainStock}/edit', [MainStockController::class, 'edit'])->name('main-stock.edit');
         Route::put('main-stock/{mainStock}', [MainStockController::class, 'update'])->name('main-stock.update');

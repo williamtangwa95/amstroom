@@ -214,6 +214,90 @@ class MainStockController extends Controller
             ->with('success', 'Stock batch deleted successfully.');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isOwner()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Only store owner can delete main warehouse stock.'], 403);
+            }
+            abort(403, 'Only store owner can delete main warehouse stock.');
+        }
+
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'exists:main_stocks,id',
+        ]);
+
+        $errors = [];
+        $validStocks = [];
+
+        foreach ($request->ids as $id) {
+            $stock = MainStock::with('item')->find($id);
+            if (!$stock) continue;
+
+            $itemName = $stock->item?->item_name ?? 'Item';
+
+            if ($stock->stocked_quantity != $stock->remaining_quantity) {
+                $transferredOrSold = $stock->stocked_quantity - $stock->remaining_quantity;
+                $errors[] = "Batch #{$stock->id} ({$itemName}): Cannot delete because {$transferredOrSold} unit(s) have already been transferred or sold.";
+                continue;
+            }
+
+            $validStocks[] = $stock;
+        }
+
+        if (!empty($errors) && empty($validStocks)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bulk deletion failed:',
+                    'errors'  => $errors,
+                ], 422);
+            }
+            return back()->with('error', implode(' ', $errors));
+        }
+
+        $deletedCount = 0;
+        DB::transaction(function () use ($validStocks, $user, &$deletedCount) {
+            foreach ($validStocks as $mainStock) {
+                $itemId = $mainStock->item_id;
+                $quantity = $mainStock->stocked_quantity;
+
+                $mainStock->delete();
+
+                StockLog::create([
+                    'item_id'          => $itemId,
+                    'from_location'    => 'Main Warehouse',
+                    'to_location'      => 'Supplier (Bulk Deleted)',
+                    'quantity'         => $quantity,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => 'Stock batch bulk deleted and removed from central warehouse.',
+                ]);
+
+                $deletedCount++;
+            }
+        });
+
+        $successMsg = "Successfully deleted {$deletedCount} stock batch(es) from central warehouse.";
+        if (!empty($errors)) {
+            $successMsg .= " Skipped " . count($errors) . " batch(es) that had existing sales/transfers.";
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $successMsg,
+                'warnings'=> $errors,
+            ]);
+        }
+
+        return redirect()->route('main-stock.index')->with('success', $successMsg);
+    }
+
     public function downloadTemplate()
     {
         $spreadsheet = new Spreadsheet();

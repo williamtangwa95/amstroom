@@ -114,7 +114,8 @@
     </div>
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-xs btn-accent px-3 py-1" id="bulkEnableBtn" style="font-size: .75rem;">Enable Custom Components</button>
-        <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
+        <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDeleteBtn" style="font-size: .75rem;"><i class="bi bi-trash me-1"></i>Delete Selected Stock</button>
     </div>
 </div>
 
@@ -342,6 +343,87 @@
 
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
+
+        $('#bulkDeleteBtn').on('click', function() {
+            const checkedIds = [];
+            $('.stock-checkbox:checked').each(function() {
+                checkedIds.push($(this).data('id'));
+            });
+
+            if (checkedIds.length === 0) return;
+
+            Swal.fire({
+                title: 'Delete ' + checkedIds.length + ' Stock Batch(es)?',
+                html: 'Are you sure you want to delete the selected stock batch(es) from the Main Store?<br><small class="text-warning">Batches with partial sales/transfers will be skipped.</small>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete selected!',
+                cancelButtonText: 'Cancel',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Deleting stock...',
+                        allowOutsideClick: false,
+                        background: '#161b22',
+                        color: '#e6edf3',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: "{{ route('main-stock.bulk-destroy') }}",
+                        type: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            _method: "DELETE",
+                            ids: checkedIds
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: res.message,
+                                    background: '#161b22',
+                                    color: '#e6edf3'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: res.message || 'Failed to delete selected stock.',
+                                    background: '#161b22',
+                                    color: '#e6edf3'
+                                });
+                            }
+                        },
+                        error: function(err) {
+                            const errRes = err.responseJSON;
+                            let errMsg = 'Failed to delete selected stock.';
+                            if (errRes && errRes.errors) {
+                                errMsg = errRes.errors.join('<br>');
+                            } else if (errRes && errRes.message) {
+                                errMsg = errRes.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Bulk Delete Blocked',
+                                html: errMsg,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            });
+                        }
+                    });
+                }
+            });
+        });
 
         $(document).on('click', '.confirm-delete-btn', function(e) {
             e.preventDefault();
