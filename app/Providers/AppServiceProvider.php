@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         // Listen for Login event
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Auth\Events\Login::class,

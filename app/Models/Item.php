@@ -30,6 +30,11 @@ class Item extends Model
         return $this->hasMany(MainStock::class);
     }
 
+    public function mainStock()
+    {
+        return $this->hasOne(MainStock::class)->latestOfMany();
+    }
+
     public function shopStocks()
     {
         return $this->hasMany(ShopStock::class);

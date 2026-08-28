@@ -31,7 +31,7 @@ class MainStockController extends Controller
 
     public function create()
     {
-        $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
+        $items = Item::with(['category', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
         return view('main-stock.create', compact('items'));
     }
 

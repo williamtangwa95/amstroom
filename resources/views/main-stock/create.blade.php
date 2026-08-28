@@ -16,14 +16,28 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label">Product *</label>
-                            <select name="item_id" class="form-select" required>
+                            <select name="item_id" id="item_id_select" class="form-select" required>
                                 <option value="">Select product...</option>
                                 @foreach($items as $item)
-                                <option value="{{ $item->id }}" {{ old('item_id')==$item->id ? 'selected' : '' }}>
+                                @php
+                                    $hasMainStock = $item->mainStock && $item->mainStock->selling_price > 0;
+                                    $buyingPrice = $hasMainStock ? number_format($item->mainStock->buying_price, 0, '', '') : '';
+                                    $sellingPrice = $hasMainStock ? number_format($item->mainStock->selling_price, 0, '', '') : '';
+                                @endphp
+                                <option value="{{ $item->id }}"
+                                    data-buying-price="{{ $buyingPrice }}"
+                                    data-selling-price="{{ $sellingPrice }}"
+                                    {{ old('item_id') == $item->id ? 'selected' : '' }}>
                                     [{{ $item->category->category_name }}] {{ $item->item_name }} {{ $item->brand ? "($item->brand)" : '' }}
+                                    @if($hasMainStock)
+                                        (Available: BP {{ number_format($item->mainStock->buying_price, 0) }} / SP {{ number_format($item->mainStock->selling_price, 0) }})
+                                    @endif
                                 </option>
                                 @endforeach
                             </select>
+                            <div id="priceSuggestionNotice" class="text-info small mt-1" style="display: none;">
+                                <i class="bi bi-info-circle-fill me-1"></i> Suggested current Main Store prices auto-filled below. You can keep or update them.
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Buying Price (TZS) *</label>
@@ -60,6 +74,8 @@ $(document).ready(function() {
     const buyingInput = $('#main_buying_price');
     const sellingInput = $('#main_selling_price');
     const warning = $('#mainStockWarning');
+    const suggestionNotice = $('#priceSuggestionNotice');
+    const itemSelect = $('#item_id_select');
     const submitBtn = buyingInput.closest('form').find('button[type="submit"]');
 
     function validatePrices() {
@@ -77,8 +93,27 @@ $(document).ready(function() {
         }
     }
 
+    itemSelect.on('change', function() {
+        const selectedOpt = $(this).find('option:selected');
+        const buyingPrice = selectedOpt.data('buying-price');
+        const sellingPrice = selectedOpt.data('selling-price');
+
+        if (buyingPrice !== undefined && buyingPrice !== '' && sellingPrice !== undefined && sellingPrice !== '') {
+            buyingInput.val(buyingPrice).trigger('input');
+            sellingInput.val(sellingPrice).trigger('input');
+            suggestionNotice.slideDown(200);
+        } else {
+            suggestionNotice.slideUp(200);
+        }
+    });
+
     buyingInput.on('input', validatePrices);
     sellingInput.on('input', validatePrices);
+
+    // Trigger suggestion on page load if item is pre-selected (e.g. old input)
+    if (itemSelect.val()) {
+        itemSelect.trigger('change');
+    }
 });
 </script>
 @endpush
