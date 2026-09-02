@@ -196,11 +196,6 @@ class ShopStockController extends Controller
                     $itemId = $pData['item_id'];
                 }
 
-                $allowComponents = ShopStock::where('shop_id', $user->shop_id)
-                    ->where('item_id', $itemId)
-                    ->where('allow_components', true)
-                    ->exists();
-
                 $stock = ShopStock::create([
                     'shop_id'            => $user->shop_id,
                     'item_id'            => $itemId,
@@ -213,7 +208,6 @@ class ShopStockController extends Controller
                     'is_price_pending'   => false,
                     'is_sellable'        => true,
                     'is_admin_stock'     => true,
-                    'allow_components'   => $allowComponents,
                 ]);
 
                 \App\Models\StockLog::create([
@@ -379,11 +373,6 @@ class ShopStockController extends Controller
                     ]);
 
                     // 4. Create Shop Stock entry (is_admin_stock = false)
-                    $allowComponents = ShopStock::where('shop_id', $user->shop_id)
-                        ->where('item_id', $itemId)
-                        ->where('allow_components', true)
-                        ->exists();
-
                     $stock = ShopStock::create([
                         'shop_id'            => $user->shop_id,
                         'item_id'            => $itemId,
@@ -396,7 +385,6 @@ class ShopStockController extends Controller
                         'is_price_pending'   => false,
                         'is_sellable'        => true,
                         'is_admin_stock'     => false,
-                        'allow_components'   => $allowComponents,
                     ]);
 
                     // 5. Create Stock Log entry
@@ -554,11 +542,6 @@ class ShopStockController extends Controller
             ]);
 
             // 4. Create Shop Stock entry (is_admin_stock = false)
-            $allowComponents = ShopStock::where('shop_id', $user->shop_id)
-                ->where('item_id', $itemId)
-                ->where('allow_components', true)
-                ->exists();
-
             $stock = ShopStock::create([
                 'shop_id'            => $user->shop_id,
                 'item_id'            => $itemId,
@@ -571,7 +554,6 @@ class ShopStockController extends Controller
                 'is_price_pending'   => false,
                 'is_sellable'        => true,
                 'is_admin_stock'     => false,
-                'allow_components'   => $allowComponents,
             ]);
 
             // 5. Create Stock Log entry
@@ -635,11 +617,6 @@ class ShopStockController extends Controller
         $user = Auth::user();
         if (!$user->isOwner() && !$user->isShopAdmin()) {
             abort(403);
-        }
-
-        if ($request->has('selling_price') && $request->filled('selling_price')) {
-            $cleanPrice = str_replace(',', '', $request->input('selling_price'));
-            $request->merge(['selling_price' => $cleanPrice]);
         }
 
         $request->validate([
@@ -729,44 +706,40 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized shop.');
         }
 
-        if ($request->has('selling_price') && $request->filled('selling_price')) {
-            $cleanPrice = str_replace(',', '', $request->input('selling_price'));
-            $request->merge(['selling_price' => $cleanPrice]);
-        }
-
-        $request->validate([
-            'selling_price' => 'nullable|numeric|min:' . $shopStock->buying_price,
-        ], [
-            'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
-        ]);
-
-        $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : max(floatval($shopStock->pending_selling_price ?? 0), floatval($shopStock->buying_price));
-
-        if ($newPrice < $shopStock->buying_price) {
-            return back()->withInput()->withErrors([
-                'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
+        if ($shopStock->is_price_pending) {
+            $request->validate([
+                'selling_price' => 'nullable|numeric|min:' . $shopStock->buying_price,
+            ], [
+                'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
             ]);
-        }
 
-        $shopStock->update([
-            'selling_price' => $newPrice,
-            'is_price_pending' => false,
-            'pending_selling_price' => null,
-            'is_sellable' => true,
-        ]);
+            $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : $shopStock->pending_selling_price;
 
-        // Notify all sellers of this shop
-        $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
-            ->where('role', 'seller')
-            ->get();
-        $itemName = $shopStock->item?->item_name ?? 'Item';
-        foreach ($sellers as $seller) {
-            \App\Models\Notification::create([
-                'user_id' => $seller->id,
-                'title'   => 'Shop Stock Price Approved',
-                'message' => "The selling price update for \"{$itemName}\" has been approved to: TZS " . number_format($newPrice, 2),
+            if ($newPrice < $shopStock->buying_price) {
+                return back()->withInput()->withErrors([
+                    'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
+                ]);
+            }
+
+            $shopStock->update([
+                'selling_price' => $newPrice,
+                'is_price_pending' => false,
+                'pending_selling_price' => null,
+                'is_sellable' => true,
             ]);
-        }
+
+            // Notify all sellers of this shop
+            $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
+                ->where('role', 'seller')
+                ->get();
+            $itemName = $shopStock->item?->item_name ?? 'Item';
+            foreach ($sellers as $seller) {
+                \App\Models\Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'Shop Stock Price Approved',
+                    'message' => "The selling price update for \"{$itemName}\" has been approved to: TZS " . number_format($newPrice, 2),
+                ]);
+            }
 
             // Notify other roles of approval
             if ($user->isShopAdmin()) {
@@ -789,7 +762,10 @@ class ShopStockController extends Controller
                 }
             }
 
-        return back()->with('success', 'Shop stock price approved successfully.');
+            return back()->with('success', 'Shop stock price approved successfully.');
+        }
+
+        return back()->with('error', 'No pending price change found.');
     }
 
     public function downloadTemplate()
@@ -1891,11 +1867,6 @@ class ShopStockController extends Controller
             'low_stock_alert'    => 'required|integer|min:0',
         ]);
 
-        $allowComponents = ShopStock::where('shop_id', $request->shop_id)
-            ->where('item_id', $request->item_id)
-            ->where('allow_components', true)
-            ->exists();
-
         $shopStock = ShopStock::create([
             'shop_id'            => $request->shop_id,
             'item_id'            => $request->item_id,
@@ -1907,7 +1878,6 @@ class ShopStockController extends Controller
             'low_stock_alert'    => $request->low_stock_alert,
             'is_admin_stock'     => true,
             'is_sellable'        => true,
-            'allow_components'   => $allowComponents,
         ]);
 
         StockLog::create([

@@ -257,7 +257,7 @@
             <tbody>
                 @php
                 $groupedStocks = $stocks->groupBy(function($st) {
-                    return $st->shop_id . '-' . $st->item_id;
+                return $st->shop_id . '-' . $st->item_id . '-' . (float)$st->buying_price . '-' . (float)$st->selling_price;
                 });
                 $iterator = 1;
                 @endphp
@@ -350,9 +350,7 @@
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
                     <td style="font-size:.82rem;font-weight:600;color:var(--text-secondary);">
                         @php
-                            if ($firstSt->is_admin_stock) {
-                                $displayBp = $firstSt->buying_price;
-                            } elseif (auth()->user()->isOwner()) {
+                            if (auth()->user()->isOwner()) {
                                 if ($firstSt->item && $firstSt->item->components()->exists()) {
                                     $displayBp = $firstSt->item->getDynamicPriceForMainStore('buying_price');
                                 } else {
@@ -367,14 +365,7 @@
                     </td>
                     @endif
                     <td style="font-size:.82rem;font-weight:600;">
-                        @if($firstSt->is_admin_stock)
-                            TZS {{ number_format($firstSt->selling_price, 0) }}
-                            @if($hasPendingPriceRequest)
-                            <div class="small mt-1 text-warning" title="Pending Owner Approval">
-                                <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format(max($firstSt->pending_selling_price ?? 0, $firstSt->buying_price), 0) }}</strong>
-                            </div>
-                            @endif
-                        @elseif(auth()->user()->isOwner())
+                        @if(auth()->user()->isOwner())
                             @php
                                 if ($firstSt->item && $firstSt->item->components()->exists()) {
                                     $displaySp = $firstSt->item->getDynamicPriceForMainStore('selling_price');
@@ -397,7 +388,7 @@
                             TZS {{ number_format($firstSt->selling_price, 0) }}
                             @if($hasPendingPriceRequest)
                             <div class="small mt-1 text-warning" title="Pending Owner Approval">
-                                <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format(max($firstSt->pending_selling_price ?? 0, $firstSt->buying_price), 0) }}</strong>
+                                <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format($firstSt->pending_selling_price ?? $firstSt->buying_price, 0) }}</strong>
                             </div>
                             @endif
                             @endif
@@ -689,9 +680,7 @@
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
                     <td style="font-size:.82rem;font-weight:600;color:var(--text-secondary);">
                         @php
-                            if ($firstSt->is_admin_stock) {
-                                $displayBp = $firstSt->buying_price;
-                            } elseif (auth()->user()->isOwner()) {
+                            if (auth()->user()->isOwner()) {
                                 if ($firstSt->item && $firstSt->item->components()->exists()) {
                                     $displayBp = $firstSt->item->getDynamicPriceForMainStore('buying_price');
                                 } else {
@@ -706,14 +695,7 @@
                     </td>
                     @endif
                     <td style="font-size:.82rem;font-weight:600;">
-                        @if($firstSt->is_admin_stock)
-                            TZS {{ number_format($firstSt->selling_price, 0) }}
-                            @if($firstSt->is_price_pending)
-                            <div class="small mt-1 text-warning" title="Pending Owner Approval">
-                                <i class="bi bi-hourglass-split"></i> Pending: <strong>TZS {{ number_format(max($firstSt->pending_selling_price ?? 0, $firstSt->buying_price), 0) }}</strong>
-                            </div>
-                            @endif
-                        @elseif(auth()->user()->isOwner())
+                        @if(auth()->user()->isOwner())
                             @php
                                 if ($firstSt->item && $firstSt->item->components()->exists()) {
                                     $displaySp = $firstSt->item->getDynamicPriceForMainStore('selling_price');
