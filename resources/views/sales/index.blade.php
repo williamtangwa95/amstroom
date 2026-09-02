@@ -123,7 +123,7 @@
                                         <tbody>
                                             @php
                                                 $isOwner = auth()->check() && auth()->user()->isOwner();
-                                                $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+                                                $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
                                             @endphp
                                             @foreach($sale->items->where('parent_id', null) as $item)
                                                 @if($isOwner && $item->is_admin_stock)

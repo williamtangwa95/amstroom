@@ -22,7 +22,7 @@ class SettingController extends Controller
         $logo         = '';
         $printerEnabled = Setting::get('printer_enabled_user_' . $user->id, '1');
         $notificationRingtone = Setting::get('notification_sound_user_' . $user->id);
-        $storePricingMode = Setting::get('store_pricing_mode', 'DEPENDENT');
+        $storePricingMode = Setting::get('store_pricing_mode', 'INDEPENDENT');
 
         $companyTin         = '';
         $companyAddress     = '';

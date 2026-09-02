@@ -135,7 +135,7 @@ class HandoverReportController extends Controller
         $adminCostOfGoods = 0.0;
         $adminViewSales = 0.0;
 
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         foreach ($sales as $sale) {
             foreach ($sale->items as $item) {
@@ -223,7 +223,7 @@ class HandoverReportController extends Controller
         $adminCostOfGoods = 0.0;
         $adminViewSales = 0.0;
 
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         foreach ($sales as $sale) {
             foreach ($sale->items as $item) {
@@ -411,7 +411,7 @@ class HandoverReportController extends Controller
         $adminCostOfGoods = 0.0;
         $adminViewSales = 0.0;
 
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         foreach ($sales as $sale) {
             foreach ($sale->items as $item) {

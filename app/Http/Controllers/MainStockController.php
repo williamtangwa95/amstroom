@@ -138,7 +138,7 @@ class MainStockController extends Controller
 
         if ($newSellingPrice != $oldSellingPrice) {
             $itemName = $mainStock->item?->item_name ?? 'Item';
-            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
             // Find all shop stocks for this item
             $shopStocks = \App\Models\ShopStock::where('item_id', $mainStock->item_id)->get();

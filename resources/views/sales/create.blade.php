@@ -25,7 +25,7 @@
                     @forelse($shopStocks as $stock)
                     @php
                     $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null;
-                    $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+                    $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
                     $isLocked = !auth()->user()->isOwner() && $isIndependent && !$stock->is_sellable;
                     $hasStock = $stock->remaining_quantity > 0;
                     $isMock = str_starts_with($stock->id, 'item_');

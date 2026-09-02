@@ -58,7 +58,7 @@ class Sale extends Model
     public function getReportRevenueAttribute(): float
     {
         $isOwner = auth()->check() && auth()->user()->isOwner();
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         return (float) $this->items->sum(function ($item) use ($isOwner, $isIndependent) {
             if ($isOwner && $item->is_admin_stock) {

@@ -376,7 +376,7 @@
                             @endphp
                             TZS {{ number_format($displaySp, 0) }}
                         @else
-                            @if(\App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' && !$firstSt->is_sellable)
+                            @if(\App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT' && !$firstSt->is_sellable)
                             <span class="text-danger">TZS {{ number_format($firstSt->selling_price, 0) }}</span>
                             <div class="badge bg-danger mt-1 d-block text-wrap" style="font-size:.7rem;" title="Locked pending selling price update">
                                 <i class="bi bi-lock-fill"></i> PENDING_PRICE_UPDATE
@@ -482,9 +482,9 @@
                                                                 data-buying-price="{{ $st->buying_price }}"
                                                                 data-current-selling-price="{{ $st->selling_price }}"
                                                                 data-item-name="{{ $st->item->item_name }}"
-                                                                data-mode="{{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') }}"
+                                                                data-mode="{{ \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') }}"
                                                                 title="Approve Price Change">
-                                                                <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
+                                                                <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
                                                             </button>
                                                             @endif
                                                             @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $st->shop_id))
@@ -706,7 +706,7 @@
                             @endphp
                             TZS {{ number_format($displaySp, 0) }}
                         @else
-                            @if(\App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' && !$firstSt->is_sellable)
+                            @if(\App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT' && !$firstSt->is_sellable)
                             <span class="text-danger">TZS {{ number_format($firstSt->selling_price, 0) }}</span>
                             <div class="badge bg-danger mt-1 d-block text-wrap" style="font-size:.7rem;" title="Locked pending selling price update">
                                 <i class="bi bi-lock-fill"></i> PENDING_PRICE_UPDATE
@@ -733,9 +733,9 @@
                                 data-buying-price="{{ $firstSt->buying_price }}"
                                 data-current-selling-price="{{ $firstSt->selling_price }}"
                                 data-item-name="{{ $firstSt->item->item_name }}"
-                                data-mode="{{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') }}"
+                                data-mode="{{ \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') }}"
                                 title="Approve Price Change">
-                                <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
+                                <i class="bi bi-check-lg"></i> {{ \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT' ? 'Update Price' : 'Approve' }}
                             </button>
                             @endif
                             @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))

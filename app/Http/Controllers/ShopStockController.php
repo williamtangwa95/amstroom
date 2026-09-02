@@ -626,7 +626,7 @@ class ShopStockController extends Controller
         ]);
 
         $itemName = $shopStock->item?->item_name ?? 'Item';
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         if ($user->isShopAdmin()) {
             if ($isIndependent) {

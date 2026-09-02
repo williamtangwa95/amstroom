@@ -106,7 +106,7 @@
                     <div class="alert alert-warning py-2 px-3 small">
                         <i class="bi bi-info-circle me-1"></i>
                         Only selling price can be edited for owner-transferred stock.
-                        @if(\App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'DEPENDENT')
+                        @if(\App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'DEPENDENT')
                         The change will be sent for <strong>owner approval</strong>.
                         @else
                         The change will be applied <strong>immediately</strong>.

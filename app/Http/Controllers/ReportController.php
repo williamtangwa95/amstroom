@@ -76,7 +76,7 @@ class ReportController extends Controller
         $sales = $query->latest()->with('items.item')->get();
 
         $isOwner = auth()->check() && auth()->user()->isOwner();
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         $totalRevenue = 0;
         $totalCost = 0;
@@ -524,7 +524,7 @@ class ReportController extends Controller
             ->get();
 
         $isOwner       = $user->isOwner();
-        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         // ── Annotate each sale item with revenue / cost / profit ───────────
         $allItems = collect();

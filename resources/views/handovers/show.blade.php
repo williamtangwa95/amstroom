@@ -255,7 +255,7 @@
                     <tbody>
                         @php $i = 1 @endphp
                         @php
-                            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+                            $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
                         @endphp
                         @forelse($sales as $sale)
                             @foreach($sale->items as $item)
