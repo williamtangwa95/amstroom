@@ -24,25 +24,25 @@
                 <div class="row g-2 p-3" id="posProductGrid">
                     @forelse($shopStocks as $stock)
                     @php
-                        $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null;
-                        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
-                        $isLocked = !auth()->user()->isOwner() && $isIndependent && !$stock->is_sellable;
-                        $hasStock = $stock->remaining_quantity > 0;
-                        $isMock = str_starts_with($stock->id, 'item_');
+                    $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null;
+                    $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'DEPENDENT') === 'INDEPENDENT';
+                    $isLocked = !auth()->user()->isOwner() && $isIndependent && !$stock->is_sellable;
+                    $hasStock = $stock->remaining_quantity > 0;
+                    $isMock = str_starts_with($stock->id, 'item_');
                     @endphp
-                    <div class="col-md-6 pos-item-card" 
-                         data-name="{{ strtolower($stock->item->item_name) }}" 
-                         data-brand="{{ strtolower($stock->item->brand) }}"
-                         data-available="{{ ($hasStock && !$isLocked && !$isMock) ? 'true' : 'false' }}">
+                    <div class="col-md-6 pos-item-card"
+                        data-name="{{ strtolower($stock->item->item_name) }}"
+                        data-brand="{{ strtolower($stock->item->brand) }}"
+                        data-available="{{ ($hasStock && !$isLocked && !$isMock) ? 'true' : 'false' }}">
                         <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important; opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
                             <div class="d-flex gap-2">
                                 @if($stock->item->image_path)
                                 <img src="{{ asset('media/' . $stock->item->image_path) }}"
-                                     alt="{{ $stock->item->item_name }}"
-                                     class="rounded border img-lightbox"
-                                     style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;"
-                                     onclick="openLightbox(this.src, '{{ addslashes($stock->item->item_name) }}')"
-                                     title="Click to enlarge">
+                                    alt="{{ $stock->item->item_name }}"
+                                    class="rounded border img-lightbox"
+                                    style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;"
+                                    onclick="openLightbox(this.src, '{{ addslashes($stock->item->item_name) }}')"
+                                    title="Click to enlarge">
                                 @else
                                 <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted border" style="width: 55px; height: 55px; flex-shrink: 0;">
                                     <i class="bi bi-image" style="font-size: 1.2rem;"></i>
@@ -51,14 +51,14 @@
                                 <div style="min-width:0;">
                                     <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
                                     @if(isset($stock->is_admin_stock) && $stock->is_admin_stock)
-                                        <div class="badge bg-info text-dark mb-1" style="font-size:.65rem;font-weight:600;"><i class="bi bi-person-fill-lock"></i> Admin Stock</div>
+                                    <div class="badge bg-info text-dark mb-1" style="font-size:.65rem;font-weight:600;"><i class="bi bi-person-fill-lock"></i> Admin Stock</div>
                                     @endif
                                     @if($isLocked)
-                                        <div class="badge bg-danger mb-1" style="font-size:.65rem;"><i class="bi bi-lock-fill"></i> Locked</div>
+                                    <div class="badge bg-danger mb-1" style="font-size:.65rem;"><i class="bi bi-lock-fill"></i> Locked</div>
                                     @elseif($isMock)
-                                        <div class="badge bg-secondary mb-1" style="font-size:.65rem;">Catalog Only</div>
+                                    <div class="badge bg-secondary mb-1" style="font-size:.65rem;">Catalog Only</div>
                                     @elseif(!$hasStock)
-                                        <div class="badge bg-warning text-dark mb-1" style="font-size:.65rem;">Out of Stock</div>
+                                    <div class="badge bg-warning text-dark mb-1" style="font-size:.65rem;">Out of Stock</div>
                                     @endif
                                     <div class="fw-700 text-truncate" style="font-size:.88rem;color:var(--text-primary);" title="{{ $stock->item->item_name }}">{{ $stock->item->item_name }}</div>
                                     <div class="text-truncate" style="font-size:.75rem;color:var(--text-secondary);" title="{{ $stock->item->specification }}">{{ $stock->item->specification }}</div>
@@ -109,7 +109,10 @@
     {{-- Right: Cart & Checkout --}}
     <div class="col-lg-5">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart</span>
+                <input type="date" name="sale_date" class="form-control form-control-sm" style="width:auto;" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" form="checkoutForm">
+            </div>
             <div class="card-body d-flex flex-column">
                 <form method="POST" action="{{ route('sales.store') }}" id="checkoutForm" class="flex-grow-1 d-flex flex-column">
                     @csrf
@@ -304,7 +307,7 @@
             if (this.dataset.components) {
                 try {
                     components = JSON.parse(this.dataset.components);
-                } catch(e) {
+                } catch (e) {
                     console.error("Error parsing components", e);
                 }
             }
@@ -476,20 +479,32 @@
 
     // Add a completely off-catalog custom item to the proforma cart
     function addCustomItem() {
-        const nameEl  = document.getElementById('customItemName');
-        const qtyEl   = document.getElementById('customItemQty');
+        const nameEl = document.getElementById('customItemName');
+        const qtyEl = document.getElementById('customItemQty');
         const priceEl = document.getElementById('customItemPrice');
 
-        const name  = nameEl.value.trim();
-        const qty   = parseInt(qtyEl.value) || 1;
+        const name = nameEl.value.trim();
+        const qty = parseInt(qtyEl.value) || 1;
         const price = parseFloat(priceEl.value) || 0;
 
         if (!name) {
-            Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Please enter a product/service name.', background: '#161b22', color: '#e6edf3' });
+            Swal.fire({
+                icon: 'warning',
+                title: 'Name Required',
+                text: 'Please enter a product/service name.',
+                background: '#161b22',
+                color: '#e6edf3'
+            });
             return;
         }
         if (price <= 0) {
-            Swal.fire({ icon: 'warning', title: 'Price Required', text: 'Please enter a unit price greater than 0.', background: '#161b22', color: '#e6edf3' });
+            Swal.fire({
+                icon: 'warning',
+                title: 'Price Required',
+                text: 'Please enter a unit price greater than 0.',
+                background: '#161b22',
+                color: '#e6edf3'
+            });
             return;
         }
 
@@ -498,28 +513,32 @@
         cart[customId] = {
             id: customId,
             name,
-            price: 0,          // no floor price for custom items
+            price: 0, // no floor price for custom items
             qty,
-            maxStock: 99999,   // unlimited stock
+            maxStock: 99999, // unlimited stock
             negotiatedPrice: price,
             isCustom: true,
         };
 
         // Reset fields
-        nameEl.value  = '';
-        qtyEl.value   = 1;
+        nameEl.value = '';
+        qtyEl.value = 1;
         priceEl.value = '';
 
         renderCart();
     }
 
     let _clickedSubmitBtn = null;
-    document.getElementById('checkoutBtn').addEventListener('click', function() { _clickedSubmitBtn = 'checkout'; });
-    document.getElementById('proformaBtn').addEventListener('click', function() { _clickedSubmitBtn = 'proforma'; });
+    document.getElementById('checkoutBtn').addEventListener('click', function() {
+        _clickedSubmitBtn = 'checkout';
+    });
+    document.getElementById('proformaBtn').addEventListener('click', function() {
+        _clickedSubmitBtn = 'proforma';
+    });
 
     document.getElementById('checkoutForm').addEventListener('submit', function(e) {
-        const checkoutBtn  = document.getElementById('checkoutBtn');
-        const proformaBtn  = document.getElementById('proformaBtn');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        const proformaBtn = document.getElementById('proformaBtn');
 
         // 1. Validate prices are greater than 0
         for (const id of Object.keys(cart)) {
@@ -551,7 +570,7 @@
                     });
                     return;
                 }
-                
+
                 // Validate negotiable price floor for completed sales
                 const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
                 const minAllowedPrice = isOwnerOrAdmin ? (cart[id].buyingPrice || 0) : (cart[id].price || 0);
@@ -571,12 +590,12 @@
         }
 
         if (_clickedSubmitBtn === 'proforma') {
-            proformaBtn.disabled  = true;
-            checkoutBtn.disabled  = true;
+            proformaBtn.disabled = true;
+            checkoutBtn.disabled = true;
             proformaBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving Proforma...`;
         } else {
-            checkoutBtn.disabled  = true;
-            proformaBtn.disabled  = true;
+            checkoutBtn.disabled = true;
+            proformaBtn.disabled = true;
             checkoutBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Completing Sale...`;
         }
     });
@@ -621,7 +640,7 @@
     function showAddComponentDropdown(cartItemId) {
         const container = document.getElementById('comp-select-container-' + cartItemId);
         container.classList.remove('d-none');
-        
+
         // Initialize Select2 search select on the dropdown
         const $select = $('#comp-select-' + cartItemId);
         $select.select2({
@@ -634,7 +653,7 @@
     function hideAddComponentDropdown(cartItemId) {
         const container = document.getElementById('comp-select-container-' + cartItemId);
         container.classList.add('d-none');
-        
+
         const $select = $('#comp-select-' + cartItemId);
         if ($select.hasClass('select2-hidden-accessible')) {
             $select.select2('destroy');
