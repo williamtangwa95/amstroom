@@ -1558,12 +1558,14 @@
                             'The owner proposed TZS <span class="fw-bold text-success">' + parseFloat(pendingPrice).toLocaleString() + '</span>.'
                         );
 
-                        const formattedPrice = formatNumber(pendingPrice.toString());
-                        $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
-                        $('#modalSellingPriceHidden').val(pendingPrice);
+                        const preFill = Math.max(parseFloat(currentSellingPrice), parseFloat(pendingPrice));
+                        const formattedPrice = formatNumber(preFill.toString());
+                        $('#modalSellingPrice').val(formattedPrice).data('buying-price', pendingPrice);
+                        $('#modalSellingPriceHidden').val(preFill);
                     }
 
-                    $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(buyingPrice).toLocaleString());
+                    const minRequiredPrice = mode === 'INDEPENDENT' ? buyingPrice : pendingPrice;
+                    $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(minRequiredPrice).toLocaleString());
 
                     // Reset styling and show warning if needed
                     $('#modalSellingPrice').removeClass('is-invalid');
@@ -1903,12 +1905,14 @@
                     'The owner proposed TZS <span class="fw-bold text-success">' + parseFloat(pendingPrice).toLocaleString() + '</span>.'
                 );
 
-                const formattedPrice = formatNumber(pendingPrice.toString());
-                $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
-                $('#modalSellingPriceHidden').val(pendingPrice);
+                const preFill = Math.max(parseFloat(currentSellingPrice), parseFloat(pendingPrice));
+                const formattedPrice = formatNumber(preFill.toString());
+                $('#modalSellingPrice').val(formattedPrice).data('buying-price', pendingPrice);
+                $('#modalSellingPriceHidden').val(preFill);
             }
 
-            $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(buyingPrice).toLocaleString());
+            const minRequiredPrice = mode === 'INDEPENDENT' ? buyingPrice : pendingPrice;
+            $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(minRequiredPrice).toLocaleString());
 
             const modal = new bootstrap.Modal(document.getElementById('approvePriceModal'));
             modal.show();

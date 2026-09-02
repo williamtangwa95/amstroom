@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 @section('title', 'Edit Stock Batch')
 @section('page-title', 'Edit Stock Batch')
 
@@ -71,22 +71,37 @@
                 <form method="POST" action="{{ route('shop-stock.update', $shopStock) }}" id="editStockForm">
                     @csrf @method('PUT')
 
-                    <div class="mb-3">
-                        <label class="form-label fw-600" for="selling_price_display">Selling Price <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text">TZS</span>
-                            <input type="text" id="selling_price_display" class="form-control @error('selling_price') is-invalid @enderror"
-                                value="{{ number_format(old('selling_price', (int)$shopStock->selling_price), 0) }}" autocomplete="off">
-                            <input type="hidden" id="selling_price" name="selling_price" value="{{ old('selling_price', (int)$shopStock->selling_price) }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-600">Buying Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">TZS</span>
+                                <input type="text" class="form-control" style="background-color: var(--input-bg); opacity: 0.7;"
+                                    value="{{ number_format($shopStock->buying_price, 0) }}" readonly>
+                                <input type="hidden" name="buying_price" value="{{ (int)$shopStock->buying_price }}">
+                            </div>
                         </div>
-                        <div id="priceWarning" class="text-danger small mt-1" style="display:none;">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Selling price cannot be less than buying price (TZS {{ number_format($shopStock->buying_price, 0) }}).
+
+                        <div class="col-sm-6">
+                            <label class="form-label fw-600" for="selling_price_display">Selling Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">TZS</span>
+                                <input type="text" id="selling_price_display" class="form-control @error('selling_price') is-invalid @enderror"
+                                    value="{{ number_format(old('selling_price', (int)$shopStock->selling_price), 0) }}" autocomplete="off">
+                                <input type="hidden" id="selling_price" name="selling_price" value="{{ old('selling_price', (int)$shopStock->selling_price) }}">
+                            </div>
+                            <div id="priceWarning" class="text-danger small mt-1" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Selling price cannot be less than buying price (TZS {{ number_format($shopStock->buying_price, 0) }}).
+                            </div>
+                            <small class="text-muted">Minimum: TZS {{ number_format($shopStock->buying_price, 0) }}</small>
+                            @error('selling_price')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
-                        <small class="text-muted">Minimum: TZS {{ number_format($shopStock->buying_price, 0) }}</small>
-                        @error('selling_price')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
                     </div>
+
+                    <input type="hidden" name="remaining_quantity" value="{{ $shopStock->remaining_quantity }}">
+                    <input type="hidden" name="date_received" value="{{ $shopStock->date_received ? $shopStock->date_received->format('Y-m-d') : '' }}">
 
                     <div class="alert alert-warning py-2 px-3 small">
                         <i class="bi bi-info-circle me-1"></i>
