@@ -789,10 +789,7 @@ class ShopStockController extends Controller
                 }
             }
 
-            return back()->with('success', 'Shop stock price approved successfully.');
-        }
-
-        return back()->with('error', 'No pending price change found.');
+        return back()->with('success', 'Shop stock price approved successfully.');
     }
 
     public function downloadTemplate()
