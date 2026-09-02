@@ -1725,9 +1725,16 @@
 
                         let itemsHtml = '';
                         response.recent.forEach(function(item) {
+                            const linkUrl = item.destination_url 
+                                ? `/notifications/${item.id}/go?redirect=${encodeURIComponent(item.destination_url)}` 
+                                : `/notifications/${item.id}/go`;
+
                             itemsHtml += `
-                            <a href="{{ route('notifications.index') }}" class="list-group-item list-group-item-action p-2.5 border-bottom notification-item transition-all" style="font-size: .8rem; border-left: 3px solid #0088cc;">
-                                <div class="fw-700 text-dark">${item.title}</div>
+                            <a href="${linkUrl}" class="list-group-item list-group-item-action p-2.5 border-bottom notification-item transition-all" style="font-size: .8rem; border-left: 3px solid #0088cc;">
+                                <div class="d-flex justify-content-between align-items-center mb-0.5">
+                                    <div class="fw-700 text-dark">${item.title}</div>
+                                    <i class="bi bi-chevron-right text-muted" style="font-size: 0.7rem;"></i>
+                                </div>
                                 <div class="text-secondary text-truncate" style="font-size: .72rem; max-width: 280px;">${item.message}</div>
                             </a>
                         `;

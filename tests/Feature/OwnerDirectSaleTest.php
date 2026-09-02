@@ -279,6 +279,7 @@ class OwnerDirectSaleTest extends TestCase
 
     public function test_admin_and_owner_can_update_shop_stock_selling_price()
     {
+        \App\Models\Setting::set('store_pricing_mode', 'DEPENDENT');
         $shop = \App\Models\Shop::create(['shop_name' => 'Branch Alpha', 'location' => 'Loc', 'phone' => '123', 'status' => 'active']);
         $admin = User::create(['name' => 'Admin', 'email' => 'admin_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'shop_admin', 'shop_id' => $shop->id]);
         $owner = User::create(['name' => 'Owner', 'email' => 'owner_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'owner']);
@@ -347,6 +348,7 @@ class OwnerDirectSaleTest extends TestCase
 
     public function test_owner_updating_main_stock_makes_related_shop_stocks_pending_approved_by_admin()
     {
+        \App\Models\Setting::set('store_pricing_mode', 'DEPENDENT');
         $shop = \App\Models\Shop::create(['shop_name' => 'Branch Alpha', 'location' => 'Loc', 'phone' => '123', 'status' => 'active']);
         $owner = User::create(['name' => 'Owner', 'email' => 'owner_main_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'owner']);
         $admin = User::create(['name' => 'Admin', 'email' => 'admin_main_price@amstroom.com', 'password' => bcrypt('password'), 'role' => 'shop_admin', 'shop_id' => $shop->id]);

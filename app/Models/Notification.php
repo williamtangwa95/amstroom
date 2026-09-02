@@ -22,6 +22,10 @@ class Notification extends Model
         'is_played' => 'boolean',
     ];
 
+    protected $appends = [
+        'destination_url',
+    ];
+
     /**
      * User relation.
      */
@@ -35,54 +39,108 @@ class Notification extends Model
      */
     public function getDestinationUrlAttribute(): ?string
     {
-        // 1. Stock Request
-        if (preg_match('/[Rr]equest\s*#(\d+)/', $this->message, $matches)) {
+        $text = $this->title . ' ' . $this->message;
+
+        // 1. Sales Returns (check first so "Return request for Sale #1" goes to sales-returns)
+        if (stripos($text, 'Return') !== false) {
+            if (auth()->check()) {
+                return route('sales-returns.index');
+            }
+        }
+
+        // 2. Specific Stock Request (e.g. Request #12)
+        if (preg_match('/[Rr]equest\s*#(\d+)/', $text, $matches)) {
             $id = $matches[1];
             if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
                 return route('stock-requests.show', $id);
             }
         }
-        
-        // 2. Stock Transfer
-        if (preg_match('/[Tt]ransfer\s*#(\d+)/', $this->message, $matches)) {
+
+        // 3. Specific Stock Transfer (e.g. Transfer #12)
+        if (preg_match('/[Tt]ransfer\s*#(\d+)/', $text, $matches)) {
             $id = $matches[1];
             if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
                 return route('stock-transfers.show', $id);
             }
         }
 
-        // 3. Shop Stock
-        if (stripos($this->title, 'Shop Stock') !== false || stripos($this->message, 'shop stock') !== false) {
+        // 4. Specific Handover Report (e.g. Handover #12)
+        if (preg_match('/[Hh]andover\s*#(\d+)/', $text, $matches)) {
+            $id = $matches[1];
+            if (auth()->check()) {
+                return route('handovers.show', $id);
+            }
+        }
+
+        // 5. Specific Sale (e.g. Sale #12)
+        if (preg_match('/[Ss]ale\s*#(\d+)/', $text, $matches)) {
+            $id = $matches[1];
+            if (auth()->check()) {
+                return route('sales.show', $id);
+            }
+        }
+
+        // 6. Stock Requests (General)
+        if (stripos($text, 'Stock Request') !== false || stripos($text, 'Request') !== false && stripos($text, 'Stock') !== false) {
+            if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
+                return route('stock-requests.index');
+            }
+        }
+
+        // 7. Stock Transfers (General)
+        if (stripos($text, 'Stock Transfer') !== false || stripos($text, 'Transfer') !== false) {
+            if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
+                return route('stock-transfers.index');
+            }
+        }
+
+        // 8. Main Store / Warehouse Stock
+        if (stripos($text, 'Main Store') !== false || stripos($text, 'Main Stock') !== false || stripos($text, 'Warehouse') !== false) {
+            if (auth()->check() && auth()->user()->isOwner()) {
+                return route('main-stock.index');
+            }
+        }
+
+        // 9. Shop Stock / Price Changes / Approvals / Quantity Edits / Low Stock
+        if (
+            stripos($text, 'Shop Stock') !== false ||
+            stripos($text, 'Price') !== false ||
+            stripos($text, 'Stock') !== false ||
+            stripos($text, 'Quantity') !== false ||
+            stripos($text, 'Batch') !== false ||
+            stripos($text, 'Restock') !== false ||
+            stripos($text, 'Low Stock') !== false
+        ) {
             if (auth()->check()) {
                 return route('shop-stock.index');
             }
         }
 
-        // 4. Expenses
-        if (stripos($this->title, 'Expense') !== false || stripos($this->message, 'expense') !== false) {
+        // 10. Expenses
+        if (stripos($text, 'Expense') !== false) {
             if (auth()->check()) {
                 return route('expenses.index');
             }
         }
 
-        // 5. Sales Return
-        if (stripos($this->title, 'Return') !== false || stripos($this->message, 'return') !== false) {
-            if (auth()->check()) {
-                return route('sales-returns.index');
-            }
-        }
-
-        // 6. Chat and SMS
-        if (stripos($this->title, 'Chat') !== false || stripos($this->title, 'Inquiry') !== false || stripos($this->title, 'SMS') !== false) {
+        // 11. Chat, SMS, Messages
+        if (stripos($text, 'Chat') !== false || stripos($text, 'Inquiry') !== false || stripos($text, 'SMS') !== false || stripos($text, 'Message') !== false) {
             if (auth()->check()) {
                 return route('chats.index');
             }
         }
 
-        // 7. Handover Reports
-        if (stripos($this->title, 'Handover') !== false || stripos($this->message, 'handover') !== false) {
+        // 12. Handover Reports (General)
+        if (stripos($text, 'Handover') !== false) {
             if (auth()->check()) {
                 return route('handovers.index');
+            }
+        }
+
+        // 13. Sales / Invoices
+        if (stripos($text, 'Sale') !== false || stripos($text, 'Invoice') !== false) {
+            if (auth()->check()) {
+                return route('sales.index');
             }
         }
 

@@ -51,9 +51,9 @@
                                             <h6 class="mb-1 fw-700" style="color: var(--text-primary);">{{ $notification->title }}</h6>
                                             <p class="mb-1 text-secondary small">{{ $notification->message }}</p>
                                             @if($notification->destination_url)
-                                                <div class="mb-2">
-                                                    <a href="{{ route('notifications.go', ['notification' => $notification, 'redirect' => $notification->destination_url]) }}" class="btn btn-xs btn-outline-custom text-decoration-none py-1 px-2" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;">
-                                                        <i class="bi bi-box-arrow-up-right"></i> View Details
+                                                <div class="my-2">
+                                                    <a href="{{ route('notifications.go', ['notification' => $notification, 'redirect' => $notification->destination_url]) }}" class="btn btn-xs btn-primary text-white text-decoration-none py-1 px-2.5 rounded-2 shadow-xs fw-600" style="font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none;">
+                                                        <i class="bi bi-arrow-right-circle-fill"></i> Tazama Taarifa / View Details
                                                     </a>
                                                 </div>
                                             @endif
