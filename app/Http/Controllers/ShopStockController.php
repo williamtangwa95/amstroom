@@ -637,6 +637,11 @@ class ShopStockController extends Controller
             abort(403);
         }
 
+        if ($request->has('selling_price') && $request->filled('selling_price')) {
+            $cleanPrice = str_replace(',', '', $request->input('selling_price'));
+            $request->merge(['selling_price' => $cleanPrice]);
+        }
+
         $request->validate([
             'selling_price' => 'required|numeric|min:' . $shopStock->buying_price,
         ], [
@@ -724,40 +729,44 @@ class ShopStockController extends Controller
             abort(403, 'Unauthorized shop.');
         }
 
-        if ($shopStock->is_price_pending) {
-            $request->validate([
-                'selling_price' => 'nullable|numeric|min:' . $shopStock->buying_price,
-            ], [
-                'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
+        if ($request->has('selling_price') && $request->filled('selling_price')) {
+            $cleanPrice = str_replace(',', '', $request->input('selling_price'));
+            $request->merge(['selling_price' => $cleanPrice]);
+        }
+
+        $request->validate([
+            'selling_price' => 'nullable|numeric|min:' . $shopStock->buying_price,
+        ], [
+            'selling_price.min' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').',
+        ]);
+
+        $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : max(floatval($shopStock->pending_selling_price ?? 0), floatval($shopStock->buying_price));
+
+        if ($newPrice < $shopStock->buying_price) {
+            return back()->withInput()->withErrors([
+                'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
             ]);
+        }
 
-            $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : $shopStock->pending_selling_price;
+        $shopStock->update([
+            'selling_price' => $newPrice,
+            'is_price_pending' => false,
+            'pending_selling_price' => null,
+            'is_sellable' => true,
+        ]);
 
-            if ($newPrice < $shopStock->buying_price) {
-                return back()->withInput()->withErrors([
-                    'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
-                ]);
-            }
-
-            $shopStock->update([
-                'selling_price' => $newPrice,
-                'is_price_pending' => false,
-                'pending_selling_price' => null,
-                'is_sellable' => true,
+        // Notify all sellers of this shop
+        $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
+            ->where('role', 'seller')
+            ->get();
+        $itemName = $shopStock->item?->item_name ?? 'Item';
+        foreach ($sellers as $seller) {
+            \App\Models\Notification::create([
+                'user_id' => $seller->id,
+                'title'   => 'Shop Stock Price Approved',
+                'message' => "The selling price update for \"{$itemName}\" has been approved to: TZS " . number_format($newPrice, 2),
             ]);
-
-            // Notify all sellers of this shop
-            $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
-                ->where('role', 'seller')
-                ->get();
-            $itemName = $shopStock->item?->item_name ?? 'Item';
-            foreach ($sellers as $seller) {
-                \App\Models\Notification::create([
-                    'user_id' => $seller->id,
-                    'title'   => 'Shop Stock Price Approved',
-                    'message' => "The selling price update for \"{$itemName}\" has been approved to: TZS " . number_format($newPrice, 2),
-                ]);
-            }
+        }
 
             // Notify other roles of approval
             if ($user->isShopAdmin()) {

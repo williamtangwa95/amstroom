@@ -257,7 +257,7 @@
             <tbody>
                 @php
                 $groupedStocks = $stocks->groupBy(function($st) {
-                return $st->shop_id . '-' . $st->item_id . '-' . (float)$st->buying_price . '-' . (float)$st->selling_price;
+                    return $st->shop_id . '-' . $st->item_id;
                 });
                 $iterator = 1;
                 @endphp
