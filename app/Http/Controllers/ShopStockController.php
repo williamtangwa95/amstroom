@@ -196,6 +196,11 @@ class ShopStockController extends Controller
                     $itemId = $pData['item_id'];
                 }
 
+                $allowComponents = ShopStock::where('shop_id', $user->shop_id)
+                    ->where('item_id', $itemId)
+                    ->where('allow_components', true)
+                    ->exists();
+
                 $stock = ShopStock::create([
                     'shop_id'            => $user->shop_id,
                     'item_id'            => $itemId,
@@ -208,6 +213,7 @@ class ShopStockController extends Controller
                     'is_price_pending'   => false,
                     'is_sellable'        => true,
                     'is_admin_stock'     => true,
+                    'allow_components'   => $allowComponents,
                 ]);
 
                 \App\Models\StockLog::create([
@@ -373,6 +379,11 @@ class ShopStockController extends Controller
                     ]);
 
                     // 4. Create Shop Stock entry (is_admin_stock = false)
+                    $allowComponents = ShopStock::where('shop_id', $user->shop_id)
+                        ->where('item_id', $itemId)
+                        ->where('allow_components', true)
+                        ->exists();
+
                     $stock = ShopStock::create([
                         'shop_id'            => $user->shop_id,
                         'item_id'            => $itemId,
@@ -385,6 +396,7 @@ class ShopStockController extends Controller
                         'is_price_pending'   => false,
                         'is_sellable'        => true,
                         'is_admin_stock'     => false,
+                        'allow_components'   => $allowComponents,
                     ]);
 
                     // 5. Create Stock Log entry
@@ -542,6 +554,11 @@ class ShopStockController extends Controller
             ]);
 
             // 4. Create Shop Stock entry (is_admin_stock = false)
+            $allowComponents = ShopStock::where('shop_id', $user->shop_id)
+                ->where('item_id', $itemId)
+                ->where('allow_components', true)
+                ->exists();
+
             $stock = ShopStock::create([
                 'shop_id'            => $user->shop_id,
                 'item_id'            => $itemId,
@@ -554,6 +571,7 @@ class ShopStockController extends Controller
                 'is_price_pending'   => false,
                 'is_sellable'        => true,
                 'is_admin_stock'     => false,
+                'allow_components'   => $allowComponents,
             ]);
 
             // 5. Create Stock Log entry
@@ -1867,6 +1885,11 @@ class ShopStockController extends Controller
             'low_stock_alert'    => 'required|integer|min:0',
         ]);
 
+        $allowComponents = ShopStock::where('shop_id', $request->shop_id)
+            ->where('item_id', $request->item_id)
+            ->where('allow_components', true)
+            ->exists();
+
         $shopStock = ShopStock::create([
             'shop_id'            => $request->shop_id,
             'item_id'            => $request->item_id,
@@ -1878,6 +1901,7 @@ class ShopStockController extends Controller
             'low_stock_alert'    => $request->low_stock_alert,
             'is_admin_stock'     => true,
             'is_sellable'        => true,
+            'allow_components'   => $allowComponents,
         ]);
 
         StockLog::create([

@@ -230,7 +230,7 @@
     $(() => {
         $('#mainStockTable').DataTable();
 
-        $('.toggle-components-btn').on('change', function() {
+        $(document).on('change', '.toggle-components-btn', function() {
             const isChecked = $(this).is(':checked');
             const mainStockId = $(this).data('id');
             const self = $(this);
