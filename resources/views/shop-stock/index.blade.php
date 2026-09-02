@@ -1491,112 +1491,8 @@
                 icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
                 $(this).removeClass('btn-outline-info').addClass('btn-info');
 
-                // Initialize toggle component switch listeners inside the child row
-                row.child().find('.toggle-components-btn').on('change', function() {
-                    const isChecked = $(this).is(':checked');
-                    const shopStockId = $(this).data('id');
-                    const self = $(this);
-
-                    $.post("{{ route('settings.toggle-components') }}", {
-                            _token: "{{ csrf_token() }}",
-                            shop_stock_id: shopStockId,
-                            enabled: isChecked ? 1 : 0
-                        })
-                        .done(function(res) {
-                            if (res.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Saved',
-                                    text: isChecked ? 'Manual components enabled for this product.' : 'Manual components disabled for this product.',
-                                    timer: 1500,
-                                    showConfirmButton: false,
-                                    background: '#161b22',
-                                    color: '#e6edf3'
-                                });
-                            }
-                        })
-                        .fail(function(err) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: 'Failed to update setting. Please try again.',
-                                background: '#161b22',
-                                color: '#e6edf3'
-                            });
-                            self.prop('checked', !isChecked);
-                        });
-                });
-
-                // Initialize approve price button listener for child rows
-                row.child().find('.btn-approve-price').on('click', function() {
-                    const url = $(this).data('url');
-                    const pendingPrice = $(this).data('pending-price');
-                    const buyingPrice = $(this).data('buying-price');
-                    const currentSellingPrice = $(this).data('current-selling-price');
-                    const itemName = $(this).data('item-name');
-                    const mode = $(this).data('mode');
-
-                    $('#approvePriceForm').attr('action', url);
-                    $('#modalItemName').text(itemName);
-
-                    if (mode === 'INDEPENDENT') {
-                        $('#approvePriceModalLabel').html('<i class="bi bi-shield-lock-fill text-warning me-2"></i>Update Selling Price');
-                        $('#modalInstructions').html(
-                            'Main Store updated the transfer price for <strong class="text-white">' + itemName + '</strong>.<br>' +
-                            'New transfer cost (Buying Price): <strong class="text-success">TZS ' + parseFloat(buyingPrice).toLocaleString() + '</strong>.<br>' +
-                            'Please update your Selling Price to restore sales eligibility.'
-                        );
-
-                        const preFill = Math.max(parseFloat(currentSellingPrice), parseFloat(buyingPrice));
-                        const formattedPrice = formatNumber(preFill.toString());
-                        $('#modalSellingPrice').val(formattedPrice).data('buying-price', buyingPrice);
-                        $('#modalSellingPriceHidden').val(preFill);
-                    } else {
-                        $('#approvePriceModalLabel').html('<i class="bi bi-check-circle-fill text-success me-2"></i>Approve Price Change');
-                        $('#modalInstructions').html(
-                            'Assign a new selling price for <strong class="text-white">' + itemName + '</strong>.<br>' +
-                            'The owner proposed TZS <span class="fw-bold text-success">' + parseFloat(pendingPrice).toLocaleString() + '</span>.'
-                        );
-
-                        const preFill = Math.max(parseFloat(currentSellingPrice), parseFloat(pendingPrice));
-                        const formattedPrice = formatNumber(preFill.toString());
-                        $('#modalSellingPrice').val(formattedPrice).data('buying-price', pendingPrice);
-                        $('#modalSellingPriceHidden').val(preFill);
-                    }
-
-                    const minRequiredPrice = mode === 'INDEPENDENT' ? buyingPrice : pendingPrice;
-                    $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(minRequiredPrice).toLocaleString());
-
-                    // Reset styling and show warning if needed
-                    $('#modalSellingPrice').removeClass('is-invalid');
-                    $('#approveModalPriceWarning').hide();
-                    $('#approvePriceForm').find('button[type="submit"]').prop('disabled', false);
-
-                    const modal = new bootstrap.Modal(document.getElementById('approvePriceModal'));
-                    modal.show();
-                });
-
-                // Initialize delete confirmation button listener for child rows
-                row.child().find('.confirm-delete-btn').on('click', function(e) {
-                    e.preventDefault();
-                    const form = $(this).closest('form');
-                    Swal.fire({
-                        title: 'Delete Stock Batch?',
-                        text: "Are you sure you want to delete this stock batch? This action cannot be undone.",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#d33',
-                        cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, delete it!',
-                        cancelButtonText: 'Cancel',
-                        background: '#161b22',
-                        color: '#e6edf3'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            form.submit();
-                        }
-                    });
-                });
+                // Child row action listeners (.toggle-components-btn, .btn-approve-price, .confirm-delete-btn) 
+                // are delegated globally on $(document) to support pagination and dynamic rows correctly.
             }
         });
 
@@ -1875,7 +1771,7 @@
         });
         @endif
 
-        $('.btn-approve-price').on('click', function() {
+        $(document).on('click', '.btn-approve-price', function() {
             const url = $(this).data('url');
             const pendingPrice = $(this).data('pending-price');
             const buyingPrice = $(this).data('buying-price');
@@ -1913,6 +1809,11 @@
 
             const minRequiredPrice = mode === 'INDEPENDENT' ? buyingPrice : pendingPrice;
             $('#modalBuyingPriceHelp').text('Minimum required price (Buying Price): TZS ' + parseFloat(minRequiredPrice).toLocaleString());
+
+            // Reset styling and show warning if needed
+            $('#modalSellingPrice').removeClass('is-invalid');
+            $('#approveModalPriceWarning').hide();
+            $('#approvePriceForm').find('button[type="submit"]').prop('disabled', false);
 
             const modal = new bootstrap.Modal(document.getElementById('approvePriceModal'));
             modal.show();
