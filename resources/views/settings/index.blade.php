@@ -80,8 +80,10 @@
                         {{-- Upload New Logo --}}
                         <div class="mb-3">
                             <label for="logo" class="form-label fw-600">Upload New Logo</label>
-                            <input type="file" name="logo" id="logo" class="form-control @error('logo') is-invalid @enderror" accept="image/*">
-                            <div class="form-text">Supported formats: PNG, JPG, WEBP, SVG. Max size: 2MB. Recommended: Transparent background.</div>
+                            <input type="file" name="logo" id="logo" class="form-control @error('logo') is-invalid @enderror" accept="image/png,image/jpeg,image/webp,image/gif">
+                            <div class="form-text">Supported formats: PNG, JPG, WEBP, GIF (SVG uploads are restricted). Max size: {{ $maxUploadSizeMb ?? \App\Models\Setting::get('max_upload_size_mb', 5) }}MB. Recommended: Transparent background.</div>
+
+
                             @error('logo')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -94,6 +96,28 @@
                             </label>
                             <input type="text" name="system_name" id="system_name" class="form-control @error('system_name') is-invalid @enderror" value="{{ old('system_name', $systemName) }}" required placeholder="e.g. AMSTROOM">
                             @error('system_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- Company Slogan / Tagline --}}
+                        <div class="mb-3">
+                            <label for="slogan" class="form-label fw-600">Company Slogan / Tagline</label>
+                            <input type="text" name="slogan" id="slogan" class="form-control @error('slogan') is-invalid @enderror" value="{{ old('slogan', $slogan) }}" placeholder="e.g. Technology Innovations / Quality Products">
+                            <div class="form-text">Company slogan displayed on login screens, receipts, and official documents.</div>
+                            @error('slogan')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- Shop / Store Location --}}
+                        <div class="mb-3">
+                            <label for="company_address" class="form-label fw-600">
+                                <i class="bi bi-geo-alt-fill me-1" style="color:#ffb700;"></i> {{ auth()->user()->isOwner() ? 'HQ / Store Location' : 'Shop / Branch Location' }}
+                            </label>
+                            <input type="text" name="company_address" id="company_address" class="form-control @error('company_address') is-invalid @enderror" value="{{ old('company_address', $companyAddress) }}" placeholder="e.g. Kariakoo, Dar es Salaam / Main Street HQ">
+                            <div class="form-text">This location is displayed on the sidebar navigation, receipts, invoices, and documents.</div>
+                            @error('company_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -113,34 +137,44 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        {{-- Maximum File Upload Size (MB) --}}
+                        <div class="mb-3">
+                            <label for="max_upload_size_mb" class="form-label fw-600">
+                                <i class="bi bi-hdd-fill me-1" style="color:#0088cc;"></i> Maximum File Upload Size (MB) <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" name="max_upload_size_mb" id="max_upload_size_mb" class="form-control @error('max_upload_size_mb') is-invalid @enderror" value="{{ old('max_upload_size_mb', $maxUploadSizeMb ?? 5) }}" min="1" max="100" required placeholder="5">
+                            <div class="form-text">Maximum allowed size in Megabytes (MB) for image, photo, and file uploads across the system (Default: <strong>5 MB</strong>).</div>
+                            @error('max_upload_size_mb')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                         @endif
                     @endif
+
 
                     {{-- Invoice & Document Settings --}}
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
                     <div class="mb-4 border-top pt-4">
-                        <h6 class="fw-700 mb-1"><i class="bi bi-file-earmark-text me-2" style="color:#0088cc;"></i>Invoice & Document Settings</h6>
-                        <small class="text-muted d-block mb-3">These details appear on printed invoices, proforma invoices, and delivery notes.</small>
+                        <h6 class="fw-700 mb-1"><i class="bi bi-file-earmark-text me-2" style="color:#0088cc;"></i>Invoice & Bank Details</h6>
+                        <small class="text-muted d-block mb-3">Additional company details displayed on printed invoices and receipts.</small>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="company_tin" class="form-label fw-600 small">TIN Number</label>
                                 <input type="text" name="company_tin" id="company_tin" class="form-control" value="{{ old('company_tin', $companyTin) }}" placeholder="e.g. 100-123-456">
                             </div>
                             <div class="col-md-6">
-                                <label for="company_address" class="form-label fw-600 small">Office Address / P.O. Box</label>
-                                <input type="text" name="company_address" id="company_address" class="form-control" value="{{ old('company_address', $companyAddress) }}" placeholder="e.g. P.O. Box 1234, Dar es Salaam">
-                            </div>
-                            <div class="col-md-6">
                                 <label for="company_bank_name" class="form-label fw-600 small">Bank Name</label>
                                 <input type="text" name="company_bank_name" id="company_bank_name" class="form-control" value="{{ old('company_bank_name', $companyBankName) }}" placeholder="e.g. CRDB Bank PLC">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label for="company_bank_account" class="form-label fw-600 small">Bank Account Number</label>
                                 <input type="text" name="company_bank_account" id="company_bank_account" class="form-control" value="{{ old('company_bank_account', $companyBankAccount) }}" placeholder="e.g. 0150123456789">
                             </div>
                         </div>
                     </div>
                     @endif
+
 
                     {{-- Email Summary Settings --}}
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())

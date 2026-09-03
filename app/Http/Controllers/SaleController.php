@@ -492,11 +492,34 @@ class SaleController extends Controller
         return view('sales.show', compact('sale'));
     }
 
-    public function receipt(Sale $sale)
+    public function receipt(Sale $sale, Request $request)
     {
         $sale->load('shop', 'seller', 'items.item', 'items.components');
-        return view('sales.receipt', compact('sale'));
+
+        $ownerHeader = [
+            'name'     => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan'   => \App\Models\Setting::get('slogan', ''),
+            'subtitle' => 'Main Store (Owner HQ)',
+            'location' => \App\Models\Setting::get('company_address', 'Main Store / HQ'),
+            'phone'    => \App\Models\Setting::get('company_phone', \App\Models\Setting::get('phone', '+255700000001')),
+            'logo'     => \App\Models\Setting::get('logo'),
+        ];
+
+        $adminHeader = [
+            'name'     => $sale->shop?->shop_name ?? (\App\Models\Setting::get('system_name', 'AMSTROOM') . ' (Admin)'),
+            'slogan'   => $sale->shop?->slogan ?: \App\Models\Setting::get('slogan', ''),
+            'subtitle' => $sale->shop ? 'Shop / Branch Store' : 'Main Admin Store',
+            'location' => $sale->shop?->location ?? $sale->shop?->address ?? \App\Models\Setting::get('company_address', 'Main Store / HQ'),
+            'phone'    => $sale->shop?->phone ?? \App\Models\Setting::get('company_phone', '+255700000001'),
+            'logo'     => $sale->shop?->logo ?: \App\Models\Setting::get('logo'),
+        ];
+
+
+        $initialHeader = $request->query('header', $sale->shop_id ? 'admin' : 'owner');
+
+        return view('sales.receipt', compact('sale', 'ownerHeader', 'adminHeader', 'initialHeader'));
     }
+
 
     public function invoice(Sale $sale)
     {
@@ -682,4 +705,23 @@ class SaleController extends Controller
 
         return redirect()->route('sales.show', $sale)->with('success', 'Proforma converted to a completed sale. Stock has been auto-received and committed.');
     }
+
+    public function updateCustomer(Request $request, Sale $sale)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'customer_name' => 'nullable|string|max:150',
+        ]);
+
+        $sale->update([
+            'customer_name' => $request->customer_name,
+        ]);
+
+        return back()->with('success', 'Customer name updated successfully.');
+    }
 }
+

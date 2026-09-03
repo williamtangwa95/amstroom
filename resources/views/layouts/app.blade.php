@@ -70,6 +70,7 @@
         .premium-stat-card {
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .premium-stat-card:hover {
             transform: translateY(-4px) !important;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
@@ -221,6 +222,7 @@
         .nav-link-custom[aria-expanded="true"] .bi-chevron-down {
             transform: rotate(180deg);
         }
+
         .nav-link-custom[aria-expanded="true"] {
             background: rgba(255, 255, 255, 0.08);
             color: #ffffff;
@@ -848,7 +850,13 @@
             <div class="brand-text overflow-hidden me-auto">
                 <div class="brand-name text-truncate" title="{{ $appBranding['name'] }}">{{ $appBranding['name'] }}</div>
                 <div class="brand-sub text-truncate" title="{{ $appBranding['slogan'] }}">{{ $appBranding['slogan'] }}</div>
+                @if(!empty($appBranding['location']))
+                <div class="brand-loc text-truncate" style="font-size: .65rem; color: rgba(255, 255, 255, 0.95); font-weight: 500; display: flex; align-items: center; gap: 3px; margin-top: 1px;" title="{{ $appBranding['location'] }}">
+                    <i class="bi bi-geo-alt-fill" style="font-size:.62rem; color:#ffb700;"></i> {{ $appBranding['location'] }}
+                </div>
+                @endif
             </div>
+
             <button type="button" class="btn-close-sidebar d-md-none" onclick="document.getElementById('sidebar').classList.remove('show')" title="Close Sidebar">
                 <i class="bi bi-x-lg"></i>
             </button>
@@ -873,7 +881,7 @@
             @if(auth()->user()->isOwner())
             {{-- Products collapsible --}}
             @php
-                $isProductsActive = request()->routeIs('items.*') || request()->routeIs('categories.*') || request()->routeIs('shops.*') || request()->routeIs('users.*');
+            $isProductsActive = request()->routeIs('items.*') || request()->routeIs('categories.*') || request()->routeIs('shops.*') || request()->routeIs('users.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isProductsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -902,7 +910,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-                $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*');
+            $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -933,7 +941,7 @@
 
             {{-- Sales collapsible --}}
             @php
-                $isSalesActive = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
+            $isSalesActive = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSalesActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -965,7 +973,7 @@
 
             {{-- Documents collapsible --}}
             @php
-                $isDocsActive = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActive = request()->routeIs('sales.*') && request()->has('status');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -991,7 +999,7 @@
 
             {{-- Reports collapsible --}}
             @php
-                $isReportsActive = request()->routeIs('reports.*');
+            $isReportsActive = request()->routeIs('reports.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isReportsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1032,7 +1040,7 @@
 
             {{-- System collapsible --}}
             @php
-                $isSystemActive = request()->routeIs('stock-logs.*') || request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            $isSystemActive = request()->routeIs('stock-logs.*') || request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSystemActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1043,9 +1051,6 @@
                 </a>
                 <div class="collapse {{ $isSystemActive ? 'show' : '' }}" id="systemCollapseOwner">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                        <a href="{{ route('settings.index') }}" class="nav-link-custom {{ request()->routeIs('settings.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-sliders"></i> System Branding
-                        </a>
                         <a href="{{ route('stock-logs.index') }}" class="nav-link-custom {{ request()->routeIs('stock-logs.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-clock-history"></i> Audit Logs
                         </a>
@@ -1064,7 +1069,7 @@
             @elseif(auth()->user()->isShopAdmin())
             {{-- Management collapsible --}}
             @php
-                $isManagementActive = request()->routeIs('shops.show') || request()->routeIs('users.*');
+            $isManagementActive = request()->routeIs('shops.show') || request()->routeIs('users.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isManagementActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1087,7 +1092,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-                $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*');
+            $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1115,7 +1120,7 @@
 
             {{-- Sales collapsible --}}
             @php
-                $isSalesActiveAdmin = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
+            $isSalesActiveAdmin = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*') || request()->routeIs('handovers.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSalesActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1149,7 +1154,7 @@
 
             {{-- Documents collapsible --}}
             @php
-                $isDocsActiveAdmin = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActiveAdmin = request()->routeIs('sales.*') && request()->has('status');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1175,7 +1180,7 @@
 
             {{-- Reports collapsible --}}
             @php
-                $isReportsActiveAdmin = request()->routeIs('reports.*');
+            $isReportsActiveAdmin = request()->routeIs('reports.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isReportsActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1216,7 +1221,7 @@
 
             {{-- System collapsible --}}
             @php
-                $isSystemActiveAdmin = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            $isSystemActiveAdmin = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSystemActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1240,7 +1245,7 @@
             @else {{-- Seller --}}
             {{-- Stocks collapsible --}}
             @php
-                $isStocksActiveSeller = request()->routeIs('shop-stock.*');
+            $isStocksActiveSeller = request()->routeIs('shop-stock.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1260,7 +1265,7 @@
 
             {{-- Sales collapsible --}}
             @php
-                $isSalesActiveSeller = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*');
+            $isSalesActiveSeller = (request()->routeIs('sales.*') && !request()->has('status')) || request()->routeIs('sales-returns.*') || request()->routeIs('defects.*') || request()->routeIs('expenses.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSalesActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1292,7 +1297,7 @@
 
             {{-- Documents collapsible --}}
             @php
-                $isDocsActiveSeller = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActiveSeller = request()->routeIs('sales.*') && request()->has('status');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1318,7 +1323,7 @@
 
             {{-- System collapsible --}}
             @php
-                $isSystemActiveSeller = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
+            $isSystemActiveSeller = request()->routeIs('activity-logs.*') || request()->routeIs('settings.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isSystemActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1725,9 +1730,9 @@
 
                         let itemsHtml = '';
                         response.recent.forEach(function(item) {
-                            const linkUrl = item.destination_url 
-                                ? `/notifications/${item.id}/go?redirect=${encodeURIComponent(item.destination_url)}` 
-                                : `/notifications/${item.id}/go`;
+                            const linkUrl = item.destination_url ?
+                                `/notifications/${item.id}/go?redirect=${encodeURIComponent(item.destination_url)}` :
+                                `/notifications/${item.id}/go`;
 
                             itemsHtml += `
                             <a href="${linkUrl}" class="list-group-item list-group-item-action p-2.5 border-bottom notification-item transition-all" style="font-size: .8rem; border-left: 3px solid #0088cc;">
@@ -1845,52 +1850,75 @@
             });
         });
 
-        // Global Photo Preview Before Upload Handler
+        // Global Photo Preview Before Upload & WebP Compression Stats Handler
         $(document).on('change', 'input[type="file"]', function(e) {
             const input = this;
             const file = input.files && input.files[0];
             const targetElement = $(input).closest('.input-group').length ? $(input).closest('.input-group') : $(input);
-            
+            const maxUploadMb = Number("{{ (int) \App\Models\Setting::get('max_upload_size_mb', 5) }}") || 5;
+            const maxUploadBytes = maxUploadMb * 1024 * 1024;
+
+            // Clear previous oversize alert
+            targetElement.siblings('.file-oversize-alert').remove();
+
+            if (file && file.size > maxUploadBytes) {
+                const fileSizeMbStr = (file.size / 1048576).toFixed(2);
+                input.value = '';
+                targetElement.siblings('.image-upload-preview-container').remove();
+
+                const alertHtml = `
+                    <div class="alert alert-danger alert-dismissible fade show mt-2 py-2 px-3 small shadow-sm file-oversize-alert" role="alert" style="font-size:0.8rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>File size too large!</strong><br>
+                        The selected file size (<strong>${fileSizeMbStr} MB</strong>) exceeds the maximum allowed system limit of <strong>${maxUploadMb} MB</strong>. File upload is not allowed.
+                        <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                targetElement.after(alertHtml);
+                return;
+            }
+
             if (file && file.type && file.type.match(/^image\//)) {
                 let previewContainer = targetElement.siblings('.image-upload-preview-container');
                 if (previewContainer.length === 0 && $(input).siblings('.image-upload-preview-container').length) {
                     previewContainer = $(input).siblings('.image-upload-preview-container');
                 }
-                
+
                 if (previewContainer.length === 0) {
                     previewContainer = $(`
                         <div class="image-upload-preview-container mt-2">
-                            <div class="d-flex align-items-center gap-3 p-2 rounded border" style="background: var(--body-bg); border-color: var(--card-border) !important;">
+                            <div class="d-flex align-items-center gap-3 p-2.5 rounded border shadow-sm" style="background: var(--body-bg); border-color: var(--card-border) !important;">
                                 <div class="position-relative">
-                                    <img class="image-preview-thumb rounded" style="max-height: 110px; max-width: 160px; object-fit: contain; background:#fff; padding:3px; border:1px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" src="" alt="Preview">
+                                    <img class="image-preview-thumb rounded" style="max-height: 100px; max-width: 150px; object-fit: contain; background:#fff; padding:3px; border:1px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" src="" alt="Preview">
                                 </div>
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <div class="fw-600 text-truncate small preview-file-name" style="color: var(--text-primary);"></div>
-                                    <div class="preview-file-size" style="font-size: 0.75rem;"></div>
-                                    <div class="badge bg-success mt-1" style="font-size: 0.68rem;"><i class="bi bi-magic me-1"></i>WebP Compression Preview</div>
+                                    <div class="fw-600 text-truncate small preview-file-name mb-1" style="color: var(--text-primary);"></div>
+                                    <div class="preview-file-size mb-1" style="font-size: 0.76rem;"></div>
+                                    <div class="badge bg-success text-white" style="font-size: 0.68rem;"><i class="bi bi-magic me-1"></i>WebP Compression Preview</div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-danger remove-preview-btn py-0 px-2" style="font-size: 0.75rem;" title="Clear selected photo">
-                                    <i class="bi bi-x-circle me-1"></i>Remove
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-preview-btn py-1 px-2.5" style="font-size: 0.75rem;" title="Clear selected photo">
+                                    <i class="bi bi-trash me-1"></i>Remove
                                 </button>
                             </div>
                         </div>
                     `);
+
                     targetElement.after(previewContainer);
                 }
-                
+
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     previewContainer.find('.image-preview-thumb').attr('src', evt.target.result);
                     previewContainer.find('.preview-file-name').text(file.name);
-                    
-                    const origSizeStr = file.size > 1048576 
-                        ? (file.size / 1048576).toFixed(2) + ' MB' 
-                        : (file.size / 1024).toFixed(1) + ' KB';
-                    
-                    previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> <span class="spinner-border spinner-border-sm text-accent ms-1" style="width:0.7rem;height:0.7rem;" role="status"></span> <span class="text-muted" style="font-size:0.68rem;">Calculating WebP...</span>`);
+
+                    const origSizeStr = file.size > 1048576 ?
+                        (file.size / 1048576).toFixed(2) + ' MB' :
+                        (file.size / 1024).toFixed(1) + ' KB';
+
+                    previewContainer.find('.preview-file-size').html(`Original Size: <strong>${origSizeStr}</strong> <span class="spinner-border spinner-border-sm text-accent ms-1" style="width:0.7rem;height:0.7rem;" role="status"></span> <span class="text-muted" style="font-size:0.68rem;">Calculating WebP...</span>`);
                     previewContainer.slideDown(200);
 
-                    // Client-side WebP compression estimation using Canvas
+                    // Client-side WebP compression estimation using HTML5 Canvas
                     const tempImg = new Image();
                     tempImg.onload = function() {
                         try {
@@ -1898,37 +1926,37 @@
                             let width = tempImg.width;
                             let height = tempImg.height;
                             const maxWidth = 1200;
-                            
+
                             if (width > maxWidth) {
                                 height = Math.round((height / width) * maxWidth);
                                 width = maxWidth;
                             }
-                            
+
                             canvas.width = width;
                             canvas.height = height;
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(tempImg, 0, 0, width, height);
-                            
+
                             canvas.toBlob(function(blob) {
                                 if (blob) {
-                                    const compSizeStr = blob.size > 1048576 
-                                        ? (blob.size / 1048576).toFixed(2) + ' MB' 
-                                        : (blob.size / 1024).toFixed(1) + ' KB';
-                                    
+                                    const compSizeStr = blob.size > 1048576 ?
+                                        (blob.size / 1048576).toFixed(2) + ' MB' :
+                                        (blob.size / 1024).toFixed(1) + ' KB';
+
                                     const savedPct = Math.max(0, Math.round(((file.size - blob.size) / file.size) * 100));
-                                    
+
                                     previewContainer.find('.preview-file-size').html(`
-                                        <span class="text-muted text-decoration-line-through me-1">Original: ${origSizeStr}</span>
+                                        <span class="text-muted text-decoration-line-through me-1">Raw: ${origSizeStr}</span>
                                         <i class="bi bi-arrow-right text-accent mx-1"></i>
-                                        <strong class="text-success">WebP: ~${compSizeStr}</strong>
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:0.65rem;">-${savedPct}% compressed</span>
+                                        <strong class="text-success">Compressed WebP: ~${compSizeStr}</strong>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size:0.65rem;">-${savedPct}% saved</span>
                                     `);
                                 } else {
-                                    previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> (Auto-compresses on upload)`);
+                                    previewContainer.find('.preview-file-size').html(`Original Size: <strong>${origSizeStr}</strong> (Auto-compresses to WebP on upload)`);
                                 }
-                            }, 'image/webp', 0.8);
+                            }, 'image/webp', 0.85);
                         } catch (err) {
-                            previewContainer.find('.preview-file-size').html(`Original: <strong>${origSizeStr}</strong> (Auto-compresses on upload)`);
+                            previewContainer.find('.preview-file-size').html(`Original Size: <strong>${origSizeStr}</strong> (Auto-compresses to WebP on upload)`);
                         }
                     };
                     tempImg.src = evt.target.result;
@@ -1953,6 +1981,7 @@
                 $(this).remove();
             });
         });
+
     </script>
 
     @stack('scripts')

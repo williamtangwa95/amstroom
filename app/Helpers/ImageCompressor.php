@@ -33,10 +33,16 @@ class ImageCompressor
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
-        // Animated GIFs or SVG should be preserved directly
-        if (in_array($extension, ['svg', 'gif']) || $mime === 'image/svg+xml' || $mime === 'image/gif') {
+        // SVG files are strictly prohibited system-wide
+        if ($extension === 'svg' || $mime === 'image/svg+xml') {
+            throw new \InvalidArgumentException('SVG uploads are strictly restricted across the system.');
+        }
+
+        // Animated GIFs should be preserved directly
+        if ($extension === 'gif' || $mime === 'image/gif') {
             return $file->store($directory, $disk);
         }
+
 
         try {
             $realPath = $file->getRealPath();

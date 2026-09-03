@@ -34,15 +34,18 @@ class ShopController extends Controller
             abort(403, 'Unauthorized.');
         }
 
+        $maxKb = ((int) Setting::get('max_upload_size_mb', 5)) * 1024;
+
         $data = $request->validate([
             'shop_name' => 'required|string|max:150',
             'location'  => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
             'email'     => 'nullable|email|max:100',
             'slogan'    => 'nullable|string|max:255',
-            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
+            'logo'      => "nullable|image|mimes:jpeg,png,jpg,gif,webp|max:{$maxKb}",
             'status'    => 'required|in:active,inactive',
         ]);
+
 
         if ($request->hasFile('logo')) {
             $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'shop_logos', 'public', 800, 85);
@@ -94,8 +97,9 @@ class ShopController extends Controller
             'phone'     => 'nullable|string|max:20',
             'email'     => 'nullable|email|max:100',
             'slogan'    => 'nullable|string|max:255',
-            'logo'      => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
+            'logo'      => "nullable|image|mimes:jpeg,png,jpg,gif,webp|max:{$maxKb}",
         ];
+
 
         if ($user->isOwner()) {
             $rules['status'] = 'required|in:active,inactive';

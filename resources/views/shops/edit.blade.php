@@ -32,8 +32,10 @@
                                 <div class="text-muted" style="font-size:.7rem;">Current Shop Logo</div>
                             </div>
                             @endif
-                            <input type="file" name="logo" class="form-control" accept="image/*">
-                            <small class="text-muted" style="font-size:.73rem;">If left empty or null, main owner logo will be displayed.</small>
+                            <input type="file" name="logo" class="form-control" accept="image/png,image/jpeg,image/webp,image/gif">
+
+                            <small class="text-muted" style="font-size:.73rem;">If left empty or null, main owner logo will be displayed (Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB).</small>
+
                         </div>
                         <div class="col-12">
                             <label class="form-label">Location *</label>

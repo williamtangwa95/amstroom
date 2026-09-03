@@ -194,6 +194,8 @@ Route::middleware('auth')->group(function () {
         Route::get('sales/{sale}/proforma', [SaleController::class, 'proforma'])->name('sales.proforma');
         Route::get('sales/{sale}/delivery-note', [SaleController::class, 'deliveryNote'])->name('sales.delivery-note');
         Route::post('sales/{sale}/convert', [SaleController::class, 'convertToSale'])->name('sales.convert');
+        Route::patch('sales/{sale}/customer', [SaleController::class, 'updateCustomer'])->name('sales.update-customer');
+
 
         // Sale Returns (all roles can view and request returns)
         Route::get('sales-returns', [SaleReturnController::class, 'index'])->name('sales-returns.index');

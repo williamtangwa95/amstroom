@@ -44,9 +44,11 @@
                             <textarea name="specification" class="form-control" rows="4" placeholder="Core i7, 16GB RAM, 512GB SSD...">{{ old('specification') }}</textarea>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Product Image (Optional, Max 1MB)</label>
-                            <input type="file" name="image" class="form-control" accept="image/*">
-                            <small class="text-muted">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: 1MB.</small>
+                            <label class="form-label">Product Image (Optional, Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB)</label>
+                            <input type="file" name="image" class="form-control" accept="image/png,image/jpeg,image/webp,image/gif">
+
+                            <small class="text-muted">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB.</small>
+
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

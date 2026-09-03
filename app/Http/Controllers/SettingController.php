@@ -72,12 +72,16 @@ class SettingController extends Controller
             $summaryTime        = $shop->summary_time ?: '22:00';
         }
 
+        $maxUploadSizeMb = (int) Setting::get('max_upload_size_mb', 5);
+
         return view('settings.index', compact(
             'systemName', 'slogan', 'logo', 'printerEnabled', 'notificationRingtone',
             'storePricingMode', 'companyTin', 'companyAddress', 'companyBankName', 'companyBankAccount', 'summaryEmails', 'summaryTime',
+            'maxUploadSizeMb',
             'smsEnabled', 'smsApiUrl', 'smsApiKey', 'smsSenderId', 'smsProvider', 'smsPhoneField', 'smsMessageField', 'smsExtraParams'
         ));
     }
+
 
     public function update(Request $request)
     {
@@ -99,14 +103,23 @@ class SettingController extends Controller
             Setting::set($settingKey, $path);
         }
 
+        $maxMb = max(1, (int) $request->input('max_upload_size_mb', Setting::get('max_upload_size_mb', 5)));
+        $maxKb = $maxMb * 1024;
+
+        $validationMessages = [
+            'logo.uploaded' => 'The logo failed to upload. Please ensure file size is within the allowed server limit (' . ini_get('upload_max_filesize') . ').',
+            'logo.max'      => "The logo file size must not exceed {$maxMb} MB.",
+        ];
+
         if ($user->isOwner()) {
             $request->validate([
                 'system_name'        => 'required|string|max:150',
                 'slogan'             => 'nullable|string|max:255',
-                'logo'               => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
+                'logo'               => "nullable|image|mimes:jpeg,png,jpg,gif,webp|max:{$maxKb}",
                 'printer_enabled'    => 'required|in:0,1',
-                'store_pricing_mode' => 'required|in:DEPENDENT,INDEPENDENT',
-                'company_tin'        => 'nullable|string|max:100',
+                'store_pricing_mode'  => 'required|in:DEPENDENT,INDEPENDENT',
+                'max_upload_size_mb'  => 'nullable|integer|min:1|max:100',
+                'company_tin'         => 'nullable|string|max:100',
                 'company_address'    => 'nullable|string|max:255',
                 'company_bank_name'  => 'nullable|string|max:150',
                 'company_bank_account' => 'nullable|string|max:100',
@@ -120,7 +133,9 @@ class SettingController extends Controller
                 'sms_phone_field'    => 'nullable|string|max:50',
                 'sms_message_field'  => 'nullable|string|max:50',
                 'sms_extra_params'   => 'nullable|string',
-            ]);
+            ], $validationMessages);
+
+
 
             if ($request->filled('sms_extra_params')) {
                 json_decode($request->input('sms_extra_params'));
@@ -148,6 +163,8 @@ class SettingController extends Controller
             Setting::set('slogan', $request->slogan);
             Setting::set('printer_enabled_user_' . $user->id, $request->printer_enabled);
             Setting::set('store_pricing_mode', $request->store_pricing_mode);
+            Setting::set('max_upload_size_mb', max(1, (int) $request->input('max_upload_size_mb', 5)));
+
             Setting::set('company_tin', $request->company_tin);
             Setting::set('company_address', $request->company_address);
             Setting::set('company_bank_name', $request->company_bank_name);
@@ -193,7 +210,8 @@ class SettingController extends Controller
             $request->validate([
                 'system_name' => 'required|string|max:150',
                 'slogan'      => 'nullable|string|max:255',
-                'logo'        => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:15360',
+                'logo'        => "nullable|image|mimes:jpeg,png,jpg,gif,webp|max:{$maxKb}",
+
                 'printer_enabled' => 'required|in:0,1',
                 'company_tin'        => 'nullable|string|max:100',
                 'company_address'    => 'nullable|string|max:255',
@@ -201,7 +219,8 @@ class SettingController extends Controller
                 'company_bank_account' => 'nullable|string|max:100',
                 'summary_emails'     => 'nullable|string',
                 'summary_time'       => 'nullable|date_format:H:i',
-            ]);
+            ], $validationMessages);
+
 
             $emailsStr = $request->input('summary_emails', $user->shop->summary_emails ?: $user->email);
             if ($emailsStr === null || trim($emailsStr) === '') {
@@ -223,6 +242,13 @@ class SettingController extends Controller
             $shop->slogan = $request->slogan;
             $shop->tin_number = $request->company_tin;
             $shop->address = $request->company_address;
+            if (!empty($request->company_address)) {
+                $shop->location = $request->company_address;
+            } elseif (empty($shop->location)) {
+                $shop->location = $shop->shop_name ?: 'Main Store';
+            }
+
+
             $shop->bank_name = $request->company_bank_name;
             $shop->bank_account = $request->company_bank_account;
             $shop->summary_emails = implode(', ', $emailsArray);

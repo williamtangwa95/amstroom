@@ -90,9 +90,11 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label for="avatar" class="form-label fw-600">Profile Picture (Optional, Max 1MB)</label>
-                            <input type="file" name="avatar" id="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
-                            <small class="text-muted" style="font-size: .75rem;">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: 1MB.</small>
+                            <label for="avatar" class="form-label fw-600">Profile Picture (Optional, Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB)</label>
+                            <input type="file" name="avatar" id="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/png,image/jpeg,image/webp,image/gif">
+
+                            <small class="text-muted" style="font-size: .75rem;">Allowed formats: JPG, JPEG, PNG, GIF, WebP. Maximum file size: {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB.</small>
+
                             @error('avatar')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

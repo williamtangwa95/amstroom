@@ -75,7 +75,12 @@
                     <td style="font-size:.78rem;color:var(--text-secondary);">#SL-{{ $sale->id }}</td>
                     <td style="font-size:.82rem;font-weight:600;">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
                     <td style="font-size:.82rem;">{{ $sale->seller->name }}</td>
-                    <td style="font-size:.82rem;">{{ $sale->customer_name ?: 'Walk-in' }}</td>
+                    <td style="font-size:.82rem;">
+                        <span>{{ $sale->customer_name ?: 'Walk-in' }}</span>
+                        <button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="{{ $sale->id }}" data-name="{{ $sale->customer_name }}" title="Add / Edit Customer Name">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </td>
                     <td><span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;">{{ $sale->items->count() }} item(s)</span></td>
                     <td style="font-size:.78rem;">{{ str_replace('_', ' ', ucfirst($sale->payment_method)) }}</td>
                     <td><strong style="color:#3fb950;font-size:.9rem;">TZS {{ number_format($sale->report_revenue, 0) }}</strong></td>
@@ -90,6 +95,9 @@
                     <td>
                         <div class="d-flex gap-1 flex-wrap">
                             <a href="{{ route('sales.show', $sale) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
+                            <button type="button" class="btn btn-xs btn-outline-custom edit-customer-btn" data-id="{{ $sale->id }}" data-name="{{ $sale->customer_name }}" title="Add / Edit Customer Name">
+                                <i class="bi bi-person-gear"></i>
+                            </button>
                             @if($sale->status === 'completed')
                                 <a href="{{ route('sales.invoice', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Invoice" target="_blank"><i class="bi bi-file-earmark-text"></i></a>
                                 <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-xs btn-outline-custom" title="Print Proforma" target="_blank"><i class="bi bi-file-earmark"></i></a>
@@ -105,6 +113,7 @@
                                 <i class="bi bi-chevron-down"></i>
                             </button>
                         </div>
+
 
                         <!-- Hidden details template container -->
                         <div id="details-{{ $sale->id }}" class="d-none">
@@ -176,6 +185,32 @@
         </table>
     </div>
 </div>
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="editCustomerForm" method="POST" action="">
+                @csrf
+                @method('PATCH')
+                <div class="modal-header">
+                    <h5 class="modal-title fw-700" id="editCustomerModalLabel"><i class="bi bi-person-gear me-2" style="color:var(--accent);"></i>Update Customer Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modalCustomerName" class="form-label fw-600">Customer Name</label>
+                        <input type="text" name="customer_name" id="modalCustomerName" class="form-control" placeholder="e.g. John Doe / Company Name" autofocus>
+                        <small class="text-muted">Enter or update the customer name for this sale transaction.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-accent"><i class="bi bi-check-lg me-1"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 @push('scripts')
 <script>
@@ -200,6 +235,18 @@
                 icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
             }
         });
+
+        $(document).on('click', '.edit-customer-btn', function(e) {
+            e.preventDefault();
+            var saleId = $(this).data('id');
+            var customerName = $(this).data('name') || '';
+            var actionUrl = "{{ url('sales') }}/" + saleId + "/customer";
+            
+            $('#editCustomerForm').attr('action', actionUrl);
+            $('#modalCustomerName').val(customerName);
+            $('#editCustomerModal').modal('show');
+        });
     });
 </script>
 @endpush
+

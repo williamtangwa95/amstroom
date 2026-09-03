@@ -51,12 +51,14 @@
 
                 <form method="POST" action="{{ route('items.upload-image', $shopStock->item) }}" enctype="multipart/form-data" class="mt-3 pt-3 border-top">
                     @csrf
-                    <label class="form-label fw-600 small">Upload/Change Product Photo (Max 1MB)</label>
+                    <label class="form-label fw-600 small">Upload/Change Product Photo (Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB)</label>
                     <div class="input-group input-group-sm">
-                        <input type="file" name="image" class="form-control" accept="image/*" required>
+                        <input type="file" name="image" class="form-control" accept="image/png,image/jpeg,image/webp,image/gif" required>
+
                         <button type="submit" class="btn btn-accent">Upload</button>
                     </div>
-                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">JPEG, PNG, GIF, WebP. Max 1MB.</small>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">JPEG, PNG, GIF, WebP. Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB.</small>
+
                 </form>
 
                 <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">

@@ -54,7 +54,13 @@
                     <div class="col-6">
                         <p class="mb-1" style="color:var(--text-secondary);">Shop: <strong style="color:var(--text-primary);">{{ $sale->shop?->shop_name ?? 'Main Store (Owner)' }}</strong></p>
                         <p class="mb-1" style="color:var(--text-secondary);">Seller: <strong style="color:var(--text-primary);">{{ $sale->seller->name }}</strong></p>
-                        <p class="mb-1" style="color:var(--text-secondary);">Customer: <strong style="color:var(--text-primary);">{{ $sale->customer_name ?: 'Walk-in' }}</strong></p>
+                        <p class="mb-1" style="color:var(--text-secondary);">
+                            Customer: <strong style="color:var(--text-primary);">{{ $sale->customer_name ?: 'Walk-in' }}</strong>
+                            <button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="{{ $sale->id }}" data-name="{{ $sale->customer_name }}" title="Add / Edit Customer Name">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                        </p>
+
                         @if($sale->customer_id)<p class="mb-1" style="color:var(--text-secondary);">Customer ID: <strong style="color:var(--text-primary);">{{ $sale->customer_id }}</strong></p>@endif
                         @if($sale->customer_po_box)<p class="mb-1" style="color:var(--text-secondary);">P.O. Box: <strong style="color:var(--text-primary);">{{ $sale->customer_po_box }}</strong></p>@endif
                     </div>
@@ -149,4 +155,47 @@
         </div>
     </div>
 </div>
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="editCustomerForm" method="POST" action="">
+                @csrf
+                @method('PATCH')
+                <div class="modal-header">
+                    <h5 class="modal-title fw-700" id="editCustomerModalLabel"><i class="bi bi-person-gear me-2" style="color:var(--accent);"></i>Update Customer Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modalCustomerName" class="form-label fw-600">Customer Name</label>
+                        <input type="text" name="customer_name" id="modalCustomerName" class="form-control" placeholder="e.g. John Doe / Company Name" autofocus>
+                        <small class="text-muted">Enter or update the customer name for this sale transaction.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-accent"><i class="bi bi-check-lg me-1"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
+@push('scripts')
+<script>
+    $(() => {
+        $(document).on('click', '.edit-customer-btn', function(e) {
+            e.preventDefault();
+            var saleId = $(this).data('id');
+            var customerName = $(this).data('name') || '';
+            var actionUrl = "{{ url('sales') }}/" + saleId + "/customer";
+            
+            $('#editCustomerForm').attr('action', actionUrl);
+            $('#modalCustomerName').val(customerName);
+            $('#editCustomerModal').modal('show');
+        });
+    });
+</script>
+@endpush
+
