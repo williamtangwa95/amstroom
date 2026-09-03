@@ -17,30 +17,269 @@ class SaleController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $isOwner = $user->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
-        $query = Sale::with('shop', 'seller', 'items.item.components.childItem');
+        $revenueQuery = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->whereNull('sales.deleted_at');
 
-        if ($user->isOwner()) {
-            $query->where('is_admin_stock', false);
+        if ($isOwner) {
+            $revenueQuery->where('sales.is_admin_stock', false);
         } else {
-            $query->where('shop_id', $user->shop_id);
+            $revenueQuery->where('sales.shop_id', $user->shop_id);
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('sale_date', '>=', $request->date_from);
+            $revenueQuery->whereDate('sales.sale_date', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('sale_date', '<=', $request->date_to);
+            $revenueQuery->whereDate('sales.sale_date', '<=', $request->date_to);
         }
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $revenueQuery->where('sales.status', $request->status);
         }
 
-        $sales        = $query->latest()->get();
-        $totalRevenue = $sales->sum(fn($s) => $s->report_revenue);
+        $totalRevenue = (float) ($revenueQuery->selectRaw("
+            SUM(
+                CASE
+                    WHEN ? = 1 AND sale_items.is_admin_stock = 1 THEN 0
+                    WHEN ? = 1 AND ? = 1 AND sales.shop_id IS NOT NULL THEN COALESCE(sale_items.owner_realized_sp, sale_items.selling_price) * sale_items.quantity
+                    ELSE COALESCE(sale_items.shop_realized_sp, sale_items.selling_price) * sale_items.quantity
+                END
+            ) as total_rev
+        ", [$isOwner ? 1 : 0, $isOwner ? 1 : 0, $isIndependent ? 1 : 0])->value('total_rev') ?? 0);
+
         $statusFilter = $request->input('status', '');
 
-        return view('sales.index', compact('sales', 'totalRevenue', 'statusFilter'));
+        return view('sales.index', compact('totalRevenue', 'statusFilter'));
+    }
+
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $isOwner = $user->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
+
+        $query = Sale::query();
+
+        if ($isOwner) {
+            $query->where('sales.is_admin_stock', false);
+        } else {
+            $query->where('sales.shop_id', $user->shop_id);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('sales.sale_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('sales.sale_date', '<=', $request->date_to);
+        }
+        if ($request->filled('status')) {
+            $query->where('sales.status', $request->status);
+        }
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('sales.id', $cleanId);
+                }
+                $q->orWhere('sales.customer_name', 'like', "%{$searchValue}%")
+                  ->orWhere('sales.payment_method', 'like', "%{$searchValue}%")
+                  ->orWhere('sales.status', 'like', "%{$searchValue}%")
+                  ->orWhereHas('seller', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $revenueQuery = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->whereNull('sales.deleted_at');
+
+        if ($isOwner) {
+            $revenueQuery->where('sales.is_admin_stock', false);
+        } else {
+            $revenueQuery->where('sales.shop_id', $user->shop_id);
+        }
+        if ($request->filled('date_from')) {
+            $revenueQuery->whereDate('sales.sale_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $revenueQuery->whereDate('sales.sale_date', '<=', $request->date_to);
+        }
+        if ($request->filled('status')) {
+            $revenueQuery->where('sales.status', $request->status);
+        }
+        if ($searchValue !== '') {
+            $revenueQuery->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('sales.id', $cleanId);
+                }
+                $q->orWhere('sales.customer_name', 'like', "%{$searchValue}%")
+                  ->orWhere('sales.payment_method', 'like', "%{$searchValue}%")
+                  ->orWhere('sales.status', 'like', "%{$searchValue}%")
+                  ->orWhereExists(function ($sq) use ($searchValue) {
+                      $sq->select(DB::raw(1))->from('users')->whereColumn('users.id', 'sales.seller_id')->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereExists(function ($sq) use ($searchValue) {
+                      $sq->select(DB::raw(1))->from('shops')->whereColumn('shops.id', 'sales.shop_id')->where('shop_name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $totalRevenue = (float) ($revenueQuery->selectRaw("
+            SUM(
+                CASE
+                    WHEN ? = 1 AND sale_items.is_admin_stock = 1 THEN 0
+                    WHEN ? = 1 AND ? = 1 AND sales.shop_id IS NOT NULL THEN COALESCE(sale_items.owner_realized_sp, sale_items.selling_price) * sale_items.quantity
+                    ELSE COALESCE(sale_items.shop_realized_sp, sale_items.selling_price) * sale_items.quantity
+                END
+            ) as total_rev
+        ", [$isOwner ? 1 : 0, $isOwner ? 1 : 0, $isIndependent ? 1 : 0])->value('total_rev') ?? 0);
+
+        $orderColumnIndex = $request->input('order.0.column', 9);
+        $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        switch ((int) $orderColumnIndex) {
+            case 1:
+                $query->orderBy('sales.id', $orderDirection);
+                break;
+            case 2:
+                $query->leftJoin('shops', 'shops.id', '=', 'sales.shop_id')
+                      ->orderBy('shops.shop_name', $orderDirection)
+                      ->select('sales.*');
+                break;
+            case 3:
+                $query->leftJoin('users', 'users.id', '=', 'sales.seller_id')
+                      ->orderBy('users.name', $orderDirection)
+                      ->select('sales.*');
+                break;
+            case 4:
+                $query->orderBy('sales.customer_name', $orderDirection);
+                break;
+            case 6:
+                $query->orderBy('sales.payment_method', $orderDirection);
+                break;
+            case 7:
+                $query->orderBy('sales.total_amount', $orderDirection);
+                break;
+            case 8:
+                $query->orderBy('sales.status', $orderDirection);
+                break;
+            case 9:
+            default:
+                $query->orderBy('sales.sale_date', $orderDirection)->orderBy('sales.id', $orderDirection);
+                break;
+        }
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $sales = $query->with('shop', 'seller', 'items')
+            ->withCount('items')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($sales as $index => $sale) {
+            $iteration = $start + $index + 1;
+            $shopName = e($sale->shop?->shop_name ?? 'Main Store (Owner)');
+            $sellerName = e($sale->seller?->name ?? 'Unknown');
+            $customerName = e($sale->customer_name ?: 'Walk-in');
+            $rawCustomerName = e($sale->customer_name ?? '');
+            $itemsCountHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;">' . $sale->items_count . ' item(s)</span>';
+            $paymentMethod = e(str_replace('_', ' ', ucfirst($sale->payment_method)));
+            $reportRevenue = 'TZS ' . number_format($sale->report_revenue, 0);
+
+            $statusBadge = $sale->status === 'draft_proforma'
+                ? '<span class="badge" style="background:#fef3c7;color:#92400e;font-size:.72rem;">Proforma</span>'
+                : '<span class="badge" style="background:#d1fae5;color:#065f46;font-size:.72rem;">Completed</span>';
+
+            $saleDate = $sale->sale_date->format('M d, Y');
+
+            $showUrl = route('sales.show', $sale);
+            $invoiceUrl = route('sales.invoice', $sale);
+            $proformaUrl = route('sales.proforma', $sale);
+            $deliveryNoteUrl = route('sales.delivery-note', $sale);
+            $receiptUrl = route('sales.receipt', $sale);
+
+            $actions = '<div class="d-flex gap-1 flex-wrap">';
+            $actions .= '<a href="' . $showUrl . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>';
+            $actions .= '<button type="button" class="btn btn-xs btn-outline-custom edit-customer-btn" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-person-gear"></i></button>';
+
+            if ($sale->status === 'completed') {
+                $actions .= '<a href="' . $invoiceUrl . '" class="btn btn-xs btn-outline-custom" title="Print Invoice" target="_blank"><i class="bi bi-file-earmark-text"></i></a>';
+                $actions .= '<a href="' . $proformaUrl . '" class="btn btn-xs btn-outline-custom" title="Print Proforma" target="_blank"><i class="bi bi-file-earmark"></i></a>';
+                $actions .= '<a href="' . $deliveryNoteUrl . '" class="btn btn-xs btn-outline-custom" title="Print Delivery Note" target="_blank"><i class="bi bi-truck"></i></a>';
+                $actions .= '<a href="' . $receiptUrl . '" class="btn btn-xs btn-accent" title="Print Receipt"><i class="bi bi-receipt"></i></a>';
+            } else {
+                $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Invoice requires a completed sale."><i class="bi bi-file-earmark-text"></i></button>';
+                $actions .= '<a href="' . $proformaUrl . '" class="btn btn-xs btn-outline-custom" title="Print Proforma Invoice" target="_blank"><i class="bi bi-file-earmark"></i></a>';
+                $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Delivery Note requires a completed sale."><i class="bi bi-truck"></i></button>';
+                $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Receipt requires a completed sale."><i class="bi bi-receipt"></i></button>';
+            }
+
+            $actions .= '<button type="button" class="btn btn-xs btn-outline-custom toggle-details" data-id="' . $sale->id . '" title="Toggle Details"><i class="bi bi-chevron-down"></i></button>';
+            $actions .= '</div>';
+
+            $customerHtml = '<span class="customer-name-text">' . $customerName . '</span>';
+            $customerHtml .= '<button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-pencil-square"></i></button>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'sale_id' => '#SL-' . $sale->id,
+                'shop' => $shopName,
+                'seller' => $sellerName,
+                'customer' => $customerHtml,
+                'items' => $itemsCountHtml,
+                'payment_method' => $paymentMethod,
+                'total_amount' => '<strong style="color:#3fb950;font-size:.9rem;">' . $reportRevenue . '</strong>',
+                'status' => $statusBadge,
+                'date' => $saleDate,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+            'totalRevenue' => $totalRevenue,
+            'formattedTotalRevenue' => 'TZS ' . number_format($totalRevenue, 0),
+        ]);
+    }
+
+    public function details(Sale $sale)
+    {
+        $user = Auth::user();
+        if ($user->isOwner()) {
+            if ($sale->is_admin_stock) {
+                abort(403, 'Unauthorized action.');
+            }
+        } else {
+            if ($sale->shop_id !== $user->shop_id) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        $sale->load('items.item', 'items.components.item');
+
+        return view('sales._details', compact('sale'));
     }
 
     public function create()

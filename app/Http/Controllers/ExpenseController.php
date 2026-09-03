@@ -11,36 +11,153 @@ class ExpenseController extends Controller
 {
     public function index()
     {
+        return view('expenses.index');
+    }
+
+    public function data(Request $request)
+    {
         $user = Auth::user();
+        $query = Expense::query();
 
         if ($user->isOwner()) {
-            // Owner sees expenses recorded by themselves OR approved/processed expenses from others
-            $expenses = Expense::with('category', 'recorder', 'approver')
-                ->where(function ($query) use ($user) {
-                    $query->where('recorded_by', $user->id)
-                          ->orWhereIn('status', ['approved', 'review_requested', 'editable']);
-                })
-                ->latest()
-                ->get();
+            $query->where(function ($q) use ($user) {
+                $q->where('recorded_by', $user->id)
+                  ->orWhereIn('status', ['approved', 'review_requested', 'editable']);
+            });
         } elseif ($user->isShopAdmin()) {
-            // Admin sees expenses recorded by himself and his sellers
             $sellerIds = \App\Models\User::where('role', 'seller')->pluck('id');
-            $expenses = Expense::with('category', 'recorder', 'approver')
-                ->where(function ($query) use ($user, $sellerIds) {
-                    $query->where('recorded_by', $user->id)
-                          ->orWhereIn('recorded_by', $sellerIds);
-                })
-                ->latest()
-                ->get();
+            $query->where(function ($q) use ($user, $sellerIds) {
+                $q->where('recorded_by', $user->id)
+                  ->orWhereIn('recorded_by', $sellerIds);
+            });
         } else {
-            // Seller sees only expenses recorded by themselves
-            $expenses = Expense::with('category', 'recorder', 'approver')
-                ->where('recorded_by', $user->id)
-                ->latest()
-                ->get();
+            $query->where('recorded_by', $user->id);
         }
 
-        return view('expenses.index', compact('expenses'));
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('expenses.id', $cleanId);
+                }
+                $q->orWhere('expenses.activity', 'like', "%{$searchValue}%")
+                  ->orWhere('expenses.description', 'like', "%{$searchValue}%")
+                  ->orWhere('expenses.status', 'like', "%{$searchValue}%")
+                  ->orWhereHas('category', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('recorder', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('approver', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $expenses = $query->with('category', 'recorder', 'approver')
+            ->orderBy('expenses.activity_date', 'desc')
+            ->orderBy('expenses.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $isOwnerOrAdmin = $user->isOwner() || $user->isShopAdmin();
+
+        $data = [];
+        foreach ($expenses as $index => $expense) {
+            $iteration = $start + $index + 1;
+            $dateStr = $expense->activity_date ? $expense->activity_date->format('M d, Y') : 'N/A';
+            $categoryName = '<span class="badge" style="background:rgba(188,140,255,.12);color:#bc8cff;">' . e($expense->category?->name ?? 'General') . '</span>';
+            $activity = '<strong>' . e($expense->activity) . '</strong>';
+            $descText = e($expense->description ?? '—');
+            $descriptionHtml = '<span style="max-width: 200px; display:inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' . $descText . '">' . $descText . '</span>';
+            $amountHtml = '<strong class="text-dark">TZS ' . number_format($expense->amount, 0) . '</strong>';
+            $recorderName = e($expense->recorder?->name ?? '—');
+            $approverName = e($expense->approver?->name ?? '—');
+
+            if ($expense->isPending()) {
+                $statusBadge = '<span class="badge badge-pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
+            } elseif ($expense->isApproved()) {
+                $statusBadge = '<span class="badge badge-approved"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+            } elseif ($expense->isReviewRequested()) {
+                $statusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Review Requested</span>';
+            } elseif ($expense->isEditable()) {
+                $statusBadge = '<span class="badge bg-info text-dark"><i class="bi bi-pencil-square me-1"></i>Editable</span>';
+            } else {
+                $statusBadge = '<span class="badge bg-secondary">' . e(ucfirst($expense->status)) . '</span>';
+            }
+
+            $actions = '<div class="d-flex justify-content-end gap-1">';
+            if ($user->isShopAdmin()) {
+                if ($expense->isPending()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.approve', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-success" title="Approve Expense"><i class="bi bi-check-lg"></i> </button></form>';
+                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                } elseif ($expense->isApproved()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.request-review', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom text-warning" title="Request Edit Review"><i class="bi bi-shield-exclamation"></i> Request Edit</button></form>';
+                } elseif ($expense->isEditable()) {
+                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-accent" title="Edit"><i class="bi bi-pencil"></i> Edit</a>';
+                }
+            } elseif ($user->isOwner()) {
+                if ($expense->isReviewRequested()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.grant-edit', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-info text-dark" title="Grant Edit Ability"><i class="bi bi-unlock-fill"></i> Grant Edit</button></form>';
+                }
+                if ($expense->isPending()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.approve', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-success" title="Approve Expense"><i class="bi bi-check-lg"></i> </button></form>';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                }
+                if ($expense->isApproved() || $expense->isReviewRequested() || $expense->isEditable()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.revert-approval', $expense) . '" class="d-inline" onsubmit="return confirm(\'Revert approval for this expense?\');">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom text-warning" title="Revert Approval"><i class="bi bi-arrow-counterclockwise"></i> Revert</button></form>';
+                }
+                $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+            } else { // Seller
+                if ($expense->isPending()) {
+                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                }
+                if ($expense->isApproved()) {
+                    $actions .= '<span class="text-muted small py-1 px-2"><i class="bi bi-lock-fill"></i> Locked</span>';
+                }
+            }
+            $actions .= '</div>';
+
+            $row = [];
+            if ($isOwnerOrAdmin) {
+                $row['checkbox'] = $expense->isPending()
+                    ? '<input type="checkbox" class="expense-checkbox form-check-input" value="' . $expense->id . '">'
+                    : '<input type="checkbox" class="form-check-input" disabled style="opacity:0.4;">';
+            }
+            $row['iteration'] = $iteration;
+            $row['date'] = $dateStr;
+            $row['category'] = $categoryName;
+            $row['activity'] = $activity;
+            $row['description'] = $descriptionHtml;
+            $row['amount'] = $amountHtml;
+            $row['recorder'] = $recorderName;
+            $row['approver'] = $approverName;
+            $row['status'] = $statusBadge;
+            $row['actions'] = $actions;
+
+            $data[] = $row;
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

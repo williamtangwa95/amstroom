@@ -74,89 +74,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($returns as $ret)
-                <tr>
-                    @if($canManage)
-                        <td class="text-center">
-                            <input type="checkbox" class="form-check-input return-checkbox" value="{{ $ret->id }}">
-                        </td>
-                    @endif
-                    <td class="fw-600">{{ $loop->iteration }}</td>
-                    <td>{{ $ret->return_date->format('M d, Y') }}</td>
-                    <td>
-                        <a href="{{ route('sales.show', $ret->sale_id) }}" class="fw-600">
-                            #SL-{{ $ret->sale_id }}
-                        </a>
-                    </td>
-                    <td>{{ $ret->sale->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
-                    <td>
-                        @foreach($ret->items as $ri)
-                            <div class="small fw-600">
-                                {{ $ri->item->item_name }}
-                                <span class="badge bg-secondary ms-1">Qty: {{ $ri->quantity }}</span>
-                            </div>
-                        @endforeach
-                    </td>
-                    <td class="small text-muted" style="max-width:200px;word-wrap:break-word;">
-                        {{ $ret->reason }}
-                    </td>
-                    <td>{{ $ret->requester?->name ?? 'System' }}</td>
-                    <td>
-                        @if($ret->status === 'approved')
-                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-check-circle-fill me-1"></i>Approved
-                            </span>
-                            @if($ret->approver)
-                                <div class="text-muted mt-1" style="font-size:.68rem;">by {{ $ret->approver->name }}</div>
-                            @endif
-                        @elseif($ret->status === 'reverted')
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reverted
-                            </span>
-                        @elseif($ret->status === 'rejected')
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-x-circle-fill me-1"></i>Rejected
-                            </span>
-                        @else
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-hourglass-split me-1"></i>Pending Approval
-                            </span>
-                        @endif
-                    </td>
-                    <td class="text-center">
-                        @if($canManage)
-                            <div class="d-flex align-items-center justify-content-center gap-1">
-                                @if($ret->status === 'pending')
-                                    <form method="POST" action="{{ route('sales-returns.approve', $ret) }}" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-success px-2 py-1"
-                                                onclick="return confirm('Confirm approval? Items will be restocked.')">
-                                            <i class="bi bi-check-lg"></i> Approve
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ route('sales-returns.reject', $ret) }}" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1"
-                                                onclick="return confirm('Confirm rejection?')">
-                                            <i class="bi bi-x-lg"></i> Reject
-                                        </button>
-                                    </form>
-                                @endif
-                                <form method="POST" action="{{ route('sales-returns.destroy', $ret) }}" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1"
-                                            onclick="return confirm('Are you sure you want to delete this return record?')">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                </form>
-                            </div>
-                        @else
-                            <span class="text-muted small">—</span>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -187,10 +104,32 @@ function submitBulkDelete() {
 }
 
 $(function() {
+    const canManage = {{ $canManage ? 'true' : 'false' }};
+
+    var columns = [];
+    if (canManage) {
+        columns.push({ data: 'checkbox', name: 'checkbox', orderable: false, searchable: false });
+    }
+    columns.push({ data: 'iteration', name: 'iteration' });
+    columns.push({ data: 'return_date', name: 'return_date' });
+    columns.push({ data: 'sale_id', name: 'sale_id' });
+    columns.push({ data: 'shop', name: 'shop' });
+    columns.push({ data: 'items', name: 'items', orderable: false, searchable: false });
+    columns.push({ data: 'reason', name: 'reason' });
+    columns.push({ data: 'requester', name: 'requester' });
+    columns.push({ data: 'status', name: 'status' });
+    columns.push({ data: 'actions', name: 'actions', orderable: false, searchable: false });
+
     if ($.fn.DataTable) {
         $('#returnsTable').DataTable({
-            order: [[{{ $canManage ? 1 : 0 }}, 'desc']],
-            columnDefs: [{ orderable: false, targets: [{{ $canManage ? '0, 5, 9' : '4, 8' }}] }],
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ajax: "{{ route('sales-returns.data') }}",
+            columns: columns,
+            order: [[canManage ? 2 : 1, 'desc']],
             language: {
                 search: '',
                 searchPlaceholder: 'Search returns...',

@@ -15,17 +15,95 @@ class DefectController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
+        return view('defects.index');
+    }
 
-        $query = Defect::with('shop', 'item.category', 'reporter');
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $query = Defect::query();
 
         if (!$user->isOwner()) {
-            $query->where('shop_id', $user->shop_id);
+            $query->where('defects.shop_id', $user->shop_id);
         }
 
-        $defects = $query->latest()->get();
+        $recordsTotal = (clone $query)->count();
 
-        return view('defects.index', compact('defects'));
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('defects.reason', 'like', "%{$searchValue}%")
+                  ->orWhere('defects.status', 'like', "%{$searchValue}%")
+                  ->orWhereHas('item', function ($sq) use ($searchValue) {
+                      $sq->where('item_name', 'like', "%{$searchValue}%")
+                        ->orWhereHas('category', function ($cq) use ($searchValue) {
+                            $cq->where('category_name', 'like', "%{$searchValue}%");
+                        });
+                  })
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('reporter', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $defects = $query->with('shop', 'item.category', 'reporter')
+            ->orderBy('defects.date', 'desc')
+            ->orderBy('defects.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($defects as $index => $def) {
+            $iteration = $start + $index + 1;
+            $dateStr = $def->date ? $def->date->format('M d, Y') : 'N/A';
+            $location = e($def->shop ? $def->shop->shop_name : 'Main Warehouse');
+            $productName = e($def->item?->item_name ?? 'Item');
+            $categoryName = e($def->item?->category?->category_name ?? 'General');
+            $quantityHtml = '<strong style="color:#e94560;">' . $def->quantity . '</strong>';
+            $reason = e(\Illuminate\Support\Str::limit($def->reason, 40));
+            $reporterName = e($def->reporter?->name ?? 'System');
+
+            $statusClass = $def->status === 'resolved' ? 'approved' : ($def->status === 'reviewed' ? 'pending' : 'rejected');
+            $statusBadge = '<span class="status-badge badge-' . $statusClass . '">' . e(ucfirst($def->status)) . '</span>';
+
+            $actions = '';
+            if (auth()->user()->isOwner() && $def->status !== 'resolved') {
+                $actions .= '<form method="POST" action="' . route('defects.update-status', $def) . '" class="d-inline">' . csrf_field() . method_field('PATCH') . '<input type="hidden" name="status" value="resolved"><button type="submit" class="btn btn-xs btn-outline-custom text-success" title="Mark Resolved"><i class="bi bi-check-lg"></i> Resolve</button></form>';
+            } else {
+                $actions = '<span style="font-size:.75rem;color:var(--text-secondary);">—</span>';
+            }
+
+            $data[] = [
+                'iteration' => $iteration,
+                'date' => $dateStr,
+                'location' => $location,
+                'product' => $productName,
+                'category' => $categoryName,
+                'quantity' => $quantityHtml,
+                'reason' => $reason,
+                'reporter' => $reporterName,
+                'status' => $statusBadge,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

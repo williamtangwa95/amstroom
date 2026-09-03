@@ -316,75 +316,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($visitorLogs as $log)
-                    <tr>
-                        {{-- Time --}}
-                        <td>
-                            <div style="font-weight: 600; font-size: .78rem;">
-                                {{ $log->created_at->format('M d, H:i:s') }}
-                            </div>
-                            <div class="text-muted" style="font-size: .68rem; margin-top: 1px;">
-                                {{ $log->created_at->diffForHumans() }}
-                            </div>
-                        </td>
-
-                        {{-- IP Address --}}
-                        <td style="font-weight: 600; font-size: .78rem; font-family: monospace; color: var(--text-primary);">
-                            {{ $log->ip_address }}
-                        </td>
-
-                        {{-- Location --}}
-                        <td style="font-size: .78rem; font-weight: 500;">
-                            <span class="text-dark">
-                                <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size: .85rem;"></i>
-                                {{ $log->city ?: 'Unknown' }}, {{ $log->country ?: 'Unknown' }}
-                            </span>
-                        </td>
-
-                        {{-- Device / Browser --}}
-                        <td>
-                            <div style="font-weight: 600; font-size: .78rem; display: flex; align-items: center; gap: 4px;">
-                                @if(strtolower($log->platform) === 'windows')
-                                    <i class="bi bi-windows text-primary" style="font-size: .78rem;"></i>
-                                @elseif(strtolower($log->platform) === 'macos' || strtolower($log->platform) === 'ios')
-                                    <i class="bi bi-apple text-dark" style="font-size: .78rem;"></i>
-                                @elseif(strtolower($log->platform) === 'android')
-                                    <i class="bi bi-android2 text-success" style="font-size: .78rem;"></i>
-                                @elseif(strtolower($log->platform) === 'linux')
-                                    <i class="bi bi-terminal-fill text-secondary" style="font-size: .78rem;"></i>
-                                @else
-                                    <i class="bi bi-laptop text-secondary" style="font-size: .78rem;"></i>
-                                @endif
-                                {{ $log->platform }}
-                            </div>
-                            <div class="text-muted" style="font-size: .68rem; margin-top: 1px;">
-                                {{ $log->browser }}
-                            </div>
-                        </td>
-
-                        {{-- Request --}}
-                        <td>
-                            <span class="badge-method-{{ strtolower($log->method) === 'post' ? 'post' : 'get' }}">
-                                {{ $log->method }}
-                            </span>
-                            <span class="text-secondary ms-1" style="font-family: monospace; font-size: .75rem;">
-                                {{ $log->url }}
-                            </span>
-                        </td>
-
-                        {{-- User Account --}}
-                        <td>
-                            @if($log->user)
-                            <span class="badge-user-account">
-                                <i class="bi bi-person-fill"></i>
-                                {{ $log->user->name }}
-                            </span>
-                            @else
-                            <span class="badge-guest">Guest</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
                 </tbody>
             </table>
         </div>
@@ -396,9 +327,22 @@
 <script>
 $(document).ready(function() {
     $('#visitorLogTable').DataTable({
-        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom"lf>rtip',
+        processing: true,
+        serverSide: true,
         pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: "{{ route('reports.visitors.data') }}",
+        columns: [
+            { data: 'time', name: 'time' },
+            { data: 'ip', name: 'ip' },
+            { data: 'location', name: 'location' },
+            { data: 'device', name: 'device' },
+            { data: 'request', name: 'request' },
+            { data: 'user', name: 'user' }
+        ],
         order: [[0, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom"lf>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         language: {
             search: "Search:",
             lengthMenu: "Show _MENU_ entries"

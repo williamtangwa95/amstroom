@@ -37,7 +37,47 @@ class ShopStockController extends Controller
             $query->where('is_admin_stock', false);
         }
 
-        $stocks = $query->latest()->get();
+        $stocksForStats = (clone $query)->get();
+
+        $totalStockValue = 0;
+        $totalExpectedProfit = 0;
+        $remainingStockValue = 0;
+        $remainingExpectedProfit = 0;
+        $soldStockValue = 0;
+        $soldExpectedProfit = 0;
+
+        foreach ($stocksForStats as $st) {
+            if ($st->item) {
+                if ($st->item->components()->exists()) {
+                    $bp = $st->item->getDynamicPriceForMainStore('buying_price');
+                    $sp = $st->item->getDynamicPriceForMainStore('selling_price');
+                } else {
+                    $msStock = \App\Models\MainStock::where('item_id', $st->item_id)->orderByDesc('date_received')->first();
+                    if ($user->isOwner()) {
+                        $bp = $msStock ? $msStock->buying_price : ($st->buying_price > 0 ? $st->buying_price : $st->item->buying_price);
+                        $sp = $msStock ? $msStock->selling_price : ($st->selling_price > 0 ? $st->selling_price : $st->item->selling_price);
+                    } else {
+                        $bp = ($st->buying_price > 0) ? $st->buying_price : ($msStock ? $msStock->buying_price : $st->item->buying_price);
+                        $sp = ($st->selling_price > 0) ? $st->selling_price : ($msStock ? $msStock->selling_price : $st->item->selling_price);
+                    }
+                }
+            } else {
+                $bp = $st->buying_price;
+                $sp = $st->selling_price;
+            }
+
+            $totalStockValue += $st->quantity * $bp;
+            $totalExpectedProfit += $st->quantity * ($sp - $bp);
+            $remainingStockValue += $st->remaining_quantity * $bp;
+            $remainingExpectedProfit += $st->remaining_quantity * ($sp - $bp);
+            $soldStockValue += ($st->quantity - $st->remaining_quantity) * $bp;
+            $soldExpectedProfit += ($st->quantity - $st->remaining_quantity) * ($sp - $bp);
+        }
+
+        $totalQuantity = $stocksForStats->sum('quantity');
+        $totalRemainingQty = $stocksForStats->sum('remaining_quantity');
+        $totalSoldQty = $totalQuantity - $totalRemainingQty;
+
         $shops  = $user->isOwner() ? Shop::active()->get() : collect();
 
         $items = collect();
@@ -68,7 +108,204 @@ class ShopStockController extends Controller
             ->when($user->isOwner(), fn($q) => $q->where('is_admin_stock', false))
             ->count();
 
-        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'items', 'categories'));
+        $stocks = collect();
+
+        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'items', 'categories', 'totalStockValue', 'totalExpectedProfit', 'remainingStockValue', 'remainingExpectedProfit', 'soldStockValue', 'soldExpectedProfit', 'totalQuantity', 'totalRemainingQty', 'totalSoldQty'));
+    }
+
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
+
+        $query = ShopStock::query();
+
+        if ($shopId) {
+            $query->where('shop_stocks.shop_id', $shopId);
+        }
+
+        if ($user->isOwner()) {
+            $query->where('shop_stocks.is_admin_stock', false);
+        }
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhereHas('item', function ($sq) use ($searchValue) {
+                    $sq->where('item_name', 'like', "%{$searchValue}%")
+                       ->orWhere('brand', 'like', "%{$searchValue}%")
+                       ->orWhere('model', 'like', "%{$searchValue}%")
+                       ->orWhereHas('category', function ($cq) use ($searchValue) {
+                           $cq->where('category_name', 'like', "%{$searchValue}%");
+                       });
+                })->orWhereHas('shop', function ($sq) use ($searchValue) {
+                    $sq->where('shop_name', 'like', "%{$searchValue}%");
+                });
+            });
+        }
+
+        $groupedQuery = (clone $query)
+            ->select(
+                'shop_stocks.shop_id',
+                'shop_stocks.item_id',
+                'shop_stocks.buying_price',
+                'shop_stocks.selling_price',
+                'shop_stocks.is_admin_stock',
+                'shop_stocks.low_stock_alert',
+                DB::raw('SUM(shop_stocks.quantity) as total_quantity'),
+                DB::raw('SUM(shop_stocks.remaining_quantity) as total_remaining_quantity'),
+                DB::raw('MIN(shop_stocks.id) as first_id'),
+                DB::raw('GROUP_CONCAT(shop_stocks.id) as all_ids_str')
+            )
+            ->groupBy(
+                'shop_stocks.shop_id',
+                'shop_stocks.item_id',
+                'shop_stocks.buying_price',
+                'shop_stocks.selling_price',
+                'shop_stocks.is_admin_stock',
+                'shop_stocks.low_stock_alert'
+            );
+
+        $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
+            ->mergeBindings($groupedQuery->toBase())
+            ->count();
+        $recordsFiltered = $recordsTotal;
+
+        $orderColumnIndex = $request->input('order.0.column', 3);
+        $orderDirection = strtolower($request->input('order.0.dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        switch ((int) $orderColumnIndex) {
+            case 2:
+                $groupedQuery->leftJoin('shops', 'shops.id', '=', 'shop_stocks.shop_id')
+                      ->orderBy('shops.shop_name', $orderDirection);
+                break;
+            case 3:
+                $groupedQuery->leftJoin('items', 'items.id', '=', 'shop_stocks.item_id')
+                      ->orderBy('items.item_name', $orderDirection);
+                break;
+            case 5:
+                $groupedQuery->orderBy(DB::raw('SUM(shop_stocks.quantity)'), $orderDirection);
+                break;
+            case 6:
+                $groupedQuery->orderBy(DB::raw('SUM(shop_stocks.remaining_quantity)'), $orderDirection);
+                break;
+            case 8:
+                $groupedQuery->orderBy('shop_stocks.buying_price', $orderDirection);
+                break;
+            case 9:
+                $groupedQuery->orderBy('shop_stocks.selling_price', $orderDirection);
+                break;
+            default:
+                $groupedQuery->leftJoin('items', 'items.id', '=', 'shop_stocks.item_id')
+                      ->orderBy('items.item_name', $orderDirection);
+                break;
+        }
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $pageGroupedStocks = $groupedQuery->skip($start)->take($length)->get();
+
+        $data = [];
+        $iterator = $start + 1;
+
+        foreach ($pageGroupedStocks as $groupRow) {
+            $firstSt = ShopStock::with('item.category', 'shop')->find($groupRow->first_id);
+            if (!$firstSt) continue;
+
+            $totalQty = (int) $groupRow->total_quantity;
+            $totalRemainingQty = (int) $groupRow->total_remaining_quantity;
+            $isLowStockGroup = $totalRemainingQty <= $groupRow->low_stock_alert;
+            $allIds = array_map('intval', explode(',', $groupRow->all_ids_str));
+
+            $checkbox = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))
+                ? '<input type="checkbox" class="stock-checkbox-parent" data-ids=\'' . json_encode($allIds) . '\' style="cursor:pointer;">'
+                : '<input type="checkbox" disabled style="cursor:not-allowed; opacity: 0.5;">';
+
+            $shopName = e($firstSt->shop->shop_name ?? 'N/A');
+
+            $imageHtml = $firstSt->item?->image_path
+                ? '<img src="' . asset('media/' . $firstSt->item->image_path) . '" alt="' . e($firstSt->item->item_name) . '" class="rounded img-lightbox" style="width:32px;height:32px;object-fit:cover;border:1px solid var(--card-border);" onclick="openLightbox(this.src, \'' . addslashes(e($firstSt->item->item_name)) . '\')" title="Click to enlarge">'
+                : '<div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width:32px;height:32px;border:1px solid var(--card-border);"><i class="bi bi-image" style="font-size:0.8rem;"></i></div>';
+
+            $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
+            $productHtml .= '<div style="font-weight:600;font-size:.83rem;">' . e($firstSt->item->item_name ?? 'N/A') . '</div>';
+            $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e($firstSt->item->brand ?? '');
+            if (count($allIds) > 1) {
+                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . count($allIds) . ' Batches</span>';
+            }
+            if ($firstSt->is_admin_stock) {
+                $productHtml .= ' <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>';
+            }
+            $productHtml .= '</div></div></div>';
+
+            $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($firstSt->item?->category?->category_name ?? 'General') . '</span>';
+
+            $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
+            if ($isLowStockGroup) {
+                $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
+            }
+
+            $alertHtml = e($firstSt->low_stock_alert) . ' units';
+            if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
+                $alertHtml .= ' <button type="button" class="btn btn-xs btn-outline-warning btn-edit-alert ms-1 p-0 px-1" data-ids=\'' . json_encode($allIds) . '\' data-current="' . $firstSt->low_stock_alert . '" data-item="' . e($firstSt->item->item_name ?? 'Item') . '" title="Edit Alert Threshold"><i class="bi bi-pencil" style="font-size:.65rem;"></i></button>';
+            }
+
+            if (auth()->user()->isOwner()) {
+                if ($firstSt->item && $firstSt->item->components()->exists()) {
+                    $displayBp = $firstSt->item->getDynamicPriceForMainStore('buying_price');
+                    $displaySp = $firstSt->item->getDynamicPriceForMainStore('selling_price');
+                } else {
+                    $msStock = \App\Models\MainStock::where('item_id', $firstSt->item_id)->orderByDesc('date_received')->first();
+                    $displayBp = $msStock ? $msStock->buying_price : $firstSt->buying_price;
+                    $displaySp = $msStock ? $msStock->selling_price : $firstSt->selling_price;
+                }
+            } else {
+                $displayBp = $firstSt->buying_price;
+                $displaySp = $firstSt->selling_price;
+            }
+
+            $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
+            $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
+
+            $actions = '<div class="d-flex align-items-center gap-2">';
+            if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
+                $actions .= '<button type="button" class="btn btn-xs btn-outline-success btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="' . ($firstSt->is_admin_stock ? 1 : 0) . '" title="Quick Restock"><i class="bi bi-plus-square me-1"></i></button>';
+            }
+            $actions .= '<a href="' . route('shop-stock.show', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>';
+            if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
+                $actions .= '<a href="' . route('shop-stock.edit', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
+            }
+            $actions .= '</div>';
+
+            $row = [
+                'checkbox' => $checkbox,
+                'iteration' => $iterator++,
+                'shop' => $shopName,
+                'product' => $productHtml,
+                'category' => $categoryHtml,
+                'initial_qty' => $totalQty,
+                'remaining_qty' => $remainingHtml,
+                'alert_threshold' => $alertHtml,
+                'selling_price' => $sellingPriceHtml,
+                'actions' => $actions,
+            ];
+
+            if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
+                $row['buying_price'] = $buyingPriceHtml;
+            }
+
+            $data[] = $row;
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function storeAdminStock(Request $request)

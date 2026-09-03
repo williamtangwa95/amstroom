@@ -20,18 +20,128 @@ class StockRequestController extends Controller
     {
         $user = Auth::user();
 
-        $query = StockRequest::with(['shop', 'requester', 'items.item.category', 'items.item.mainStocks']);
-
-        if ($user->isOwner()) {
-            // Owner sees all
-        } elseif ($user->isShopAdmin() || $user->isSeller()) {
+        $query = StockRequest::query();
+        if (!$user->isOwner()) {
             $query->where('shop_id', $user->shop_id);
         }
 
-        $requests = $query->latest()->get();
-        $pendingCount = StockRequest::where('status', 'pending')->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
 
-        return view('stock-requests.index', compact('requests', 'pendingCount'));
+        return view('stock-requests.index', compact('pendingCount'));
+    }
+
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $query = StockRequest::query();
+
+        if (!$user->isOwner()) {
+            $query->where('stock_requests.shop_id', $user->shop_id);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('stock_requests.id', $cleanId);
+                }
+                $q->orWhere('stock_requests.status', 'like', "%{$searchValue}%")
+                  ->orWhere('stock_requests.notes', 'like', "%{$searchValue}%")
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('requester', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = $request->input('order.0.column', 3);
+        $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        switch ((int) $orderColumnIndex) {
+            case 1:
+                $query->leftJoin('shops', 'shops.id', '=', 'stock_requests.shop_id')
+                      ->orderBy('shops.shop_name', $orderDirection)
+                      ->select('stock_requests.*');
+                break;
+            case 2:
+                $query->leftJoin('users', 'users.id', '=', 'stock_requests.requested_by')
+                      ->orderBy('users.name', $orderDirection)
+                      ->select('stock_requests.*');
+                break;
+            case 3:
+                $query->orderBy('stock_requests.request_date', $orderDirection);
+                break;
+            case 4:
+                $query->orderBy('stock_requests.status', $orderDirection);
+                break;
+            default:
+                $query->orderBy('stock_requests.request_date', $orderDirection)->orderBy('stock_requests.id', $orderDirection);
+                break;
+        }
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $requests = $query->with('shop', 'requester')
+            ->withCount('items')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($requests as $index => $req) {
+            $iteration = $start + $index + 1;
+            $shopName = e($req->shop?->shop_name ?? 'Shop');
+            $requesterName = e($req->requester?->name ?? 'User');
+            $requestDate = $req->request_date ? $req->request_date->format('M d, Y') : 'N/A';
+            $statusBadge = '<span class="status-badge badge-' . $req->status . '">' . e(ucfirst($req->status)) . '</span>';
+
+            $itemsHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">' . $req->items_count . ' item(s)</span> ';
+            $itemsHtml .= '<button type="button" class="btn btn-xs btn-outline-custom toggle-details" data-id="' . $req->id . '" title="Toggle Details"><i class="bi bi-chevron-down"></i></button>';
+
+            $showUrl = route('stock-requests.show', $req);
+            $actions = '<div class="d-flex align-items-center gap-1">';
+            $actions .= '<a href="' . $showUrl . '" class="btn btn-xs btn-outline-custom">View / Action</a>';
+            $actions .= '</div>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'shop' => $shopName,
+                'requester' => $requesterName,
+                'date' => $requestDate,
+                'status' => $statusBadge,
+                'items' => $itemsHtml,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function details(StockRequest $stockRequest)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && $stockRequest->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $stockRequest->load('items.item.category', 'items.item.mainStocks');
+
+        return view('stock-requests._details', compact('stockRequest'));
     }
 
     public function create()

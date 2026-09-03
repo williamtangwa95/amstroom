@@ -22,17 +22,141 @@ class StockTransferController extends Controller
     {
         $user = Auth::user();
 
-        $query = StockTransfer::with('shop', 'approver', 'request')
-            ->withCount(['items', 'pendingItems', 'receivedItems', 'rejectedItems']);
+        $query = StockTransfer::query();
 
-        // Shop admin & seller only see transfers to their shop
         if ($user->isShopAdmin() || $user->isSeller()) {
             $query->where('to_shop', $user->shop_id);
         }
 
-        $transfers = $query->latest()->get();
+        return view('stock-transfers.index');
+    }
 
-        return view('stock-transfers.index', compact('transfers'));
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $isOwner = $user->isOwner();
+
+        $query = StockTransfer::query();
+
+        if ($user->isShopAdmin() || $user->isSeller()) {
+            $query->where('stock_transfers.to_shop', $user->shop_id);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('stock_transfers.id', $cleanId);
+                }
+                $q->orWhere('stock_transfers.status', 'like', "%{$searchValue}%")
+                  ->orWhere('stock_transfers.from_store', 'like', "%{$searchValue}%")
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('approver', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = $request->input('order.0.column', $isOwner ? 2 : 1);
+        $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        switch ((int) $orderColumnIndex) {
+            case ($isOwner ? 1 : 0):
+                $query->orderBy('stock_transfers.id', $orderDirection);
+                break;
+            case ($isOwner ? 2 : 1):
+                $query->orderBy('stock_transfers.transfer_date', $orderDirection);
+                break;
+            case ($isOwner ? 3 : 2):
+                $query->leftJoin('shops', 'shops.id', '=', 'stock_transfers.to_shop')
+                      ->orderBy('shops.shop_name', $orderDirection)
+                      ->select('stock_transfers.*');
+                break;
+            case ($isOwner ? 5 : 4):
+                $query->leftJoin('users', 'users.id', '=', 'stock_transfers.approved_by')
+                      ->orderBy('users.name', $orderDirection)
+                      ->select('stock_transfers.*');
+                break;
+            case ($isOwner ? 6 : 5):
+                $query->orderBy('stock_transfers.status', $orderDirection);
+                break;
+            default:
+                $query->orderBy('stock_transfers.transfer_date', $orderDirection)->orderBy('stock_transfers.id', $orderDirection);
+                break;
+        }
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $transfers = $query->with('shop', 'approver')
+            ->withCount(['items', 'pendingItems', 'receivedItems', 'rejectedItems'])
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($transfers as $index => $transfer) {
+            $iteration = $start + $index + 1;
+            $transferDate = $transfer->transfer_date ? $transfer->transfer_date->format('M d, Y') : 'N/A';
+            $destinationShop = '<i class="bi bi-shop text-primary me-1"></i> ' . e($transfer->shop?->shop_name ?? 'N/A');
+            $dispatchedBy = e($transfer->approver?->name ?? 'System');
+
+            $itemsHtml = '<span class="fw-600">' . $transfer->items_count . '</span>';
+            if ($transfer->pending_items_count > 0) {
+                $itemsHtml .= ' <span class="badge bg-warning text-dark ms-1" style="font-size:.68rem;">' . $transfer->pending_items_count . ' pending</span>';
+            }
+            if ($transfer->rejected_items_count > 0) {
+                $itemsHtml .= ' <span class="badge bg-danger text-white ms-1" style="font-size:.68rem;">' . $transfer->rejected_items_count . ' rejected</span>';
+            }
+
+            if ($transfer->status === 'received') {
+                $statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;"><i class="bi bi-check-circle-fill me-1"></i>Received</span>';
+            } elseif ($transfer->status === 'rejected') {
+                $statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>';
+            } elseif ($transfer->status === 'partially_received') {
+                $statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.72rem;"><i class="bi bi-clock-fill me-1"></i>Partial</span>';
+            } else {
+                $statusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;"><i class="bi bi-hourglass-split me-1"></i>Pending Receipt</span>';
+            }
+
+            $showUrl = route('stock-transfers.show', $transfer);
+            $deleteUrl = route('stock-transfers.destroy', $transfer);
+
+            $actions = '<a href="' . $showUrl . '" class="btn btn-sm btn-outline-custom"><i class="bi bi-eye me-1"></i> View</a>';
+            if ($isOwner) {
+                $actions .= ' <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-delete-transfer" data-url="' . $deleteUrl . '" data-id="' . $transfer->id . '" title="Delete transfer"><i class="bi bi-trash-fill me-1"></i> Delete</button>';
+            }
+
+            $row = [];
+            if ($isOwner) {
+                $row['checkbox'] = '<input type="checkbox" class="transfer-checkbox" value="' . $transfer->id . '" style="cursor:pointer;">';
+            }
+            $row['iteration'] = $iteration;
+            $row['transfer_date'] = $transferDate;
+            $row['destination_shop'] = $destinationShop;
+            $row['items'] = $itemsHtml;
+            $row['dispatched_by'] = $dispatchedBy;
+            $row['status'] = $statusBadge;
+            $row['actions'] = $actions;
+
+            $data[] = $row;
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**

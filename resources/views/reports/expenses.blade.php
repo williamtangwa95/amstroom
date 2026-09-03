@@ -133,17 +133,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($expenses as $exp)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $exp->activity_date->format('M d, Y') }}</td>
-                    <td><span class="badge" style="background:rgba(188,140,255,.12);color:#bc8cff;">{{ $exp->category->name }}</span></td>
-                    <td style="font-size:.82rem;"><strong>{{ $exp->activity }}</strong></td>
-                    <td style="font-size:.82rem;">{{ $exp->recorder->name ?? '—' }}</td>
-                    <td style="font-size:.82rem;">{{ $exp->approver->name ?? '—' }}</td>
-                    <td><strong class="text-danger">TZS {{ number_format($exp->amount, 0) }}</strong></td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -235,7 +224,32 @@ $(() => {
     }
 
     $('#reportsExpensesTable').DataTable({
-        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        processing: true,
+        serverSide: true,
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: {
+            url: "{{ route('reports.expenses.data') }}",
+            data: function(d) {
+                d.period = "{{ $period }}";
+                d.shop_id = "{{ request('shop_id') }}";
+                d.expense_category_id = "{{ request('expense_category_id') }}";
+                d.date_from = "{{ request('date_from') }}";
+                d.date_to = "{{ request('date_to') }}";
+            }
+        },
+        columns: [
+            { data: 'iteration', name: 'iteration' },
+            { data: 'date', name: 'date' },
+            { data: 'category', name: 'category' },
+            { data: 'activity', name: 'activity' },
+            { data: 'recorder', name: 'recorder' },
+            { data: 'approver', name: 'approver' },
+            { data: 'amount', name: 'amount' }
+        ],
+        order: [[1, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         buttons: [
             /* ── Excel ── */
             {

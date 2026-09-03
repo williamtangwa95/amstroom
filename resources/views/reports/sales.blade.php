@@ -196,45 +196,6 @@
         <table class="table table-hover mb-0" id="salesReportLogTable">
             <thead><tr><th>No</th><th>Date</th><th>Shop</th><th>Seller</th><th>Customer</th><th>Items Sold</th><th>Method</th><th>Revenue</th><th>Profit</th></tr></thead>
             <tbody>
-            @foreach($sales as $sl)
-            <tr>
-                <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                <td style="font-size:.75rem;color:var(--text-secondary);">{{ $sl->sale_date->format('M d, Y') }}</td>
-                <td style="font-size:.82rem;">{{ $sl->shop?->shop_name ?? 'Main Store (Owner)' }}</td>
-                <td style="font-size:.82rem;">{{ $sl->seller->name }}</td>
-                <td style="font-size:.82rem;">{{ $sl->customer_name ?: 'Walk-in' }}</td>
-                <td style="font-size:.78rem;">
-                    @php
-                        $displayItems = $sl->items;
-                        if ($itemId) {
-                            $displayItems = $displayItems->where('item_id', $itemId);
-                        }
-                        if (($stockType ?? '') === 'admin') {
-                            $displayItems = $displayItems->where('is_admin_stock', true);
-                        } elseif (($stockType ?? '') === 'normal') {
-                            $displayItems = $displayItems->where('is_admin_stock', false);
-                        } elseif (empty($stockType) && auth()->user()->isOwner()) {
-                            $displayItems = $displayItems->where('is_admin_stock', false);
-                        }
-                    @endphp
-                    @foreach($displayItems as $item)
-                        <div style="font-size:.78rem;line-height:1.4;margin-bottom:2px;" class="d-flex align-items-center gap-1 flex-wrap">
-                            <span>{{ $item->item?->item_name ?? 'Unknown Item' }} (x{{ $item->quantity }})</span>
-                            @if(!auth()->user()->isOwner())
-                                @if($item->is_admin_stock)
-                                    <span class="badge bg-info text-dark" style="font-size:.65rem;padding:.15rem .3rem;"><i class="bi bi-person-fill-lock"></i> Admin</span>
-                                @else
-                                    <span class="badge bg-secondary" style="font-size:.65rem;padding:.15rem .3rem;"><i class="bi bi-shop"></i> Normal</span>
-                                @endif
-                            @endif
-                        </div>
-                    @endforeach
-                </td>
-                <td style="font-size:.78rem;">{{ str_replace('_',' ',ucfirst($sl->payment_method)) }}</td>
-                <td><strong style="color:#3fb950;">TZS {{ number_format($sl->filtered_revenue, 0) }}</strong></td>
-                <td><strong style="color:#ffc107;">TZS {{ number_format($sl->filtered_profit, 0) }}</strong></td>
-            </tr>
-            @endforeach
             </tbody>
         </table>
     </div>
@@ -329,7 +290,35 @@ $(() => {
     }
 
     $('#salesReportLogTable').DataTable({
-        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        processing: true,
+        serverSide: true,
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: {
+            url: "{{ route('reports.sales.data') }}",
+            data: function(d) {
+                d.period = "{{ $period }}";
+                d.shop_id = "{{ request('shop_id') }}";
+                d.item_id = "{{ request('item_id') }}";
+                d.stock_type = "{{ $stockType }}";
+                d.date_from = "{{ request('date_from') }}";
+                d.date_to = "{{ request('date_to') }}";
+            }
+        },
+        columns: [
+            { data: 'iteration', name: 'iteration' },
+            { data: 'sale_date', name: 'sale_date' },
+            { data: 'shop', name: 'shop' },
+            { data: 'seller', name: 'seller' },
+            { data: 'customer', name: 'customer' },
+            { data: 'items', name: 'items', orderable: false, searchable: false },
+            { data: 'method', name: 'method' },
+            { data: 'revenue', name: 'revenue' },
+            { data: 'profit', name: 'profit' }
+        ],
+        order: [[1, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         buttons: [
             /* ── Excel ── */
             {

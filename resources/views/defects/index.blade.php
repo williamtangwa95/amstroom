@@ -36,39 +36,36 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($defects as $def)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $def->date->format('M d, Y') }}</td>
-                    <td style="font-size:.82rem;font-weight:600;">{{ $def->shop ? $def->shop->shop_name : 'Main Warehouse' }}</td>
-                    <td style="font-size:.82rem;font-weight:600;">{{ $def->item->item_name }}</td>
-                    <td style="font-size:.78rem;color:var(--text-secondary);">{{ $def->item->category->category_name }}</td>
-                    <td><strong style="color:#e94560;">{{ $def->quantity }}</strong></td>
-                    <td style="font-size:.8rem;color:var(--text-secondary);">{{ Str::limit($def->reason, 40) }}</td>
-                    <td style="font-size:.78rem;">{{ $def->reporter->name }}</td>
-                    <td>
-                        <span class="status-badge badge-{{ $def->status === 'resolved' ? 'approved' : ($def->status === 'reviewed' ? 'pending' : 'rejected') }}">
-                            {{ ucfirst($def->status) }}
-                        </span>
-                    </td>
-                    <td>
-                        @if(auth()->user()->isOwner() && $def->status !== 'resolved')
-                        <form method="POST" action="{{ route('defects.update-status', $def) }}" class="d-inline">
-                            @csrf @method('PATCH')
-                            <input type="hidden" name="status" value="resolved">
-                            <button type="submit" class="btn btn-xs btn-outline-custom text-success" title="Mark Resolved"><i class="bi bi-check-lg"></i> Resolve</button>
-                        </form>
-                        @else
-                        <span style="font-size:.75rem;color:var(--text-secondary);">—</span>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
 </div>
 @endsection
+
 @push('scripts')
-<script>$(()=>$('#defectsTable').DataTable())</script>
+<script>
+    $(() => {
+        $('#defectsTable').DataTable({
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ajax: "{{ route('defects.data') }}",
+            columns: [
+                { data: 'iteration', name: 'iteration' },
+                { data: 'date', name: 'date' },
+                { data: 'location', name: 'location' },
+                { data: 'product', name: 'product' },
+                { data: 'category', name: 'category' },
+                { data: 'quantity', name: 'quantity' },
+                { data: 'reason', name: 'reason' },
+                { data: 'reporter', name: 'reporter' },
+                { data: 'status', name: 'status' },
+                { data: 'actions', name: 'actions', orderable: false, searchable: false }
+            ],
+            order: [[1, 'desc']]
+        });
+    });
+</script>
 @endpush

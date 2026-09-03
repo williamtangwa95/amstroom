@@ -144,9 +144,14 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             @if($stock->item->image_path)
-                                <img src="{{ asset('media/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="rounded" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--card-border);">
+                                <div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage('{{ asset('media/' . $stock->item->image_path) }}', '{{ e($stock->item->item_name) }}')" title="Click to zoom image">
+                                    <img src="{{ asset('media/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="product-img-thumb w-100 h-100" style="object-fit: cover; transition: transform 0.25s ease;">
+                                    <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;">
+                                        <i class="bi bi-zoom-in text-white fs-6"></i>
+                                    </div>
+                                </div>
                             @else
-                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 32px; height: 32px; border: 1px solid var(--card-border);">
+                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 36px; height: 36px; border: 1px solid var(--card-border); flex-shrink: 0;">
                                     <i class="bi bi-image" style="font-size: 0.8rem;"></i>
                                 </div>
                             @endif
@@ -224,9 +229,66 @@
         </div>
     </div>
 </div>
+
+<!-- Product Image Zoom Modal -->
+<div class="modal fade" id="imageZoomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="background: rgba(18, 24, 38, 0.96); backdrop-filter: blur(12px); color: #fff; border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 d-flex justify-content-between align-items-center">
+                <h6 class="modal-title fw-700 text-truncate me-3" id="zoomImageTitle" style="font-size: 1rem; color: #fff;">Product Image</h6>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="changeImageScale(0.25)" title="Zoom In" style="width: 32px; height: 32px;">
+                        <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="changeImageScale(-0.25)" title="Zoom Out" style="width: 32px; height: 32px;">
+                        <i class="bi bi-zoom-out"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="resetImageScale()" title="Reset Zoom" style="width: 32px; height: 32px;">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body text-center p-4 d-flex align-items-center justify-content-center overflow-auto" style="min-height: 350px; max-height: 75vh;">
+                <img id="zoomImageTarget" src="" alt="Product Image" class="img-fluid rounded shadow-lg" style="max-height: 65vh; object-fit: contain; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: grab;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.product-img-wrapper:hover .img-zoom-overlay {
+    opacity: 1 !important;
+}
+.product-img-wrapper:hover .product-img-thumb {
+    transform: scale(1.2) !important;
+}
+</style>
+
 @endsection
 @push('scripts')
 <script>
+    let currentImageScale = 1.0;
+
+    function zoomProductImage(src, title) {
+        $('#zoomImageTitle').text(title);
+        $('#zoomImageTarget').attr('src', src);
+        currentImageScale = 1.0;
+        $('#zoomImageTarget').css('transform', 'scale(1)');
+        const modal = new bootstrap.Modal(document.getElementById('imageZoomModal'));
+        modal.show();
+    }
+
+    function changeImageScale(delta) {
+        currentImageScale = Math.max(0.5, Math.min(3.5, currentImageScale + delta));
+        $('#zoomImageTarget').css('transform', `scale(${currentImageScale})`);
+    }
+
+    function resetImageScale() {
+        currentImageScale = 1.0;
+        $('#zoomImageTarget').css('transform', 'scale(1)');
+    }
+
     $(() => {
         $('#mainStockTable').DataTable();
 

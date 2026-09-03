@@ -47,18 +47,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($defects as $def)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $def->date->format('M d, Y') }}</td>
-                    <td style="font-weight:600;">{{ $def->shop ? $def->shop->shop_name : 'Main Warehouse' }}</td>
-                    <td style="font-weight:600;">{{ $def->item->item_name }}</td>
-                    <td><strong style="color:#e94560;">{{ $def->quantity }}</strong></td>
-                    <td style="font-size:.8rem;color:var(--text-secondary);">{{ $def->reason }}</td>
-                    <td style="font-size:.78rem;">{{ $def->reporter->name }}</td>
-                    <td><span class="status-badge badge-{{ $def->status==='resolved' ? 'approved' : 'rejected' }}">{{ ucfirst($def->status) }}</span></td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -69,7 +57,7 @@
 <script>
 $(() => {
     @php
-        $hName    = $reportHeader['name']    ?? 'Defective Items Report';
+        $hName    = $reportHeader['name']    ?? 'Defect Report';
         $hSlogan  = $reportHeader['slogan']  ?? '';
         $hAddress = $reportHeader['address'] ?? '';
         $hTin     = $reportHeader['tin']     ?? '';
@@ -148,7 +136,30 @@ $(() => {
     }
 
     $('#reportsDefectTable').DataTable({
-        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        processing: true,
+        serverSide: true,
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: {
+            url: "{{ route('reports.defect.data') }}",
+            data: function(d) {
+                d.shop_id = "{{ request('shop_id') }}";
+                d.status = "{{ request('status') }}";
+            }
+        },
+        columns: [
+            { data: 'iteration', name: 'iteration' },
+            { data: 'date', name: 'date' },
+            { data: 'location', name: 'location' },
+            { data: 'product', name: 'product' },
+            { data: 'qty', name: 'qty' },
+            { data: 'reason', name: 'reason' },
+            { data: 'reporter', name: 'reporter' },
+            { data: 'status', name: 'status' }
+        ],
+        order: [[1, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         buttons: [
             /* ── Excel ── */
             {

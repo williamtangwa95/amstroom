@@ -67,71 +67,10 @@
                     <th>Items</th>
                     <th>Dispatched By</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th class="no-sort">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($transfers as $transfer)
-                <tr>
-                    @if(auth()->user()->isOwner())
-                        <td>
-                            <input type="checkbox" class="transfer-checkbox" value="{{ $transfer->id }}" style="cursor:pointer;">
-                        </td>
-                    @endif
-                    <td class="fw-600">{{ $loop->iteration }}</td>
-                    <td>{{ $transfer->transfer_date->format('M d, Y') }}</td>
-                    <td>
-                        <i class="bi bi-shop text-primary me-1"></i>
-                        {{ $transfer->shop?->shop_name ?? 'N/A' }}
-                    </td>
-                    <td>
-                        <span class="fw-600">{{ $transfer->items_count }}</span>
-                        @if($transfer->pending_items_count > 0)
-                            <span class="badge bg-warning text-dark ms-1" style="font-size:.68rem;">
-                                {{ $transfer->pending_items_count }} pending
-                            </span>
-                        @endif
-                        @if($transfer->rejected_items_count > 0)
-                            <span class="badge bg-danger text-white ms-1" style="font-size:.68rem;">
-                                {{ $transfer->rejected_items_count }} rejected
-                            </span>
-                        @endif
-                    </td>
-                    <td>{{ $transfer->approver?->name ?? 'System' }}</td>
-                    <td>
-                        @if($transfer->status === 'received')
-                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-check-circle-fill me-1"></i>Received
-                            </span>
-                        @elseif($transfer->status === 'rejected')
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-x-circle-fill me-1"></i>Rejected
-                            </span>
-                        @elseif($transfer->status === 'partially_received')
-                            <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-clock-fill me-1"></i>Partial
-                            </span>
-                        @else
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;">
-                                <i class="bi bi-hourglass-split me-1"></i>Pending Receipt
-                            </span>
-                        @endif
-                    </td>
-                    <td>
-                        <a href="{{ route('stock-transfers.show', $transfer) }}" class="btn btn-sm btn-outline-custom">
-                            <i class="bi bi-eye me-1"></i> View
-                        </a>
-                        @if(auth()->user()->isOwner())
-                        <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-delete-transfer"
-                            data-url="{{ route('stock-transfers.destroy', $transfer) }}"
-                            data-id="{{ $transfer->id }}"
-                            title="Delete transfer and return stock to Main Warehouse">
-                            <i class="bi bi-trash-fill me-1"></i> Delete
-                        </button>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -142,12 +81,29 @@
 <script>
 $(function() {
     const isOwner = {{ auth()->user()->isOwner() ? 'true' : 'false' }};
-    const nonSortableTargets = isOwner ? [0, 4, 6, 7] : [3, 5, 6];
 
     if ($.fn.DataTable) {
+        var columns = [];
+        if (isOwner) {
+            columns.push({ data: 'checkbox', name: 'checkbox', orderable: false, searchable: false });
+        }
+        columns.push({ data: 'iteration', name: 'iteration' });
+        columns.push({ data: 'transfer_date', name: 'transfer_date' });
+        columns.push({ data: 'destination_shop', name: 'destination_shop' });
+        columns.push({ data: 'items', name: 'items', orderable: false, searchable: false });
+        columns.push({ data: 'dispatched_by', name: 'dispatched_by' });
+        columns.push({ data: 'status', name: 'status' });
+        columns.push({ data: 'actions', name: 'actions', orderable: false, searchable: false });
+
         $('#transfersTable').DataTable({
-            order: [[isOwner ? 1 : 0, 'desc']],
-            columnDefs: [{ orderable: false, targets: nonSortableTargets }],
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ajax: "{{ route('stock-transfers.data') }}",
+            columns: columns,
+            order: [[isOwner ? 2 : 1, 'desc']],
             language: {
                 search: '',
                 searchPlaceholder: 'Search transfers...',

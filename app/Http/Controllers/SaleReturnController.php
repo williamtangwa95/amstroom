@@ -19,8 +19,15 @@ class SaleReturnController extends Controller
      */
     public function index()
     {
+        return view('sales-returns.index');
+    }
+
+    public function data(Request $request)
+    {
         $user = Auth::user();
-        $query = SaleReturn::with('sale.shop', 'requester', 'approver', 'items.item');
+        $canManage = $user->isShopAdmin() || $user->isOwner();
+
+        $query = SaleReturn::query();
 
         if ($user->isOwner()) {
             $query->whereHas('sale', function ($q) {
@@ -32,8 +39,107 @@ class SaleReturnController extends Controller
             });
         }
 
-        $returns = $query->latest()->get();
-        return view('sales-returns.index', compact('returns'));
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('sale_returns.id', $cleanId)->orWhere('sale_returns.sale_id', $cleanId);
+                }
+                $q->orWhere('sale_returns.status', 'like', "%{$searchValue}%")
+                  ->orWhere('sale_returns.reason', 'like', "%{$searchValue}%")
+                  ->orWhereHas('sale.shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('requester', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('items.item', function ($sq) use ($searchValue) {
+                      $sq->where('item_name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $returns = $query->with('sale.shop', 'requester', 'approver', 'items.item')
+            ->orderBy('sale_returns.return_date', 'desc')
+            ->orderBy('sale_returns.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($returns as $index => $ret) {
+            $iteration = $start + $index + 1;
+            $returnDate = $ret->return_date ? $ret->return_date->format('M d, Y') : 'N/A';
+            $saleIdLink = '<a href="' . route('sales.show', $ret->sale_id) . '" class="fw-600">#SL-' . $ret->sale_id . '</a>';
+            $shopName = e($ret->sale?->shop?->shop_name ?? 'Main Store (Owner)');
+
+            $itemsHtml = '';
+            foreach ($ret->items as $ri) {
+                $itemsHtml .= '<div class="small fw-600">' . e($ri->item?->item_name ?? 'Item') . ' <span class="badge bg-secondary ms-1">Qty: ' . $ri->quantity . '</span></div>';
+            }
+
+            $reasonHtml = '<div class="small text-muted" style="max-width:200px;word-wrap:break-word;">' . e($ret->reason ?? '') . '</div>';
+            $requesterName = e($ret->requester?->name ?? 'System');
+
+            if ($ret->status === 'approved') {
+                $statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>';
+                if ($ret->approver) {
+                    $statusBadge .= '<div class="text-muted mt-1" style="font-size:.68rem;">by ' . e($ret->approver->name) . '</div>';
+                }
+            } elseif ($ret->status === 'reverted') {
+                $statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.72rem;"><i class="bi bi-arrow-counterclockwise me-1"></i>Reverted</span>';
+            } elseif ($ret->status === 'rejected') {
+                $statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>';
+            } else {
+                $statusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;"><i class="bi bi-hourglass-split me-1"></i>Pending Approval</span>';
+            }
+
+            $actions = '';
+            if ($canManage) {
+                $actions .= '<div class="d-flex align-items-center justify-content-center gap-1">';
+                if ($ret->status === 'pending') {
+                    $actions .= '<form method="POST" action="' . route('sales-returns.approve', $ret) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-success px-2 py-1" onclick="return confirm(\'Confirm approval? Items will be restocked.\')"><i class="bi bi-check-lg"></i> Approve</button></form>';
+                    $actions .= '<form method="POST" action="' . route('sales-returns.reject', $ret) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" onclick="return confirm(\'Confirm rejection?\')"><i class="bi bi-x-lg"></i> Reject</button></form>';
+                }
+                $actions .= '<form method="POST" action="' . route('sales-returns.destroy', $ret) . '" class="d-inline">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" onclick="return confirm(\'Are you sure you want to delete this return record?\')"><i class="bi bi-trash"></i> Delete</button></form>';
+                $actions .= '</div>';
+            } else {
+                $actions = '<span class="text-muted small">—</span>';
+            }
+
+            $row = [];
+            if ($canManage) {
+                $row['checkbox'] = '<input type="checkbox" class="form-check-input return-checkbox" value="' . $ret->id . '">';
+            }
+            $row['iteration'] = $iteration;
+            $row['return_date'] = $returnDate;
+            $row['sale_id'] = $saleIdLink;
+            $row['shop'] = $shopName;
+            $row['items'] = $itemsHtml;
+            $row['reason'] = $reasonHtml;
+            $row['requester'] = $requesterName;
+            $row['status'] = $statusBadge;
+            $row['actions'] = $actions;
+
+            $data[] = $row;
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     /**

@@ -116,11 +116,14 @@ Route::middleware('auth')->group(function () {
         // Stock Requests
         Route::get('stock-requests', [StockRequestController::class, 'index'])->name('stock-requests.index');
         Route::get('stock-requests/create', [StockRequestController::class, 'create'])->name('stock-requests.create');
+        Route::get('stock-requests/data', [StockRequestController::class, 'data'])->name('stock-requests.data');
         Route::post('stock-requests', [StockRequestController::class, 'store'])->name('stock-requests.store');
         Route::get('stock-requests/{stockRequest}', [StockRequestController::class, 'show'])->name('stock-requests.show');
+        Route::get('stock-requests/{stockRequest}/details', [StockRequestController::class, 'details'])->name('stock-requests.details');
 
         // Stock Transfers (view for owner + admin)
         Route::get('stock-transfers', [StockTransferController::class, 'index'])->name('stock-transfers.index');
+        Route::get('stock-transfers/data', [StockTransferController::class, 'data'])->name('stock-transfers.data');
         Route::get('stock-transfers/{stockTransfer}', [StockTransferController::class, 'show'])->name('stock-transfers.show');
 
         // Transfer item actions
@@ -187,8 +190,10 @@ Route::middleware('auth')->group(function () {
         // Sales
         Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
+        Route::get('sales/data', [SaleController::class, 'data'])->name('sales.data');
         Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
         Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->withTrashed();
+        Route::get('sales/{sale}/details', [SaleController::class, 'details'])->name('sales.details');
         Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt')->withTrashed();
         Route::get('sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
         Route::get('sales/{sale}/proforma', [SaleController::class, 'proforma'])->name('sales.proforma');
@@ -199,11 +204,13 @@ Route::middleware('auth')->group(function () {
 
         // Sale Returns (all roles can view and request returns)
         Route::get('sales-returns', [SaleReturnController::class, 'index'])->name('sales-returns.index');
+        Route::get('sales-returns/data', [SaleReturnController::class, 'data'])->name('sales-returns.data');
         Route::get('sales/{sale}/return/create', [SaleReturnController::class, 'create'])->name('sales-returns.create')->withTrashed();
         Route::post('sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales-returns.store')->withTrashed();
 
         // Defects (all roles can view/report)
         Route::get('defects', [DefectController::class, 'index'])->name('defects.index');
+        Route::get('defects/data', [DefectController::class, 'data'])->name('defects.data');
         Route::get('defects/create', [DefectController::class, 'create'])->name('defects.create');
         Route::post('defects', [DefectController::class, 'store'])->name('defects.store');
 
@@ -212,6 +219,7 @@ Route::middleware('auth')->group(function () {
 
         // Shop Stock (view + alert threshold)
         Route::get('shop-stock', [ShopStockController::class, 'index'])->name('shop-stock.index');
+        Route::get('shop-stock/data', [ShopStockController::class, 'data'])->name('shop-stock.data');
         Route::get('shop-stock/{shopStock}', [ShopStockController::class, 'show'])->name('shop-stock.show');
         Route::patch('shop-stock/{shopStock}/alert', [ShopStockController::class, 'updateAlert'])->name('shop-stock.update-alert');
 
@@ -242,6 +250,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Expenses
+        Route::get('expenses/data', [ExpenseController::class, 'data'])->name('expenses.data');
         Route::post('expenses/bulk-approve', [ExpenseController::class, 'bulkApprove'])->name('expenses.bulk-approve');
         Route::resource('expenses', ExpenseController::class);
         Route::post('expenses/{expense}/approve', [ExpenseController::class, 'approve'])->name('expenses.approve');
@@ -257,13 +266,19 @@ Route::middleware('auth')->group(function () {
 
         // Reports
         Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
+        Route::get('reports/sales/data', [ReportController::class, 'salesData'])->name('reports.sales.data');
         Route::get('reports/stock', [ReportController::class, 'stock'])->name('reports.stock');
+        Route::get('reports/stock/data', [ReportController::class, 'stockData'])->name('reports.stock.data');
         Route::get('reports/transfer', [ReportController::class, 'transfer'])->name('reports.transfer');
+        Route::get('reports/transfer/data', [ReportController::class, 'transferData'])->name('reports.transfer.data');
         Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
+        Route::get('reports/defect/data', [ReportController::class, 'defectData'])->name('reports.defect.data');
         Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+        Route::get('reports/expenses/data', [ReportController::class, 'expensesData'])->name('reports.expenses.data');
         Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
         Route::get('reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
         Route::get('admin/logs/visitors', [ReportController::class, 'visitorAnalytics'])->name('reports.visitors');
+        Route::get('admin/logs/visitors/data', [ReportController::class, 'visitorData'])->name('reports.visitors.data');
     });
 });
 

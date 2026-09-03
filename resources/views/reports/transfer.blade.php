@@ -65,17 +65,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($requests as $req)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-size:.78rem;color:var(--text-secondary);">#{{ $req->id }}</td>
-                    <td style="font-weight:600;">{{ $req->shop->shop_name }}</td>
-                    <td>{{ $req->requester->name }}</td>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $req->request_date->format('M d, Y') }}</td>
-                    <td><span class="status-badge badge-{{ $req->status }}">{{ ucfirst($req->status) }}</span></td>
-                    <td>{{ $req->items->count() }} item(s)</td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -86,7 +75,28 @@
 <script>
 $(() => {
     $('#reportsTransferTable').DataTable({
-        dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+        processing: true,
+        serverSide: true,
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: {
+            url: "{{ route('reports.transfer.data') }}",
+            data: function(d) {
+                d.status = "{{ $status }}";
+            }
+        },
+        columns: [
+            { data: 'iteration', name: 'iteration' },
+            { data: 'request_id', name: 'request_id' },
+            { data: 'shop', name: 'shop' },
+            { data: 'requester', name: 'requester' },
+            { data: 'request_date', name: 'request_date' },
+            { data: 'status', name: 'status' },
+            { data: 'items', name: 'items', orderable: false, searchable: false }
+        ],
+        order: [[4, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         buttons: [
             {
                 extend: 'excelHtml5',

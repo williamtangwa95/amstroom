@@ -826,4 +826,611 @@ class ReportController extends Controller
             'locations', 'deviceStats', 'browserStats', 'visitorLogs'
         ));
     }
+
+    public function salesData(Request $request)
+    {
+        $user = auth()->user();
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $itemId = $request->get('item_id');
+        $stockType = $request->get('stock_type');
+
+        if ($user->isOwner()) {
+            $stockType = 'normal';
+        }
+
+        $query = Sale::completed();
+
+        if ($stockType === 'admin') {
+            $query->where(function ($q) {
+                $q->where('is_admin_stock', true)
+                  ->orWhereHas('items', function ($sq) {
+                      $sq->where('is_admin_stock', true);
+                  });
+            });
+        } elseif ($stockType === 'normal') {
+            $query->where('is_admin_stock', false);
+        } elseif ($stockType === 'all') {
+            // No constraint
+        } else {
+            if ($user->isOwner()) {
+                $query->where('is_admin_stock', false);
+            }
+        }
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $query->whereNull('shop_id');
+            } else {
+                $query->where('shop_id', $shopId);
+            }
+        }
+
+        if ($itemId) {
+            $query->whereHas('items', function ($q) use ($itemId) {
+                $q->where('item_id', $itemId);
+            });
+        }
+
+        if ($period === 'daily') {
+            $query->whereDate('sale_date', today());
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('sale_date', now()->month)->whereYear('sale_date', now()->year);
+        } elseif ($period === 'yearly') {
+            $query->whereYear('sale_date', now()->year);
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) $query->whereDate('sale_date', '>=', $request->date_from);
+            if ($request->filled('date_to'))   $query->whereDate('sale_date', '<=', $request->date_to);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('sales.id', $cleanId);
+                }
+                $q->orWhere('sales.customer_name', 'like', "%{$searchValue}%")
+                  ->orWhere('sales.payment_method', 'like', "%{$searchValue}%")
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('seller', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('items.item', function ($sq) use ($searchValue) {
+                      $sq->where('item_name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $sales = $query->with('shop', 'seller', 'items.item')
+            ->orderBy('sales.sale_date', 'desc')
+            ->orderBy('sales.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $isOwner = auth()->check() && auth()->user()->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
+
+        $data = [];
+        foreach ($sales as $index => $sl) {
+            $iteration = $start + $index + 1;
+            $saleDate = $sl->sale_date ? $sl->sale_date->format('M d, Y') : 'N/A';
+            $shopName = e($sl->shop?->shop_name ?? 'Main Store (Owner)');
+            $sellerName = e($sl->seller?->name ?? 'System');
+            $customerName = e($sl->customer_name ?: 'Walk-in');
+
+            $displayItems = $sl->items;
+            if ($itemId) {
+                $displayItems = $displayItems->where('item_id', $itemId);
+            }
+            if (($stockType ?? '') === 'admin') {
+                $displayItems = $displayItems->where('is_admin_stock', true);
+            } elseif (($stockType ?? '') === 'normal') {
+                $displayItems = $displayItems->where('is_admin_stock', false);
+            } elseif (empty($stockType) && $isOwner) {
+                $displayItems = $displayItems->where('is_admin_stock', false);
+            }
+
+            $itemsHtml = '';
+            $saleRevenue = 0;
+            $saleCost = 0;
+
+            foreach ($displayItems as $item) {
+                if ($isOwner && $isIndependent && $sl->shop_id !== null) {
+                    $itemRevenue = (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
+                } else {
+                    $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+                }
+
+                if ($isOwner) {
+                    $itemCost = (float) ($item->owner_cost_price ?? 0) * $item->quantity;
+                } else {
+                    $itemCost = (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
+                }
+
+                $saleRevenue += $itemRevenue;
+                $saleCost += $itemCost;
+
+                $itemsHtml .= '<div style="font-size:.78rem;line-height:1.4;margin-bottom:2px;" class="d-flex align-items-center gap-1 flex-wrap">';
+                $itemsHtml .= '<span>' . e($item->item?->item_name ?? 'Unknown Item') . ' (x' . $item->quantity . ')</span>';
+                if (!$isOwner) {
+                    if ($item->is_admin_stock) {
+                        $itemsHtml .= ' <span class="badge bg-info text-dark" style="font-size:.65rem;padding:.15rem .3rem;"><i class="bi bi-person-fill-lock"></i> Admin</span>';
+                    } else {
+                        $itemsHtml .= ' <span class="badge bg-secondary" style="font-size:.65rem;padding:.15rem .3rem;"><i class="bi bi-shop"></i> Normal</span>';
+                    }
+                }
+                $itemsHtml .= '</div>';
+            }
+
+            $saleProfit = $saleRevenue - $saleCost;
+            $method = e(str_replace('_', ' ', ucfirst($sl->payment_method)));
+            $revenueHtml = '<strong style="color:#3fb950;">TZS ' . number_format($saleRevenue, 0) . '</strong>';
+            $profitHtml = '<strong style="color:#ffc107;">TZS ' . number_format($saleProfit, 0) . '</strong>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'sale_date' => $saleDate,
+                'shop' => $shopName,
+                'seller' => $sellerName,
+                'customer' => $customerName,
+                'items' => $itemsHtml,
+                'method' => $method,
+                'revenue' => $revenueHtml,
+                'profit' => $profitHtml,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function stockData(Request $request)
+    {
+        $user = auth()->user();
+        $type = $request->get('type', 'main');
+        if (!$user->isOwner()) {
+            $type = 'shop';
+        }
+
+        if ($type === 'main') {
+            $groupedQuery = \App\Models\MainStock::selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
+                ->groupBy('item_id');
+
+            $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
+                ->mergeBindings($groupedQuery->toBase())
+                ->count();
+
+            $searchValue = trim($request->input('search.value', ''));
+            if ($searchValue !== '') {
+                $groupedQuery->whereHas('item', function($q) use ($searchValue) {
+                    $q->where('item_name', 'like', "%{$searchValue}%")
+                      ->orWhereHas('category', function($cq) use ($searchValue) {
+                          $cq->where('category_name', 'like', "%{$searchValue}%");
+                      });
+                });
+            }
+            $recordsFiltered = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
+                ->mergeBindings($groupedQuery->toBase())
+                ->count();
+
+            $start = max(0, (int) $request->input('start', 0));
+            $allowedLengths = [10, 25, 50, 100];
+            $requestedLength = (int) $request->input('length', 10);
+            $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+            $stocks = $groupedQuery->with('item.category')->skip($start)->take($length)->get();
+
+            $data = [];
+            foreach ($stocks as $index => $ms) {
+                $iteration = $start + $index + 1;
+                $productName = e($ms->item?->item_name ?? 'N/A');
+                $categoryName = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($ms->item?->category?->category_name ?? 'General') . '</span>';
+                $qtyHtml = '<strong style="color:' . ($ms->qty > 0 ? '#3fb950' : '#e94560') . '">' . $ms->qty . '</strong>';
+                $valueHtml = 'TZS ' . number_format($ms->value, 0);
+                $sellValueHtml = '<strong style="color:#58a6ff;">TZS ' . number_format($ms->sell_value, 0) . '</strong>';
+
+                $data[] = [
+                    'iteration' => $iteration,
+                    'product' => $productName,
+                    'category' => $categoryName,
+                    'qty' => $qtyHtml,
+                    'value' => $valueHtml,
+                    'sell_value' => $sellValueHtml,
+                ];
+            }
+        } else {
+            $query = \App\Models\ShopStock::with('item.category', 'shop')
+                ->where('remaining_quantity', '>', 0);
+
+            if (!$user->isOwner()) {
+                $query->where('shop_id', $user->shop_id);
+            } else {
+                $query->where('is_admin_stock', false);
+            }
+
+            $recordsTotal = (clone $query)->count();
+
+            $searchValue = trim($request->input('search.value', ''));
+            if ($searchValue !== '') {
+                $query->where(function($q) use ($searchValue) {
+                    $q->orWhereHas('item', function($sq) use ($searchValue) {
+                        $sq->where('item_name', 'like', "%{$searchValue}%")
+                          ->orWhereHas('category', function($cq) use ($searchValue) {
+                              $cq->where('category_name', 'like', "%{$searchValue}%");
+                          });
+                    })->orWhereHas('shop', function($sq) use ($searchValue) {
+                        $sq->where('shop_name', 'like', "%{$searchValue}%");
+                    });
+                });
+            }
+
+            $recordsFiltered = (clone $query)->count();
+
+            $start = max(0, (int) $request->input('start', 0));
+            $allowedLengths = [10, 25, 50, 100];
+            $requestedLength = (int) $request->input('length', 10);
+            $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+            $stocks = $query->skip($start)->take($length)->get();
+
+            $data = [];
+            foreach ($stocks as $index => $ss) {
+                $iteration = $start + $index + 1;
+                $shopName = e($ss->shop?->shop_name ?? 'N/A');
+                $productName = e($ss->item?->item_name ?? 'N/A');
+                $categoryName = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($ss->item?->category?->category_name ?? 'General') . '</span>';
+                $qtyHtml = '<strong style="color:' . ($ss->isLowStock() ? '#e94560' : '#3fb950') . '">' . $ss->remaining_quantity . '</strong>';
+                $priceHtml = 'TZS ' . number_format($ss->selling_price, 0);
+                $totalValuationHtml = '<strong style="color:#58a6ff;">TZS ' . number_format($ss->remaining_quantity * $ss->selling_price, 0) . '</strong>';
+
+                $data[] = [
+                    'iteration' => $iteration,
+                    'shop' => $shopName,
+                    'product' => $productName,
+                    'category' => $categoryName,
+                    'qty' => $qtyHtml,
+                    'price' => $priceHtml,
+                    'total_valuation' => $totalValuationHtml,
+                ];
+            }
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function transferData(Request $request)
+    {
+        $status = $request->get('status', 'all');
+        $user = auth()->user();
+
+        $query = StockRequest::query();
+
+        if ($user->isShopAdmin()) {
+            $query->where('shop_id', $user->shop_id);
+        }
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $cleanId = preg_replace('/[^0-9]/', '', $searchValue);
+                if ($cleanId !== '') {
+                    $q->orWhere('stock_requests.id', $cleanId);
+                }
+                $q->orWhere('stock_requests.status', 'like', "%{$searchValue}%")
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('requester', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $requests = $query->with('shop', 'requester', 'items')
+            ->orderBy('stock_requests.request_date', 'desc')
+            ->orderBy('stock_requests.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($requests as $index => $req) {
+            $iteration = $start + $index + 1;
+            $requestId = '#REQ-' . $req->id;
+            $shopName = e($req->shop?->shop_name ?? 'N/A');
+            $requesterName = e($req->requester?->name ?? 'N/A');
+            $requestDate = $req->request_date ? $req->request_date->format('M d, Y') : 'N/A';
+            $statusBadge = '<span class="status-badge badge-' . $req->status . '">' . e(ucfirst($req->status)) . '</span>';
+            $itemsCount = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">' . $req->items->count() . ' item(s)</span>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'request_id' => $requestId,
+                'shop' => $shopName,
+                'requester' => $requesterName,
+                'request_date' => $requestDate,
+                'status' => $statusBadge,
+                'items' => $itemsCount,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function defectData(Request $request)
+    {
+        $user = auth()->user();
+        $query = Defect::query();
+
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($shopId) {
+            $query->where('shop_id', $shopId);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('defects.reason', 'like', "%{$searchValue}%")
+                  ->orWhere('defects.status', 'like', "%{$searchValue}%")
+                  ->orWhereHas('item', function ($sq) use ($searchValue) {
+                      $sq->where('item_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('shop', function ($sq) use ($searchValue) {
+                      $sq->where('shop_name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('reporter', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $defects = $query->with('shop', 'item', 'reporter')
+            ->orderBy('defects.date', 'desc')
+            ->orderBy('defects.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($defects as $index => $def) {
+            $iteration = $start + $index + 1;
+            $dateStr = $def->date ? $def->date->format('M d, Y') : 'N/A';
+            $location = e($def->shop ? $def->shop->shop_name : 'Main Warehouse');
+            $productName = e($def->item?->item_name ?? 'N/A');
+            $qtyHtml = '<strong style="color:#e94560;">' . $def->quantity . '</strong>';
+            $reason = e($def->reason);
+            $reporterName = e($def->reporter?->name ?? 'N/A');
+            $statusBadge = '<span class="status-badge badge-' . ($def->status === 'resolved' ? 'approved' : 'rejected') . '">' . e(ucfirst($def->status)) . '</span>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'date' => $dateStr,
+                'location' => $location,
+                'product' => $productName,
+                'qty' => $qtyHtml,
+                'reason' => $reason,
+                'reporter' => $reporterName,
+                'status' => $statusBadge,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function expensesData(Request $request)
+    {
+        $user = auth()->user();
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $categoryId = $request->get('expense_category_id');
+
+        $query = Expense::whereIn('status', ['approved', 'review_requested', 'editable']);
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $query->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $query->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        if ($categoryId) {
+            $query->where('expense_category_id', $categoryId);
+        }
+
+        if ($period === 'daily') {
+            $query->whereDate('activity_date', today());
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year);
+        } elseif ($period === 'yearly') {
+            $query->whereYear('activity_date', now()->year);
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) $query->whereDate('activity_date', '>=', $request->date_from);
+            if ($request->filled('date_to'))   $query->whereDate('activity_date', '<=', $request->date_to);
+        }
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('expenses.activity', 'like', "%{$searchValue}%")
+                  ->orWhere('expenses.description', 'like', "%{$searchValue}%")
+                  ->orWhereHas('category', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('recorder', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('approver', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $expenses = $query->with('category', 'recorder', 'approver')
+            ->orderBy('expenses.activity_date', 'desc')
+            ->orderBy('expenses.id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($expenses as $index => $exp) {
+            $iteration = $start + $index + 1;
+            $dateStr = $exp->activity_date ? $exp->activity_date->format('M d, Y') : 'N/A';
+            $categoryBadge = '<span class="badge" style="background:rgba(188,140,255,.12);color:#bc8cff;">' . e($exp->category?->name ?? 'General') . '</span>';
+            $activity = '<strong>' . e($exp->activity) . '</strong>';
+            $recorderName = e($exp->recorder?->name ?? '—');
+            $approverName = e($exp->approver?->name ?? '—');
+            $amountHtml = '<strong class="text-danger">TZS ' . number_format($exp->amount, 0) . '</strong>';
+
+            $data[] = [
+                'iteration' => $iteration,
+                'date' => $dateStr,
+                'category' => $categoryBadge,
+                'activity' => $activity,
+                'recorder' => $recorderName,
+                'approver' => $approverName,
+                'amount' => $amountHtml,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function visitorData(Request $request)
+    {
+        $query = \App\Models\VisitorLog::query();
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('ip_address', 'like', "%{$searchValue}%")
+                  ->orWhere('city', 'like', "%{$searchValue}%")
+                  ->orWhere('country', 'like', "%{$searchValue}%")
+                  ->orWhere('platform', 'like', "%{$searchValue}%")
+                  ->orWhere('browser', 'like', "%{$searchValue}%")
+                  ->orWhere('url', 'like', "%{$searchValue}%")
+                  ->orWhereHas('user', function ($sq) use ($searchValue) {
+                      $sq->where('name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $visitorLogs = $query->with('user')
+            ->orderBy('created_at', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($visitorLogs as $log) {
+            $timeHtml = '<div style="font-weight: 600; font-size: .78rem;">' . e($log->created_at->format('M d, H:i:s')) . '</div><div class="text-muted" style="font-size: .68rem; margin-top: 1px;">' . e($log->created_at->diffForHumans()) . '</div>';
+            $ipAddress = e($log->ip_address);
+            $location = '<span class="text-dark"><i class="bi bi-geo-alt-fill text-muted me-1" style="font-size: .85rem;"></i>' . e($log->city ?: 'Unknown') . ', ' . e($log->country ?: 'Unknown') . '</span>';
+            $deviceBrowser = '<div style="font-weight: 600; font-size: .78rem;">' . e($log->platform ?: 'Unknown') . ' / ' . e($log->browser ?: 'Unknown') . '</div>';
+            $requestUrl = '<div style="font-size: .75rem;" class="text-truncate" style="max-width: 250px;">' . e($log->url) . '</div>';
+            $userAccount = e($log->user?->name ?? 'Guest');
+
+            $data[] = [
+                'time' => $timeHtml,
+                'ip' => $ipAddress,
+                'location' => $location,
+                'device' => $deviceBrowser,
+                'request' => $requestUrl,
+                'user' => $userAccount,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
 }

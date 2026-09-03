@@ -32,16 +32,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($mainStocks as $ms)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-weight:600;">{{ $ms->item->item_name }}</td>
-                    <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $ms->item->category->category_name }}</span></td>
-                    <td><strong style="color:{{ $ms->qty > 0 ? '#3fb950' : '#e94560' }}">{{ $ms->qty }}</strong></td>
-                    <td>TZS {{ number_format($ms->value, 0) }}</td>
-                    <td><strong style="color:#58a6ff;">TZS {{ number_format($ms->sell_value, 0) }}</strong></td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -63,17 +53,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($shopStocks as $ss)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-weight:600;">{{ $ss->shop->shop_name }}</td>
-                    <td>{{ $ss->item->item_name }}</td>
-                    <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $ss->item->category->category_name }}</span></td>
-                    <td><strong style="color:{{ $ss->isLowStock() ? '#e94560' : '#3fb950' }}">{{ $ss->remaining_quantity }}</strong></td>
-                    <td>TZS {{ number_format($ss->selling_price, 0) }}</td>
-                    <td><strong style="color:#58a6ff;">TZS {{ number_format($ss->remaining_quantity * $ss->selling_price, 0) }}</strong></td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -107,7 +86,9 @@ $(() => {
     const shopTotalQty       = {{ (int) $shopTotalQty }};
     const shopTotalValuation = {{ (int) $shopTotalValuation }};
 
-    function fmtTZS(n) { return 'TZS ' + n.toLocaleString('en-TZ'); }
+    function fmtTZS(n) {
+        return 'TZS ' + n.toLocaleString('en-TZ');
+    }
 
     function nowEAT() {
         return new Date().toLocaleString('en-TZ', {
@@ -118,70 +99,67 @@ $(() => {
     }
 
     /* ─── Shared PDF builder ─── */
-    function buildPdf(doc, reportTitle, colWidths, totalsRow) {
+    function buildPdf(doc, reportTitleText, colWidths, totalsRow) {
         var BLUE = '#0088cc';
         doc.pageMargins = [30, 30, 30, 40];
 
-        /* Strip DataTables empty title node */
-        while (doc.content.length && doc.content[0].text === '') { doc.content.shift(); }
+        while (doc.content.length && doc.content[0].text === '') {
+            doc.content.shift();
+        }
 
-        /* ── Blue banner ── */
-        var banner = { canvas: [{ type: 'rect', x: 0, y: 0, w: 782, h: 60, r: 3, color: BLUE }], margin: [0,0,0,0] };
-
-        var brandName = { text: headerName, fontSize: 19, bold: true, color: '#ffffff', alignment: 'center', margin: [0,-54,0,0] };
-
-        var brandSlogan = headerSlogan ? { text: headerSlogan, fontSize: 8, color: '#cce9ff', alignment: 'center', margin: [0,3,0,0] } : null;
-
-        var infoParts = [];
-        if (headerAddress) infoParts.push(headerAddress);
-        if (headerTin)     infoParts.push('TIN: ' + headerTin);
-        if (headerPhone)   infoParts.push('Tel: ' + headerPhone);
-        var infoRow = infoParts.length ? { text: infoParts.join('   \u2022   '), fontSize: 7.5, color: '#555', alignment: 'center', margin: [0,10,0,0] } : null;
-
-        var separator = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 782, y2: 0, lineWidth: 1, lineColor: BLUE }], margin: [0,7,0,0] };
-
-        var titleRow = {
-            columns: [
-                { text: reportTitle, fontSize: 10, bold: true, color: BLUE, width: '*' },
-                { text: 'Generated: ' + nowEAT(), fontSize: 7, color: '#888', alignment: 'right', width: 'auto', margin: [0,2,0,0] }
-            ],
-            margin: [0,7,0,9]
+        var banner = {
+            canvas: [{ type: 'rect', x: 0, y: 0, w: 782, h: 60, r: 3, color: BLUE }],
+            margin: [0, 0, 0, 0]
         };
 
-        var headerBlock = [banner, brandName];
-        if (brandSlogan) headerBlock.push(brandSlogan);
-        if (infoRow)     headerBlock.push(infoRow);
-        headerBlock.push(separator);
-        headerBlock.push(titleRow);
-        doc.content.unshift(...headerBlock);
+        var titleStack = [
+            { text: headerName, fontSize: 13, bold: true, color: '#ffffff' }
+        ];
+        if (headerSlogan)  titleStack.push({ text: headerSlogan,  fontSize: 8,  italic: true, color: '#d0ebff' });
+        if (headerAddress) titleStack.push({ text: headerAddress, fontSize: 7.5, color: '#ffffff' });
 
-        /* ── Table styles ── */
-        doc.styles.tableHeader = { fillColor: BLUE, color: '#ffffff', bold: true, fontSize: 8, alignment: 'center' };
-        doc.defaultStyle.fontSize = 7.5;
+        var metaStack = [];
+        if (headerTin)   metaStack.push({ text: 'TIN: ' + headerTin,   fontSize: 7.5, color: '#ffffff' });
+        if (headerPhone) metaStack.push({ text: 'Tel: ' + headerPhone, fontSize: 7.5, color: '#ffffff' });
+        metaStack.push({ text: reportTitleText, fontSize: 9, bold: true, color: '#ffe066' });
+        metaStack.push({ text: 'Generated: ' + nowEAT(), fontSize: 7, color: '#d0ebff' });
 
-        /* ── Find table, apply widths + zebra + totals ── */
-        var tblNode = null;
-        for (var ci = doc.content.length - 1; ci >= 0; ci--) {
-            if (doc.content[ci] && doc.content[ci].table) { tblNode = doc.content[ci]; break; }
-        }
-        if (tblNode && tblNode.table && tblNode.table.body) {
-            tblNode.table.widths      = colWidths;
-            tblNode.table.dontBreakRows = true;
+        var bannerContent = {
+            margin: [12, -52, 12, 12],
+            columns: [
+                { stack: titleStack, width: '*' },
+                { stack: metaStack,  width: 'auto', alignment: 'right' }
+            ]
+        };
+
+        doc.content.unshift(bannerContent);
+        doc.content.unshift(banner);
+
+        var tblNode = doc.content.find(function(c) { return c.table; });
+        if (tblNode) {
+            tblNode.margin = [0, 12, 0, 0];
+            tblNode.table.widths = colWidths;
+
+            tblNode.table.body[0].forEach(function(cell) {
+                cell.fillColor = BLUE;
+                cell.color = '#ffffff';
+                cell.bold = true;
+                cell.fontSize = 8.5;
+                cell.margin = [4, 4, 4, 4];
+            });
 
             tblNode.table.body.forEach(function(row, i) {
                 if (i === 0) return;
                 row.forEach(function(cell) {
-                    if (typeof cell === 'object') {
-                        cell.fillColor = (i % 2 === 0) ? '#eef6ff' : '#ffffff';
-                        cell.margin    = [3, 3, 3, 3];
-                    }
+                    cell.fontSize = 8;
+                    cell.fillColor = (i % 2 === 0) ? '#eef6ff' : '#ffffff';
+                    cell.margin = [3, 3, 3, 3];
                 });
             });
 
             if (totalsRow) tblNode.table.body.push(totalsRow);
         }
 
-        /* ── Footer ── */
         doc.footer = function(currentPage, pageCount) {
             return { margin: [30,8,30,0], columns: [
                 { text: headerName + ' \u2014 Confidential', fontSize: 6.5, color: '#aaa' },
@@ -254,7 +232,6 @@ $(() => {
 
     /* ════════════════════════════════════════
        MAIN WAREHOUSE STOCK TABLE
-       Cols: No | Product | Category | Qty | Stock Value | Expected Sales Value  (6 cols)
        ════════════════════════════════════════ */
     if ($('#reportsMainStockTable').length) {
         var mainTotalsRow = [
@@ -267,7 +244,26 @@ $(() => {
         ];
 
         $('#reportsMainStockTable').DataTable({
-            dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ajax: {
+                url: "{{ route('reports.stock.data') }}",
+                data: function(d) {
+                    d.type = "main";
+                }
+            },
+            columns: [
+                { data: 'iteration', name: 'iteration' },
+                { data: 'product', name: 'product' },
+                { data: 'category', name: 'category' },
+                { data: 'qty', name: 'qty' },
+                { data: 'value', name: 'value' },
+                { data: 'sell_value', name: 'sell_value' }
+            ],
+            dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
             buttons: [
                 {
                     extend: 'excelHtml5',
@@ -286,7 +282,6 @@ $(() => {
                     orientation: 'landscape',
                     pageSize: 'A4',
                     customize: function(doc) {
-                        /* No | Product | Category | Qty | Stock Value | Expected Sales Value */
                         buildPdf(doc, 'MAIN WAREHOUSE STOCK REPORT', ['auto', '*', '*', 60, 90, 100], mainTotalsRow);
                     }
                 }
@@ -296,7 +291,6 @@ $(() => {
 
     /* ════════════════════════════════════════
        SHOP STOCKS TABLE
-       Cols: No | Shop | Product | Category | Qty | Selling Price | Total Valuation  (7 cols)
        ════════════════════════════════════════ */
     if ($('#reportsShopStockTable').length) {
         var shopTotalsRow = [
@@ -310,7 +304,27 @@ $(() => {
         ];
 
         $('#reportsShopStockTable').DataTable({
-            dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            ajax: {
+                url: "{{ route('reports.stock.data') }}",
+                data: function(d) {
+                    d.type = "shop";
+                }
+            },
+            columns: [
+                { data: 'iteration', name: 'iteration' },
+                { data: 'shop', name: 'shop' },
+                { data: 'product', name: 'product' },
+                { data: 'category', name: 'category' },
+                { data: 'qty', name: 'qty' },
+                { data: 'price', name: 'price' },
+                { data: 'total_valuation', name: 'total_valuation' }
+            ],
+            dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
             buttons: [
                 {
                     extend: 'excelHtml5',
@@ -329,7 +343,6 @@ $(() => {
                     orientation: 'landscape',
                     pageSize: 'A4',
                     customize: function(doc) {
-                        /* No | Shop | Product | Category | Qty | Selling Price | Total Valuation */
                         buildPdf(doc, 'SHOP STOCKS INVENTORY REPORT', ['auto', '*', '*', '*', 50, 70, 90], shopTotalsRow);
                     }
                 }
