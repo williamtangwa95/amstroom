@@ -31,15 +31,6 @@
 </div>
 @endif
 
-@php
-    $totalInitialCost = $stocks->sum(fn($st) => $st->stocked_quantity * $st->buying_price);
-    $totalInitialSell = $stocks->sum(fn($st) => $st->stocked_quantity * $st->selling_price);
-    $totalRemainingCost = $stocks->sum(fn($st) => $st->remaining_quantity * $st->buying_price);
-    $totalRemainingSell = $stocks->sum(fn($st) => $st->remaining_quantity * $st->selling_price);
-    $totalInitialQty = $stocks->sum('stocked_quantity');
-    $totalRemainingQty = $stocks->sum('remaining_quantity');
-@endphp
-
 <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 mb-4">
     <!-- Total Cost Value Card -->
     <div class="col">
@@ -48,8 +39,8 @@
                 <i class="bi bi-cash-stack"></i>
             </div>
             <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalInitialCost, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Cost Value ({{ number_format($totalInitialQty) }} units)">Total Cost <span class="small">({{ number_format($totalInitialQty) }})</span></div>
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Cost Value ({{ number_format($stats['totalInitialQty']) }} units)">Total Cost <span class="small">({{ number_format($stats['totalInitialQty']) }})</span></div>
             </div>
         </div>
     </div>
@@ -61,7 +52,7 @@
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
             <div class="overflow-hidden">
-                <div class="stat-value mb-0 text-success" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalInitialSell, 0) }}</div>
+                <div class="stat-value mb-0 text-success" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
             </div>
         </div>
@@ -74,8 +65,8 @@
                 <i class="bi bi-box-seam"></i>
             </div>
             <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalRemainingCost, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($totalRemainingQty) }} units)">Remain Value <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($stats['totalRemainingQty']) }} units)">Remain Value <span class="small">({{ number_format($stats['totalRemainingQty']) }})</span></div>
             </div>
         </div>
     </div>
@@ -87,7 +78,7 @@
                 <i class="bi bi-piggy-bank"></i>
             </div>
             <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalRemainingSell, 0) }}</div>
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
             </div>
         </div>
@@ -100,7 +91,7 @@
                 <i class="bi bi-layers"></i>
             </div>
             <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">{{ number_format($stocks->count()) }}</div>
+                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">{{ number_format($stats['stockBatchesCount']) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
             </div>
         </div>
@@ -137,61 +128,6 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($stocks as $stock)
-                <tr>
-                    <td><input type="checkbox" class="stock-checkbox" data-id="{{ $stock->id }}" style="cursor:pointer;"></td>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            @if($stock->item->image_path)
-                                <div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage('{{ asset('media/' . $stock->item->image_path) }}', '{{ addslashes(e($stock->item->item_name)) }}')" title="Click to zoom image">
-                                    <img src="{{ asset('media/' . $stock->item->image_path) }}" alt="{{ $stock->item->item_name }}" class="product-img-thumb w-100 h-100" style="object-fit: cover; transition: transform 0.25s ease;">
-                                    <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;">
-                                        <i class="bi bi-zoom-in text-white fs-6"></i>
-                                    </div>
-                                </div>
-                            @else
-                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 36px; height: 36px; border: 1px solid var(--card-border); flex-shrink: 0;">
-                                    <i class="bi bi-image" style="font-size: 0.8rem;"></i>
-                                </div>
-                            @endif
-                            <div>
-                                <div style="font-weight:600;font-size:.83rem;">{{ $stock->item->item_name }}</div>
-                                <div style="font-size:.7rem;color:var(--text-secondary);">{{ $stock->item->brand }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td><span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">{{ $stock->item->category->category_name }}</span></td>
-                    <td style="font-size:.82rem;">TZS {{ number_format($stock->buying_price, 0) }}</td>
-                    <td style="font-size:.82rem;">TZS {{ number_format($stock->selling_price, 0) }}</td>
-                    <td style="font-size:.82rem;">{{ $stock->stocked_quantity }}</td>
-                    <td>
-                        <strong style="color:{{ $stock->remaining_quantity > 0 ? '#3fb950' : '#e94560' }};">
-                            {{ $stock->remaining_quantity }}
-                        </strong>
-                    </td>
-                    <td style="font-size:.75rem;color:var(--text-secondary);">{{ $stock->date_received->format('M d, Y') }}</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('main-stock.show', $stock) }}" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('main-stock.edit', $stock) }}" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>
-                            @if($stock->stocked_quantity == $stock->remaining_quantity)
-                            <form action="{{ route('main-stock.destroy', $stock) }}" method="POST" class="d-inline delete-stock-form">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                            @endif
-                            <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
-                                <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $stock->id }}" style="cursor:pointer; width: 30px; height: 16px;" 
-                                    {{ $stock->allow_components ? 'checked' : '' }} title="Toggle custom components capability">
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
             </tbody>
         </table>
     </div>
@@ -234,7 +170,24 @@
 @push('scripts')
 <script>
     $(() => {
-        $('#mainStockTable').DataTable();
+        $('#mainStockTable').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: '{{ route("main-stock.data") }}',
+            columns: [
+                { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false },
+                { data: 'no', name: 'no', orderable: false, searchable: false },
+                { data: 'product', name: 'product' },
+                { data: 'category', name: 'category' },
+                { data: 'buying_price', name: 'buying_price' },
+                { data: 'selling_price', name: 'selling_price' },
+                { data: 'stocked_quantity', name: 'stocked_quantity' },
+                { data: 'remaining_quantity', name: 'remaining_quantity' },
+                { data: 'date_received', name: 'date_received' },
+                { data: 'actions', name: 'actions', orderable: false, searchable: false }
+            ],
+            order: [[8, 'desc']]
+        });
 
         $('.toggle-components-btn').on('change', function() {
             const isChecked = $(this).is(':checked');

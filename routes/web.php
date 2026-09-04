@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
 
         // Main Store
         Route::get('main-stock', [MainStockController::class, 'index'])->name('main-stock.index');
+        Route::get('main-stock/data', [MainStockController::class, 'data'])->name('main-stock.data');
         Route::get('main-stock/import-template', [MainStockController::class, 'downloadTemplate'])->name('main-stock.import-template');
         Route::post('main-stock/import', [MainStockController::class, 'import'])->name('main-stock.import');
         Route::get('main-stock/create', [MainStockController::class, 'create'])->name('main-stock.create');

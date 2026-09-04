@@ -19,14 +19,185 @@ class MainStockController extends Controller
 {
     public function index()
     {
-        $stocks = MainStock::with('item.category')
-            ->latest()
-            ->get();
+        $stats = [
+            'totalInitialCost'   => MainStock::selectRaw('SUM(stocked_quantity * buying_price) as val')->value('val') ?? 0,
+            'totalInitialSell'   => MainStock::selectRaw('SUM(stocked_quantity * selling_price) as val')->value('val') ?? 0,
+            'totalRemainingCost' => MainStock::selectRaw('SUM(remaining_quantity * buying_price) as val')->value('val') ?? 0,
+            'totalRemainingSell' => MainStock::selectRaw('SUM(remaining_quantity * selling_price) as val')->value('val') ?? 0,
+            'totalInitialQty'    => MainStock::sum('stocked_quantity') ?? 0,
+            'totalRemainingQty'  => MainStock::sum('remaining_quantity') ?? 0,
+            'stockBatchesCount'  => MainStock::count(),
+        ];
 
-        $totalValue = MainStock::selectRaw('SUM(remaining_quantity * buying_price) as val')->value('val') ?? 0;
-        $totalSellValue = MainStock::selectRaw('SUM(remaining_quantity * selling_price) as val')->value('val') ?? 0;
+        return view('main-stock.index', compact('stats'));
+    }
 
-        return view('main-stock.index', compact('stocks', 'totalValue', 'totalSellValue'));
+    public function data(Request $request)
+    {
+        $query = MainStock::with(['item.category']);
+
+        $recordsTotal = MainStock::count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->whereHas('item', function ($sq) use ($searchValue) {
+                    $sq->where('item_name', 'like', "%{$searchValue}%")
+                       ->orWhere('brand', 'like', "%{$searchValue}%")
+                       ->orWhere('model', 'like', "%{$searchValue}%")
+                       ->orWhereHas('category', function ($cq) use ($searchValue) {
+                           $cq->where('category_name', 'like', "%{$searchValue}%");
+                       });
+                })
+                ->orWhere('buying_price', 'like', "%{$searchValue}%")
+                ->orWhere('selling_price', 'like', "%{$searchValue}%")
+                ->orWhere('stocked_quantity', 'like', "%{$searchValue}%")
+                ->orWhere('remaining_quantity', 'like', "%{$searchValue}%");
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $orderColumnIndex = $request->input('order.0.column', 8);
+        $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        switch ((int) $orderColumnIndex) {
+            case 2:
+                $query->join('items', 'items.id', '=', 'main_stocks.item_id')
+                      ->orderBy('items.item_name', $orderDirection)
+                      ->select('main_stocks.*');
+                break;
+            case 3:
+                $query->join('items', 'items.id', '=', 'main_stocks.item_id')
+                      ->join('categories', 'categories.id', '=', 'items.category_id')
+                      ->orderBy('categories.category_name', $orderDirection)
+                      ->select('main_stocks.*');
+                break;
+            case 4:
+                $query->orderBy('buying_price', $orderDirection);
+                break;
+            case 5:
+                $query->orderBy('selling_price', $orderDirection);
+                break;
+            case 6:
+                $query->orderBy('stocked_quantity', $orderDirection);
+                break;
+            case 7:
+                $query->orderBy('remaining_quantity', $orderDirection);
+                break;
+            case 8:
+                $query->orderBy('date_received', $orderDirection);
+                break;
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        if ($length > 0) {
+            $query->skip($start)->take($length);
+        }
+
+        $stocks = $query->get();
+
+        $data = [];
+        foreach ($stocks as $index => $stock) {
+            $rowNumber = $start + $index + 1;
+
+            $checkbox = '<input type="checkbox" class="stock-checkbox" data-id="' . $stock->id . '" style="cursor:pointer;">';
+
+            $item = $stock->item;
+            $itemName = e($item?->item_name ?? 'N/A');
+            $itemBrand = e($item?->brand ?? '');
+            $escapedTitle = addslashes($itemName);
+
+            if ($item && $item->image_path) {
+                $imgUrl = asset('media/' . $item->image_path);
+                $productHtml = '
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage(\'' . $imgUrl . '\', \'' . $escapedTitle . '\')" title="Click to zoom image">
+                            <img src="' . $imgUrl . '" alt="' . $itemName . '" class="product-img-thumb w-100 h-100" style="object-fit: cover; transition: transform 0.25s ease;">
+                            <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;">
+                                <i class="bi bi-zoom-in text-white fs-6"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-weight:600;font-size:.83rem;">' . $itemName . '</div>
+                            <div style="font-size:.7rem;color:var(--text-secondary);">' . $itemBrand . '</div>
+                        </div>
+                    </div>';
+            } else {
+                $productHtml = '
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width: 36px; height: 36px; border: 1px solid var(--card-border); flex-shrink: 0;">
+                            <i class="bi bi-image" style="font-size: 0.8rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:600;font-size:.83rem;">' . $itemName . '</div>
+                            <div style="font-size:.7rem;color:var(--text-secondary);">' . $itemBrand . '</div>
+                        </div>
+                    </div>';
+            }
+
+            $categoryName = e($item?->category?->category_name ?? 'Uncategorized');
+            $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . $categoryName . '</span>';
+
+            $buyPriceHtml = '<span style="font-size:.82rem;">TZS ' . number_format($stock->buying_price, 0) . '</span>';
+            $sellPriceHtml = '<span style="font-size:.82rem;">TZS ' . number_format($stock->selling_price, 0) . '</span>';
+            $stockedQtyHtml = '<span style="font-size:.82rem;">' . $stock->stocked_quantity . '</span>';
+
+            $remColor = $stock->remaining_quantity > 0 ? '#3fb950' : '#e94560';
+            $remainingQtyHtml = '<strong style="color:' . $remColor . ';">' . $stock->remaining_quantity . '</strong>';
+
+            $dateHtml = '<span style="font-size:.75rem;color:var(--text-secondary);">' . ($stock->date_received ? $stock->date_received->format('M d, Y') : 'N/A') . '</span>';
+
+            $showRoute = route('main-stock.show', $stock->id);
+            $editRoute = route('main-stock.edit', $stock->id);
+            $destroyRoute = route('main-stock.destroy', $stock->id);
+
+            $actionsHtml = '<div class="d-flex align-items-center gap-2">
+                <a href="' . $showRoute . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>
+                <a href="' . $editRoute . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
+
+            if ($stock->stocked_quantity == $stock->remaining_quantity) {
+                $actionsHtml .= '
+                <form action="' . $destroyRoute . '" method="POST" class="d-inline delete-stock-form">
+                    ' . csrf_field() . '
+                    ' . method_field('DELETE') . '
+                    <button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>';
+            }
+
+            $checked = $stock->allow_components ? 'checked' : '';
+            $actionsHtml .= '
+                <div class="form-check form-switch ms-1 mb-0 d-flex align-items-center">
+                    <input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $stock->id . '" style="cursor:pointer; width: 30px; height: 16px;" ' . $checked . ' title="Toggle custom components capability">
+                </div>
+            </div>';
+
+            $data[] = [
+                'checkbox'          => $checkbox,
+                'no'                => $rowNumber,
+                'product'           => $productHtml,
+                'category'          => $categoryHtml,
+                'buying_price'      => $buyPriceHtml,
+                'selling_price'     => $sellPriceHtml,
+                'stocked_quantity'  => $stockedQtyHtml,
+                'remaining_quantity'=> $remainingQtyHtml,
+                'date_received'     => $dateHtml,
+                'actions'           => $actionsHtml,
+            ];
+        }
+
+        return response()->json([
+            'draw'            => (int) $request->input('draw', 1),
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data,
+        ]);
     }
 
     public function create()
