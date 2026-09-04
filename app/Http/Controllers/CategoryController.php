@@ -13,6 +13,11 @@ class CategoryController extends Controller
 {
     public function index()
     {
+        return view('categories.index');
+    }
+
+    public function data(Request $request)
+    {
         $user = auth()->user();
         $categoriesQuery = Category::query();
 
@@ -24,7 +29,23 @@ class CategoryController extends Controller
                          ->where('shop_id', $user->shop_id);
                   });
             });
+        } else {
+            $categoriesQuery->where('is_admin_category', false);
+        }
 
+        $recordsTotal = (clone $categoriesQuery)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $categoriesQuery->where(function ($q) use ($searchValue) {
+                $q->orWhere('category_name', 'like', "%{$searchValue}%")
+                  ->orWhere('description', 'like', "%{$searchValue}%");
+            });
+        }
+
+        $recordsFiltered = (clone $categoriesQuery)->count();
+
+        if ($user && $user->isShopAdmin()) {
             $categoriesQuery->withCount(['items' => function ($q) use ($user) {
                 $q->where(function ($sq) use ($user) {
                     $sq->where('is_admin_item', false)
@@ -48,8 +69,6 @@ class CategoryController extends Controller
                 });
             }]);
         } else {
-            $categoriesQuery->where('is_admin_category', false);
-
             $categoriesQuery->withCount(['items' => function ($q) {
                 $q->where('is_admin_item', false);
             }]);
@@ -66,9 +85,55 @@ class CategoryController extends Controller
             }]);
         }
 
-        $categories = $categoriesQuery->latest()->get();
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        return view('categories.index', compact('categories'));
+        $categories = $categoriesQuery->orderBy('id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($categories as $index => $cat) {
+            $iteration = $start + $index + 1;
+            $nameHtml = '<strong style="font-size:.85rem;">' . e($cat->category_name) . '</strong>';
+            $descHtml = '<span style="font-size:.8rem;color:var(--text-secondary);">' . (e(\Illuminate\Support\Str::limit($cat->description, 60)) ?: '—') . '</span>';
+            $badgeTitle = e($cat->available_items_count . ' in stock / ' . $cat->items_count . ' total');
+            $productsHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;" title="' . $badgeTitle . '">'
+                . e($cat->available_items_count . ' available / ' . $cat->items_count . ' total') . '</span>';
+            $createdHtml = '<span style="font-size:.75rem;color:var(--text-secondary);">' . ($cat->created_at ? $cat->created_at->format('M d, Y') : '—') . '</span>';
+
+            $actions = '<div class="d-flex gap-1">
+                <a href="' . route('categories.edit', $cat) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+                <form method="POST" action="' . route('categories.destroy', $cat) . '" id="del-cat-' . $cat->id . '" class="d-inline">
+                    ' . csrf_field() . method_field('DELETE') . '
+                    <button type="button" class="btn btn-xs btn-outline-custom"
+                        data-confirm="Delete category?"
+                        data-text="This will fail if the category has items."
+                        data-form="del-cat-' . $cat->id . '">
+                        <i class="bi bi-trash" style="color:#e94560;"></i>
+                    </button>
+                </form>
+            </div>';
+
+            $data[] = [
+                'no' => $iteration,
+                'category_name' => $nameHtml,
+                'description' => $descHtml,
+                'products' => $productsHtml,
+                'created_at' => $createdHtml,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

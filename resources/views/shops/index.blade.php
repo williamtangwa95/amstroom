@@ -33,57 +33,31 @@
                     <th class="no-sort">Actions</th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach($shops as $shop)
-                <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td>
-                        <div style="font-weight:600;font-size:.85rem;">{{ $shop->shop_name }}</div>
-                        <div style="font-size:.73rem;color:var(--text-secondary);">{{ $shop->email }}</div>
-                    </td>
-                    <td style="font-size:.82rem;">{{ $shop->location }}</td>
-                    <td style="font-size:.82rem;">{{ $shop->phone ?: '—' }}</td>
-                    <td>
-                        <span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">
-                            {{ $shop->users_count }}
-                        </span>
-                    </td>
-                    <td>
-                        <span style="background:rgba(63,185,80,.12);color:#3fb950;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">
-                            {{ $shop->sales_count }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="status-badge {{ $shop->status === 'active' ? 'badge-active' : 'badge-inactive' }}">
-                            <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
-                            {{ ucfirst($shop->status) }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            <a href="{{ route('shops.show', $shop) }}" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                            <a href="{{ route('shops.edit', $shop) }}" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
-                            @if(auth()->user()->isOwner())
-                            <form method="POST" action="{{ route('shops.destroy', $shop) }}" id="del-shop-{{ $shop->id }}">
-                                @csrf @method('DELETE')
-                                <button type="button" class="btn btn-xs btn-outline-custom"
-                                    data-confirm="Delete this shop?"
-                                    data-text="All associated data may be affected."
-                                    data-form="del-shop-{{ $shop->id }}">
-                                    <i class="bi bi-trash" style="color:#e94560;"></i>
-                                </button>
-                            </form>
-                            @endif
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 </div>
 @endsection
 
 @push('scripts')
-<script>$(()=>$('#shopsTable').DataTable())</script>
+<script>
+$(function() {
+    $('#shopsTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: '{{ route("shops.data") }}',
+        columns: [
+            { data: 'no', name: 'no', orderable: false, searchable: false },
+            { data: 'shop_name', name: 'shop_name' },
+            { data: 'location', name: 'location' },
+            { data: 'phone', name: 'phone' },
+            { data: 'employees', name: 'employees', orderable: false, searchable: false },
+            { data: 'sales', name: 'sales', orderable: false, searchable: false },
+            { data: 'status', name: 'status', orderable: false, searchable: false },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false }
+        ],
+        order: [[1, 'asc']]
+    });
+});
+</script>
 @endpush

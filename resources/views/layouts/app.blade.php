@@ -1348,25 +1348,31 @@
         </nav>
 
         {{-- User info at bottom --}}
-        <div style="padding: 1rem; border-top: 1px solid var(--sidebar-border); margin-top: auto; background: rgba(0, 0, 0, 0.08);">
-            <div style="display:flex; align-items:center; gap:.65rem;">
-                <a href="{{ route('profile.edit') }}" style="width:34px;height:34px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow: 0 2px 6px rgba(0,0,0,0.1);text-decoration:none;" title="My Profile">
-                    <i class="bi bi-person-fill" style="font-size:.95rem;color:#0088cc;"></i>
+        <div style="padding: 0.85rem 1rem; border-top: 1px solid var(--sidebar-border); margin-top: auto; background: rgba(0, 0, 0, 0.12); flex-shrink: 0;">
+            <div style="display:flex; align-items:center; gap:.65rem; min-width: 0;">
+                <a href="{{ route('profile.edit') }}" style="width:36px;height:36px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow: 0 2px 6px rgba(0,0,0,0.15);text-decoration:none;overflow:hidden;" title="My Profile: {{ auth()->user()->name }}">
+                    @if(auth()->user()->avatar_path)
+                    <img src="{{ asset('media/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" style="width:100%;height:100%;object-fit:cover;">
+                    @else
+                    <i class="bi bi-person-fill" style="font-size:1rem;color:#0088cc;"></i>
+                    @endif
                 </a>
-                <div style="flex:1;min-width:0;">
-                    <a href="{{ route('profile.edit') }}" style="font-size:.82rem;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;text-decoration:none;" title="Edit Profile">
+                <div style="flex:1;min-width:0;line-height:1.25;">
+                    <a href="{{ route('profile.edit') }}" style="font-size:.82rem;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;text-decoration:none;" title="{{ auth()->user()->name }}">
                         {{ auth()->user()->name }}
                     </a>
-                    <div style="font-size:.68rem;color:rgba(255,255,255,0.75);">{{ auth()->user()->email }}</div>
+                    <div style="font-size:.68rem;color:rgba(255,255,255,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ auth()->user()->email }}">
+                        {{ auth()->user()->email }}
+                    </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:.5rem;">
-                    <a href="{{ route('profile.edit') }}" style="color:rgba(255,255,255,0.9);text-decoration:none;" title="My Profile">
-                        <i class="bi bi-gear-fill" style="font-size:1rem;"></i>
+                <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0;">
+                    <a href="{{ route('profile.edit') }}" style="color:rgba(255,255,255,0.85);text-decoration:none;padding:.25rem .35rem;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all .15s ease;" title="My Profile / Settings" onmouseover="this.style.background='rgba(255,255,255,0.15)';this.style.color='#ffffff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.85)'">
+                        <i class="bi bi-gear-fill" style="font-size:1.05rem;"></i>
                     </a>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
                         @csrf
-                        <button type="submit" style="background:none;border:none;color:rgba(255,255,255,0.9);cursor:pointer;padding:0;" title="Logout">
-                            <i class="bi bi-box-arrow-right" style="font-size:1.05rem;"></i>
+                        <button type="submit" style="background:none;border:none;color:rgba(255,255,255,0.85);cursor:pointer;padding:.25rem .35rem;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all .15s ease;" title="Logout" onmouseover="this.style.background='rgba(255,255,255,0.15)';this.style.color='#ffffff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.85)'">
+                            <i class="bi bi-box-arrow-right" style="font-size:1.1rem;"></i>
                         </button>
                     </form>
                 </div>
@@ -1398,7 +1404,7 @@
 
             <div class="ms-auto d-flex align-items-center gap-2">
                 <!-- Notification Bell Dropdown -->
-                <div class="dropdown me-1" id="notificationDropdownContainer">
+                <div class="dropdown me-1 flex-shrink-0" id="notificationDropdownContainer">
                     <button class="btn btn-sm btn-outline-custom position-relative" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" aria-expanded="false" style="padding: .35rem .65rem; border: 1px solid var(--input-border); background: var(--input-bg);">
                         <i class="bi bi-bell fs-6"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notificationBadge" style="font-size: .55rem; padding: .25em .45em;">
@@ -1422,26 +1428,27 @@
                 </div>
 
                 @if(auth()->user()->shop)
-                <div class="user-badge" title="{{ auth()->user()->shop->shop_name }}">
+                <div class="user-badge flex-shrink-0" title="{{ auth()->user()->shop->shop_name }}">
                     <i class="bi bi-shop text-primary"></i>
-                    <span class="fw-600 d-none d-md-inline">{{ auth()->user()->shop->shop_name }}</span>
+                    <span class="fw-600 d-none d-md-inline text-truncate" style="max-width: 140px; vertical-align: middle;">{{ auth()->user()->shop->shop_name }}</span>
                 </div>
                 @endif
 
-                <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none" title="Manage Profile: {{ auth()->user()->name }}">
+                <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none flex-shrink-0" title="Manage Profile: {{ auth()->user()->name }}">
                     @if(auth()->user()->avatar_path)
-                    <img src="{{ asset('media/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent);">
+                    <img src="{{ asset('media/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent); flex-shrink: 0;">
                     @else
-                    <i class="bi bi-person-circle text-primary"></i>
+                    <i class="bi bi-person-circle text-primary" style="flex-shrink: 0;"></i>
                     @endif
-                    <span class="fw-600 text-dark d-none d-md-inline">{{ auth()->user()->name }}</span>
-                    <span class="role-pill role-{{ auth()->user()->role }} d-none d-lg-inline">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
+                    <span class="fw-600 text-dark d-none d-md-inline text-truncate" style="max-width: 130px; vertical-align: middle;">{{ auth()->user()->name }}</span>
+                    <span class="role-pill role-{{ auth()->user()->role }} d-none d-lg-inline flex-shrink-0">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
                 </a>
 
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" class="m-0 p-0 flex-shrink-0">
                     @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-custom" title="Logout">
-                        <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span>
+                    <button type="submit" class="btn btn-sm btn-outline-custom d-flex align-items-center gap-1" title="Logout">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span class="d-none d-sm-inline">Logout</span>
                     </button>
                 </form>
             </div>

@@ -11,13 +11,94 @@ class ShopController extends Controller
 {
     public function index()
     {
+        return view('shops.index');
+    }
+
+    public function data(Request $request)
+    {
         $user = auth()->user();
-        if ($user->isOwner()) {
-            $shops = Shop::withCount(['users', 'sales'])->latest()->get();
-        } else {
-            $shops = Shop::where('id', $user->shop_id)->withCount(['users', 'sales'])->get();
+        $query = Shop::query();
+
+        if (!$user->isOwner()) {
+            $query->where('id', $user->shop_id);
         }
-        return view('shops.index', compact('shops'));
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('shop_name', 'like', "%{$searchValue}%")
+                  ->orWhere('location', 'like', "%{$searchValue}%")
+                  ->orWhere('phone', 'like', "%{$searchValue}%")
+                  ->orWhere('email', 'like', "%{$searchValue}%");
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $shops = $query->withCount(['users', 'sales'])
+            ->orderBy('id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($shops as $index => $shop) {
+            $iteration = $start + $index + 1;
+            
+            $nameHtml = '<div><div style="font-weight:600;font-size:.85rem;">' . e($shop->shop_name) . '</div>';
+            if ($shop->email) {
+                $nameHtml .= '<div style="font-size:.73rem;color:var(--text-secondary);">' . e($shop->email) . '</div>';
+            }
+            $nameHtml .= '</div>';
+
+            $employeesHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">' . $shop->users_count . '</span>';
+            $salesHtml = '<span style="background:rgba(63,185,80,.12);color:#3fb950;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">' . $shop->sales_count . '</span>';
+            
+            $statusClass = $shop->status === 'active' ? 'badge-active' : 'badge-inactive';
+            $statusHtml = '<span class="status-badge ' . $statusClass . '"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span> ' . e(ucfirst($shop->status)) . '</span>';
+
+            $actions = '<div class="d-flex gap-1">
+                <a href="' . route('shops.show', $shop) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
+                <a href="' . route('shops.edit', $shop) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+
+            if ($user->isOwner()) {
+                $actions .= '<form method="POST" action="' . route('shops.destroy', $shop) . '" id="del-shop-' . $shop->id . '" class="d-inline">
+                    ' . csrf_field() . method_field('DELETE') . '
+                    <button type="button" class="btn btn-xs btn-outline-custom"
+                        data-confirm="Delete this shop?"
+                        data-text="All associated data may be affected."
+                        data-form="del-shop-' . $shop->id . '">
+                        <i class="bi bi-trash" style="color:#e94560;"></i>
+                    </button>
+                </form>';
+            }
+            $actions .= '</div>';
+
+            $data[] = [
+                'no' => $iteration,
+                'shop_name' => $nameHtml,
+                'location' => e($shop->location),
+                'phone' => e($shop->phone ?: '—'),
+                'employees' => $employeesHtml,
+                'sales' => $salesHtml,
+                'status' => $statusHtml,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

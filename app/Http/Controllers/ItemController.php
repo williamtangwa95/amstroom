@@ -16,8 +16,94 @@ class ItemController extends Controller
 {
     public function index()
     {
-        $items = Item::with('category')->where('is_admin_item', false)->latest()->get();
-        return view('items.index', compact('items'));
+        return view('items.index');
+    }
+
+    public function data(Request $request)
+    {
+        $query = Item::query()->where('is_admin_item', false);
+
+        $recordsTotal = (clone $query)->count();
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhere('item_name', 'like', "%{$searchValue}%")
+                  ->orWhere('specification', 'like', "%{$searchValue}%")
+                  ->orWhere('brand', 'like', "%{$searchValue}%")
+                  ->orWhere('model', 'like', "%{$searchValue}%")
+                  ->orWhere('warranty_period', 'like', "%{$searchValue}%")
+                  ->orWhereHas('category', function ($cq) use ($searchValue) {
+                      $cq->where('category_name', 'like', "%{$searchValue}%");
+                  });
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $items = $query->with('category', 'mainStocks')
+            ->orderBy('id', 'desc')
+            ->skip($start)
+            ->take($length)
+            ->get();
+
+        $data = [];
+        foreach ($items as $index => $item) {
+            $iteration = $start + $index + 1;
+            $stock = $item->mainStocks->sum('remaining_quantity');
+            $stockHtml = '<span style="font-weight:700;color:' . ($stock > 0 ? '#3fb950' : '#e94560') . ';">' . $stock . '</span>';
+            $categoryName = e($item->category ? $item->category->category_name : '—');
+            $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;font-weight:600;">' . $categoryName . '</span>';
+            
+            $productHtml = '<div><div style="font-weight:600;font-size:.85rem;">' . e($item->item_name) . '</div>';
+            if ($item->specification) {
+                $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e(\Illuminate\Support\Str::limit($item->specification, 50)) . '</div>';
+            }
+            $productHtml .= '</div>';
+
+            $brandModel = e($item->brand ?: '');
+            if ($item->model) {
+                $brandModel .= ($brandModel ? ' / ' : '') . e($item->model);
+            }
+            if (!$brandModel) {
+                $brandModel = '—';
+            }
+
+            $actions = '<div class="d-flex gap-1">
+                <a href="' . route('items.show', $item) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
+                <a href="' . route('items.edit', $item) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+                <form method="POST" action="' . route('items.destroy', $item) . '" id="del-item-' . $item->id . '" class="d-inline">
+                    ' . csrf_field() . method_field('DELETE') . '
+                    <button type="button" class="btn btn-xs btn-outline-custom"
+                        data-confirm="Delete this product?"
+                        data-form="del-item-' . $item->id . '">
+                        <i class="bi bi-trash" style="color:#e94560;"></i>
+                    </button>
+                </form>
+            </div>';
+
+            $data[] = [
+                'no' => $iteration,
+                'product' => $productHtml,
+                'category' => $categoryHtml,
+                'brand_model' => $brandModel,
+                'warranty' => e($item->warranty_period ?: '—'),
+                'main_stock' => $stockHtml,
+                'actions' => $actions,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 
     public function create()

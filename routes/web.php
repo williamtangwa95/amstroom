@@ -60,11 +60,13 @@ Route::middleware('auth')->group(function () {
         Route::post('shops/{shop}/assign-employee', [ShopController::class, 'assignEmployee'])->name('shops.assign-employee');
 
         // Categories
+        Route::get('categories/data', [CategoryController::class, 'data'])->name('categories.data');
         Route::get('categories/import-template', [CategoryController::class, 'downloadTemplate'])->name('categories.import-template');
         Route::post('categories/import', [CategoryController::class, 'import'])->name('categories.import');
         Route::resource('categories', CategoryController::class);
 
         // Items
+        Route::get('items/data', [ItemController::class, 'data'])->name('items.data');
         Route::get('items/import-template', [ItemController::class, 'downloadTemplate'])->name('items.import-template');
         Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
         Route::resource('items', ItemController::class);
@@ -109,8 +111,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:owner,shop_admin')->group(function () {
 
         // Employee / User Management (owner: all; shop_admin: own sellers only — enforced in controller)
+        Route::get('users/data', [UserController::class, 'data'])->name('users.data');
         Route::resource('users', UserController::class);
         Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::get('shops/data', [ShopController::class, 'data'])->name('shops.data');
         Route::resource('shops', ShopController::class);
 
         // Stock Requests
