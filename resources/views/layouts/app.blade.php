@@ -1627,6 +1627,8 @@
                 searchPlaceholder: 'Search...'
             },
             pageLength: 10,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             order: [],
             columnDefs: [{
                 orderable: false,
