@@ -13,7 +13,12 @@
             <div class="card-body">
                 @if($shopStock->item->image_path)
                     <div class="text-center mb-3">
-                        <img src="{{ asset('media/' . $shopStock->item->image_path) }}" alt="{{ $shopStock->item->item_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
+                        <div class="product-img-wrapper overflow-hidden rounded position-relative d-inline-block" style="max-height: 200px; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage('{{ asset('media/' . $shopStock->item->image_path) }}', '{{ e($shopStock->item->item_name) }}')" title="Click to zoom image">
+                            <img src="{{ asset('media/' . $shopStock->item->image_path) }}" alt="{{ $shopStock->item->item_name }}" class="img-fluid rounded product-img-thumb p-1" style="max-height: 190px; object-fit: contain; transition: transform 0.25s ease;">
+                            <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.4); opacity: 0; transition: opacity 0.2s ease;">
+                                <i class="bi bi-zoom-in text-white fs-3"></i>
+                            </div>
+                        </div>
                     </div>
                 @else
                     <div class="text-center mb-3 py-4 bg-light rounded border text-muted">

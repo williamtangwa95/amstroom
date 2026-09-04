@@ -60,11 +60,21 @@ class ItemController extends Controller
             $categoryName = e($item->category ? $item->category->category_name : '—');
             $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;font-weight:600;">' . $categoryName . '</span>';
             
-            $productHtml = '<div><div style="font-weight:600;font-size:.85rem;">' . e($item->item_name) . '</div>';
+            $imageHtml = $item->image_path
+                ? '<div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage(\'' . asset('media/' . $item->image_path) . '\', \'' . addslashes(e($item->item_name)) . '\')" title="Click to zoom image">
+                    <img src="' . asset('media/' . $item->image_path) . '" alt="' . e($item->item_name) . '" class="product-img-thumb w-100 h-100" style="object-fit: cover; transition: transform 0.25s ease;">
+                    <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;">
+                        <i class="bi bi-zoom-in text-white fs-6"></i>
+                    </div>
+                </div>'
+                : '<div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width:36px;height:36px;border:1px solid var(--card-border);flex-shrink:0;"><i class="bi bi-image" style="font-size:0.8rem;"></i></div>';
+
+            $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
+            $productHtml .= '<div style="font-weight:600;font-size:.85rem;">' . e($item->item_name) . '</div>';
             if ($item->specification) {
                 $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e(\Illuminate\Support\Str::limit($item->specification, 50)) . '</div>';
             }
-            $productHtml .= '</div>';
+            $productHtml .= '</div></div>';
 
             $brandModel = e($item->brand ?: '');
             if ($item->model) {

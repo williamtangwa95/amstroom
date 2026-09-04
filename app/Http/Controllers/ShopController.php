@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Shop;
 use App\Models\User;
+use App\Models\Setting;
 use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 
@@ -171,6 +172,8 @@ class ShopController extends Controller
         if (!$user->isOwner() && $user->shop_id !== $shop->id) {
             abort(403, 'Unauthorized.');
         }
+
+        $maxKb = ((int) Setting::get('max_upload_size_mb', 5)) * 1024;
 
         $rules = [
             'shop_name' => 'required|string|max:150',

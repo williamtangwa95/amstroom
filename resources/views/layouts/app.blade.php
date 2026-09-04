@@ -1487,83 +1487,77 @@
     </div>
 
     {{-- ── Global Image Lightbox ── --}}
-    <div id="imgLightbox" style="
-    display:none; position:fixed; inset:0; z-index:9999;
-    background:rgba(0,0,0,0.88); backdrop-filter:blur(6px);
-    align-items:center; justify-content:center; cursor:zoom-out;
-    animation: lbFadeIn .18s ease;
-" onclick="closeLightbox()">
-        <button onclick="closeLightbox(event)" style="
-        position:absolute; top:18px; right:22px;
-        background:rgba(255,255,255,.12); border:none; border-radius:50%;
-        width:40px; height:40px; color:#fff; font-size:1.3rem;
-        display:flex; align-items:center; justify-content:center; cursor:pointer;
-        transition: background .15s;
-    " onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">
-            <i class="bi bi-x-lg"></i>
-        </button>
-        <img id="imgLightboxImg" src="" alt="Product Image" style="
-        max-width:90vw; max-height:88vh;
-        object-fit:contain; border-radius:12px;
-        box-shadow:0 24px 60px rgba(0,0,0,0.5);
-        cursor:default;
-        animation: lbZoomIn .2s ease;
-    " onclick="event.stopPropagation()">
-        <div id="imgLightboxCaption" style="
-        position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
-        background:rgba(0,0,0,0.6); color:#fff; font-size:.82rem; font-weight:600;
-        padding:.4rem 1rem; border-radius:20px; white-space:nowrap;
-        letter-spacing:.02em; max-width:80vw; overflow:hidden; text-overflow:ellipsis;
-    "></div>
+    <!-- Global Product Image Zoom Modal -->
+    <div class="modal fade" id="imageZoomModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="background: rgba(18, 24, 38, 0.96); backdrop-filter: blur(12px); color: #fff; border-radius: 16px; overflow: hidden;">
+                <div class="modal-header border-0 pb-0 d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-700 text-truncate me-3" id="zoomImageTitle" style="font-size: 1rem; color: #fff;">Product Image</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="changeImageScale(0.25)" title="Zoom In" style="width: 32px; height: 32px;">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="changeImageScale(-0.25)" title="Zoom Out" style="width: 32px; height: 32px;">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light rounded-circle p-0 d-flex align-items-center justify-content-center" onclick="resetImageScale()" title="Reset Zoom" style="width: 32px; height: 32px;">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body text-center p-4 d-flex align-items-center justify-content-center overflow-auto" style="min-height: 350px; max-height: 75vh;">
+                    <img id="zoomImageTarget" src="" alt="Product Image" class="img-fluid rounded shadow-lg" style="max-height: 65vh; object-fit: contain; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: grab;">
+                </div>
+            </div>
+        </div>
     </div>
+
     <style>
-        @keyframes lbFadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+        .product-img-wrapper:hover .img-zoom-overlay {
+            opacity: 1 !important;
         }
-
-        @keyframes lbZoomIn {
-            from {
-                transform: scale(.88);
-            }
-
-            to {
-                transform: scale(1);
-            }
+        .product-img-wrapper:hover .product-img-thumb {
+            transform: scale(1.2) !important;
         }
-
         .img-lightbox {
             cursor: zoom-in !important;
             transition: transform .15s ease, box-shadow .15s ease;
         }
-
         .img-lightbox:hover {
             transform: scale(1.06);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
         }
     </style>
     <script>
-        function openLightbox(src, caption) {
-            var lb = document.getElementById('imgLightbox');
-            document.getElementById('imgLightboxImg').src = src;
-            document.getElementById('imgLightboxCaption').textContent = caption || '';
-            lb.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+        let currentImageScale = 1.0;
+
+        function zoomProductImage(src, title) {
+            if (!src) return;
+            $('#zoomImageTitle').text(title || 'Product Image');
+            $('#zoomImageTarget').attr('src', src);
+            currentImageScale = 1.0;
+            $('#zoomImageTarget').css('transform', 'scale(1)');
+            const modalElement = document.getElementById('imageZoomModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
+            }
         }
 
-        function closeLightbox(e) {
-            if (e) e.stopPropagation();
-            document.getElementById('imgLightbox').style.display = 'none';
-            document.body.style.overflow = '';
+        function changeImageScale(delta) {
+            currentImageScale = Math.max(0.5, Math.min(3.5, currentImageScale + delta));
+            $('#zoomImageTarget').css('transform', `scale(${currentImageScale})`);
         }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeLightbox();
-        });
+
+        function resetImageScale() {
+            currentImageScale = 1.0;
+            $('#zoomImageTarget').css('transform', 'scale(1)');
+        }
+
+        function openLightbox(src, caption) {
+            zoomProductImage(src, caption);
+        }
     </script>
 
     <!-- Bootstrap JS -->
@@ -1640,24 +1634,24 @@
             }]
         });
 
-        // SweetAlert confirm for delete/reject forms
-        document.querySelectorAll('[data-confirm]').forEach(el => {
-            el.addEventListener('click', function(e) {
-                e.preventDefault();
-                const form = this.closest('form') || document.getElementById(this.dataset.form);
-                Swal.fire({
-                    title: this.dataset.confirm || 'Are you sure?',
-                    text: this.dataset.text || 'This action cannot be undone.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#0088cc',
-                    cancelButtonColor: '#94a3b8',
-                    confirmButtonText: this.dataset.confirmBtn || 'Yes, proceed',
-                    background: '#ffffff',
-                    color: '#0f172a',
-                }).then(result => {
-                    if (result.isConfirmed) form.submit();
-                });
+        // SweetAlert confirm for delete/reject forms (event delegation handles static & dynamic DataTables elements)
+        $(document).on('click', '[data-confirm]', function(e) {
+            e.preventDefault();
+            const btn = this;
+            const form = btn.closest('form') || document.getElementById(btn.dataset.form);
+            if (!form) return;
+            Swal.fire({
+                title: btn.dataset.confirm || 'Are you sure?',
+                text: btn.dataset.text || 'This action cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e94560',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: btn.dataset.confirmBtn || 'Yes, proceed',
+                background: '#ffffff',
+                color: '#0f172a',
+            }).then(result => {
+                if (result.isConfirmed) form.submit();
             });
         });
 
