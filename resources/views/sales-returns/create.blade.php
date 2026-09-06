@@ -118,8 +118,27 @@ function toggleRowInputs(cb, idx) {
     cb.closest('tr').classList.toggle('table-warning', cb.checked);
 
     // Update submit button disabled status
-    const anyChecked = document.querySelectorAll('.item-select-cb:checked').length > 0;
-    document.getElementById('submitBtn').disabled = !anyChecked;
+    const btn = document.getElementById('submitBtn');
+    if (btn.dataset.submitting !== 'true') {
+        const anyChecked = document.querySelectorAll('.item-select-cb:checked').length > 0;
+        btn.disabled = !anyChecked;
+    }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const returnForm = document.getElementById('returnForm');
+    if (returnForm) {
+        returnForm.addEventListener('submit', function(e) {
+            const btn = document.getElementById('submitBtn');
+            if (btn.dataset.submitting === 'true') {
+                e.preventDefault();
+                return false;
+            }
+            btn.dataset.submitting = 'true';
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Submitting Return...';
+        });
+    }
+});
 </script>
 @endpush

@@ -195,7 +195,7 @@
         <span class="fw-600 small" id="selectedCountText" style="color:var(--text-primary);">0 items selected</span>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        @if(auth()->user()->isOwner())
+        @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
         <button type="button" class="btn btn-xs btn-accent px-3 py-1" id="bulkEnableBtn" style="font-size: .75rem;">Enable Custom Components</button>
         <button type="button" class="btn btn-xs btn-outline-warning px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
         @endif
@@ -1366,7 +1366,7 @@
             validateBlockPrices(block);
         });
 
-        // Add Admin Stock Form validation
+        // Add Admin Stock Form validation & submit loader
         $('#addAdminStockModal form').on('submit', function(e) {
             let hasPriceError = false;
             let firstErrorPrice = 0;
@@ -1394,7 +1394,25 @@
                     background: '#161b22',
                     color: '#e6edf3'
                 });
+                return false;
             }
+
+            const btn = $(this).find('button[type="submit"]');
+            if (btn.data('submitting')) {
+                e.preventDefault();
+                return false;
+            }
+
+            btn.data('submitting', true);
+            btn.prop('disabled', true);
+            btn.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Adding Stock...');
+        });
+
+        $('#addAdminStockModal').on('hidden.bs.modal', function() {
+            const btn = $(this).find('button[type="submit"]');
+            btn.data('submitting', false);
+            btn.prop('disabled', false);
+            btn.html('Add Stock');
         });
         @endif
         // Toggle shop components POS visibility per product (delegated for all DataTables pages)
@@ -1953,6 +1971,53 @@
             ownerProductIndex = 0;
             updateOwnerRemoveButtons();
             validateAllOwnerPrices();
+
+            const btn = $(this).find('button[type="submit"]');
+            btn.data('submitting', false);
+            btn.prop('disabled', false);
+            btn.html('Add Owner Stock');
+        });
+
+        // Add Owner Stock Form validation & submit loader
+        $('#addOwnerStockModal form').on('submit', function(e) {
+            let hasPriceError = false;
+            let firstErrorPrice = 0;
+            let firstErrorItem = '';
+
+            $('#addOwnerStockModal .product-block-owner').each(function() {
+                const buyingPrice = parseFloat($(this).find('.owner-buying-price-hidden-input').val()) || 0;
+                const sellingPrice = parseFloat($(this).find('.owner-selling-price-hidden-input').val()) || 0;
+
+                if (sellingPrice < buyingPrice) {
+                    hasPriceError = true;
+                    firstErrorPrice = buyingPrice;
+                    const isNew = $(this).find('.owner-create-new-product-toggle').is(':checked');
+                    firstErrorItem = isNew ? $(this).find('.owner-new-item-name-input').val() : $(this).find('.owner-item-id-select option:selected').text();
+                    return false; // break loop
+                }
+            });
+
+            if (hasPriceError) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Price Too Low',
+                    text: `Selling price for "${firstErrorItem}" cannot be less than the buying price TZS ${firstErrorPrice.toLocaleString()}.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return false;
+            }
+
+            const btn = $(this).find('button[type="submit"]');
+            if (btn.data('submitting')) {
+                e.preventDefault();
+                return false;
+            }
+
+            btn.data('submitting', true);
+            btn.prop('disabled', true);
+            btn.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Adding Owner Stock...');
         });
         @endif
 

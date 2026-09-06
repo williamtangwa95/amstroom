@@ -104,6 +104,8 @@ class SaleReturnController extends Controller
                 $statusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;"><i class="bi bi-hourglass-split me-1"></i>Pending Approval</span>';
             }
 
+            $canDeleteReturn = $user->isOwner() || ($user->isShopAdmin() && $user->shop_id == $ret->sale?->shop_id && $ret->isAdminStock());
+
             $actions = '';
             if ($canManage) {
                 $actions .= '<div class="d-flex align-items-center justify-content-center gap-1">';
@@ -111,7 +113,9 @@ class SaleReturnController extends Controller
                     $actions .= '<form method="POST" action="' . route('sales-returns.approve', $ret) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-success px-2 py-1" onclick="return confirm(\'Confirm approval? Items will be restocked.\')"><i class="bi bi-check-lg"></i> Approve</button></form>';
                     $actions .= '<form method="POST" action="' . route('sales-returns.reject', $ret) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" onclick="return confirm(\'Confirm rejection?\')"><i class="bi bi-x-lg"></i> Reject</button></form>';
                 }
-                $actions .= '<form method="POST" action="' . route('sales-returns.destroy', $ret) . '" class="d-inline">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" onclick="return confirm(\'Are you sure you want to delete this return record?\')"><i class="bi bi-trash"></i> Delete</button></form>';
+                if ($canDeleteReturn) {
+                    $actions .= '<form method="POST" action="' . route('sales-returns.destroy', $ret) . '" class="d-inline">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" onclick="return confirm(\'Are you sure you want to delete this return record?\')"><i class="bi bi-trash"></i> Delete</button></form>';
+                }
                 $actions .= '</div>';
             } else {
                 $actions = '<span class="text-muted small">—</span>';
@@ -119,7 +123,8 @@ class SaleReturnController extends Controller
 
             $row = [];
             if ($canManage) {
-                $row['checkbox'] = '<input type="checkbox" class="form-check-input return-checkbox" value="' . $ret->id . '">';
+                $checkboxAttr = $canDeleteReturn ? 'class="form-check-input return-checkbox" value="' . $ret->id . '"' : 'class="form-check-input return-checkbox" disabled style="opacity:0.5;cursor:not-allowed;" title="Shop Admin cannot delete owner stock returns"';
+                $row['checkbox'] = '<input type="checkbox" ' . $checkboxAttr . '>';
             }
             $row['iteration'] = $iteration;
             $row['return_date'] = $returnDate;
@@ -316,6 +321,11 @@ class SaleReturnController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($user->isShopAdmin() && !$saleReturn->isAdminStock()) {
+            return redirect()->route('sales-returns.index')
+                ->with('error', 'Shop Admins cannot delete sales return records associated with Owner stock.');
+        }
+
         $saleReturn->delete();
 
         return redirect()->route('sales-returns.index')
@@ -334,15 +344,35 @@ class SaleReturnController extends Controller
             'ids.*' => 'exists:sale_returns,id',
         ]);
 
+        $errors = [];
+        $validIds = [];
+
         // Authorization check for each item
         foreach ($request->ids as $id) {
-            $saleReturn = SaleReturn::findOrFail($id);
+            $saleReturn = SaleReturn::find($id);
+            if (!$saleReturn) continue;
+
             if (!$user->isOwner() && (!$user->isShopAdmin() || $user->shop_id !== $saleReturn->sale?->shop_id)) {
-                abort(403, 'Unauthorized action.');
+                $errors[] = "Return #{$id}: Unauthorized action.";
+                continue;
             }
+
+            if ($user->isShopAdmin() && !$saleReturn->isAdminStock()) {
+                $errors[] = "Return #{$id}: Shop Admins cannot delete sales return records associated with Owner stock.";
+                continue;
+            }
+
+            $validIds[] = $id;
         }
 
-        SaleReturn::destroy($request->ids);
+        if (!empty($errors)) {
+            return redirect()->route('sales-returns.index')
+                ->with('error', implode(' ', $errors));
+        }
+
+        if (!empty($validIds)) {
+            SaleReturn::destroy($validIds);
+        }
 
         return redirect()->route('sales-returns.index')
             ->with('success', 'Selected sale return records deleted successfully.');

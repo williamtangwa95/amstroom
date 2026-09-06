@@ -93,6 +93,39 @@
                         @enderror
                     </form>
                 </div>
+
+                <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <label class="form-label fw-600 mb-0">Custom Components on Sell</label>
+                            <small class="form-text text-muted d-block" style="font-size:0.75rem;">Allow adding/customizing component items when selling this stock at POS.</small>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $shopStock->id }}" style="cursor:pointer; width: 34px; height: 18px;" {{ $shopStock->allow_components ? 'checked' : '' }}>
+                        </div>
+                    </div>
+                </div>
+
+                @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && $shopStock->is_admin_stock))
+                <div class="p-3 rounded mt-3 d-flex align-items-center justify-content-between" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
+                    <div>
+                        <strong class="text-danger d-block" style="font-size:0.85rem;">Delete Stock Batch</strong>
+                        <small class="text-muted d-block" style="font-size:0.75rem;">
+                            @if(auth()->user()->isShopAdmin())
+                                Submit a request to the owner to delete this stock batch.
+                            @else
+                                Permanently delete this unsold stock batch.
+                            @endif
+                        </small>
+                    </div>
+                    <form method="POST" action="{{ route('shop-stock.destroy', $shopStock) }}">
+                        @csrf @method('DELETE')
+                        <button type="button" class="btn btn-sm btn-outline-danger confirm-delete-btn">
+                            <i class="bi bi-trash me-1"></i> Delete Stock
+                        </button>
+                    </form>
+                </div>
+                @endif
                 @endif
 
                 <a href="{{ route('shop-stock.index') }}" class="btn btn-outline-custom mt-3">Back</a>
@@ -121,6 +154,58 @@ $(document).ready(function() {
             input.removeClass('is-invalid');
             submitBtn.prop('disabled', false);
         }
+    });
+
+    $(document).on('change', '.toggle-components-btn', function() {
+        const isChecked = $(this).is(':checked');
+        const stockId = $(this).data('id');
+        $.post("{{ route('settings.toggle-components') }}", {
+            _token: "{{ csrf_token() }}",
+            shop_stock_id: stockId,
+            enabled: isChecked ? 1 : 0
+        }, function(res) {
+            if (res.success) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: isChecked ? 'Manual components enabled for this product.' : 'Manual components disabled for this product.',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Action Blocked',
+                    text: res.message || 'Could not toggle components for this product.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.confirm-delete-btn', function(e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        Swal.fire({
+            title: 'Delete Stock Batch?',
+            text: "Are you sure you want to delete this stock batch? This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            background: '#161b22',
+            color: '#e6edf3'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
     });
 });
 </script>

@@ -275,14 +275,81 @@ class ShopStockController extends Controller
             $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
+            // Build batch details sub-table HTML inside child template
+            $allStocks = ShopStock::whereIn('id', $allIds)->orderByDesc('id')->get();
+            $childTableHtml = '<div class="child-details-template d-none"><div class="p-3 my-2 rounded border" style="background:var(--body-bg); border-color:var(--card-border) !important;">';
+            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . count($allStocks) . ' Batch' . (count($allStocks) > 1 ? 'es' : '') . ')</h6>';
+            $childTableHtml .= '<table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.75rem; border-color:var(--card-border);">';
+            $childTableHtml .= '<thead><tr class="table-dark" style="font-size:0.72rem;">';
+            $childTableHtml .= '<th>Batch #</th><th>Date Received</th><th>Stock Type</th><th>Initial Qty</th><th>Remaining Qty</th><th>Selling Price</th>';
+            if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
+                $childTableHtml .= '<th>Buying Price</th>';
+            }
+            $childTableHtml .= '<th class="text-end">Batch Actions</th></tr></thead><tbody>';
+
+            foreach ($allStocks as $batch) {
+                $canDeleteBatch = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id && $batch->is_admin_stock);
+                $batchTypeTag = $batch->is_admin_stock 
+                    ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
+                    : '<span class="badge bg-secondary" style="font-size:0.65rem;">Owner Stock</span>';
+                
+                $childTableHtml .= '<tr>';
+                $childTableHtml .= '<td><strong>#' . $batch->id . '</strong></td>';
+                $childTableHtml .= '<td>' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</td>';
+                $childTableHtml .= '<td>' . $batchTypeTag . '</td>';
+                $childTableHtml .= '<td>' . $batch->quantity . '</td>';
+                $childTableHtml .= '<td><strong class="text-success">' . $batch->remaining_quantity . '</strong></td>';
+                $childTableHtml .= '<td>TZS ' . number_format($batch->selling_price, 0) . '</td>';
+                if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
+                    $childTableHtml .= '<td>TZS ' . number_format($batch->buying_price, 0) . '</td>';
+                }
+                $childTableHtml .= '<td class="text-end">';
+                $childTableHtml .= '<div class="d-inline-flex align-items-center gap-1">';
+                $childTableHtml .= '<a href="' . route('shop-stock.show', $batch) . '" class="btn btn-xs btn-outline-custom p-0 px-1.5" title="View Batch Details"><i class="bi bi-eye"></i></a>';
+                if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
+                    $childTableHtml .= '<a href="' . route('shop-stock.edit', $batch) . '" class="btn btn-xs btn-outline-custom p-0 px-1.5" title="Edit Batch"><i class="bi bi-pencil"></i></a>';
+                }
+                if ($canDeleteBatch) {
+                    $childTableHtml .= '<form action="' . route('shop-stock.destroy', $batch) . '" method="POST" class="d-inline delete-stock-form">'
+                        . csrf_field()
+                        . method_field('DELETE')
+                        . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn p-0 px-1.5" title="Delete Batch"><i class="bi bi-trash"></i></button>'
+                        . '</form>';
+                }
+                if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
+                    $batchChecked = $batch->allow_components ? 'checked' : '';
+                    $childTableHtml .= '<div class="form-check form-switch ms-1 mb-0 d-inline-flex align-items-center" title="Toggle custom components on sell">
+                        <input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $batch->id . '" style="cursor:pointer; width: 28px; height: 14px;" ' . $batchChecked . '>
+                    </div>';
+                }
+                $childTableHtml .= '</div>';
+                $childTableHtml .= '</td></tr>';
+            }
+            $childTableHtml .= '</tbody></table></div></div>';
+
+            $canDeleteFirst = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id && $firstSt->is_admin_stock);
+
             $actions = '<div class="d-flex align-items-center gap-2">';
+            $actions .= '<button type="button" class="btn btn-xs btn-outline-info toggle-child-details" title="Toggle batch details"><i class="bi bi-chevron-down"></i></button>';
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 $actions .= '<button type="button" class="btn btn-xs btn-outline-success btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="' . ($firstSt->is_admin_stock ? 1 : 0) . '" title="Quick Restock"><i class="bi bi-plus-square me-1"></i></button>';
             }
             $actions .= '<a href="' . route('shop-stock.show', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>';
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 $actions .= '<a href="' . route('shop-stock.edit', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
+                if ($canDeleteFirst) {
+                    $actions .= '<form action="' . route('shop-stock.destroy', $firstSt) . '" method="POST" class="d-inline delete-stock-form">'
+                        . csrf_field()
+                        . method_field('DELETE')
+                        . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch"><i class="bi bi-trash"></i></button>'
+                        . '</form>';
+                }
+                $checked = $firstSt->allow_components ? 'checked' : '';
+                $actions .= '<div class="form-check form-switch ms-1 mb-0 d-flex align-items-center" title="Toggle custom components capability on sell">
+                    <input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $firstSt->id . '" style="cursor:pointer; width: 30px; height: 16px;" ' . $checked . '>
+                </div>';
             }
+            $actions .= $childTableHtml;
             $actions .= '</div>';
 
             $row = [
@@ -1627,6 +1694,11 @@ class ShopStockController extends Controller
 
         // ── SHOP ADMIN DELETING STOCK (Route as Request to Owner) ────────────
         if ($user->isShopAdmin()) {
+            if (!$shopStock->is_admin_stock) {
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('error', 'Shop Admins cannot delete stock transferred from the Main Store.');
+            }
+
             $reason = $request->input('reason', 'Deletion requested by shop admin');
 
             $shopStock->update([
@@ -1710,6 +1782,11 @@ class ShopStockController extends Controller
 
             if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
                 $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Unauthorized.";
+                continue;
+            }
+
+            if ($user->isShopAdmin() && !$shopStock->is_admin_stock) {
+                $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): Shop Admins cannot delete stock transferred from the Main Store.";
                 continue;
             }
 

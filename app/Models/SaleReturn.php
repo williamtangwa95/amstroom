@@ -36,4 +36,21 @@ class SaleReturn extends Model
     {
         return $this->hasMany(SaleReturnItem::class);
     }
+
+    public function isAdminStock(): bool
+    {
+        if ($this->sale) {
+            $saleItems = $this->sale->items;
+            if ($saleItems && $saleItems->isNotEmpty()) {
+                foreach ($this->items as $returnItem) {
+                    $matchingSaleItem = $saleItems->firstWhere('item_id', $returnItem->item_id);
+                    if ($matchingSaleItem && !$matchingSaleItem->is_admin_stock) {
+                        return false;
+                    }
+                }
+            }
+            return (bool) ($this->sale->is_admin_stock ?? false);
+        }
+        return false;
+    }
 }
