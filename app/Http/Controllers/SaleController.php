@@ -20,12 +20,22 @@ class SaleController extends Controller
         $isOwner = $user->isOwner();
         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
+        $shops = $isOwner ? \App\Models\Shop::active()->get() : collect();
+        $shopId = $request->get('shop_id', '');
+
         $revenueQuery = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->whereNull('sales.deleted_at');
 
         if ($isOwner) {
             $revenueQuery->where('sales.is_admin_stock', false);
+            if ($request->filled('shop_id')) {
+                if ($request->shop_id === 'main_store') {
+                    $revenueQuery->whereNull('sales.shop_id');
+                } else {
+                    $revenueQuery->where('sales.shop_id', $request->shop_id);
+                }
+            }
         } else {
             $revenueQuery->where('sales.shop_id', $user->shop_id);
         }
@@ -52,7 +62,7 @@ class SaleController extends Controller
 
         $statusFilter = $request->input('status', '');
 
-        return view('sales.index', compact('totalRevenue', 'statusFilter'));
+        return view('sales.index', compact('totalRevenue', 'statusFilter', 'shops', 'shopId'));
     }
 
     public function data(Request $request)
@@ -65,6 +75,13 @@ class SaleController extends Controller
 
         if ($isOwner) {
             $query->where('sales.is_admin_stock', false);
+            if ($request->filled('shop_id')) {
+                if ($request->shop_id === 'main_store') {
+                    $query->whereNull('sales.shop_id');
+                } else {
+                    $query->where('sales.shop_id', $request->shop_id);
+                }
+            }
         } else {
             $query->where('sales.shop_id', $user->shop_id);
         }
@@ -108,6 +125,13 @@ class SaleController extends Controller
 
         if ($isOwner) {
             $revenueQuery->where('sales.is_admin_stock', false);
+            if ($request->filled('shop_id')) {
+                if ($request->shop_id === 'main_store') {
+                    $revenueQuery->whereNull('sales.shop_id');
+                } else {
+                    $revenueQuery->where('sales.shop_id', $request->shop_id);
+                }
+            }
         } else {
             $revenueQuery->where('sales.shop_id', $user->shop_id);
         }

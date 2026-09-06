@@ -24,15 +24,27 @@
 <div class="card mb-4">
     <div class="card-body py-2">
         <form id="filterForm" method="GET" action="{{ route('sales.index') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">From Date</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
             </div>
-            <div class="col-md-3">
+            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
             </div>
-            <div class="col-md-2">
+            @if(auth()->user()->isOwner())
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.75rem;">Shop Name</label>
+                <select name="shop_id" class="form-select form-select-sm">
+                    <option value="">All Shops</option>
+                    <option value="main_store" {{ request('shop_id') === 'main_store' ? 'selected' : '' }}>Main Store (Owner)</option>
+                    @foreach($shops as $s)
+                    <option value="{{ $s->id }}" {{ request('shop_id') == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-2' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All Statuses</option>
@@ -40,10 +52,10 @@
                     <option value="draft_proforma" {{ request('status') === 'draft_proforma' ? 'selected' : '' }}>Proforma</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="{{ auth()->user()->isOwner() ? 'col-md-1' : 'col-md-2' }}">
                 <button type="submit" class="btn btn-sm btn-accent w-100"><i class="bi bi-filter me-1"></i> Filter</button>
             </div>
-            <div class="col-md-2">
+            <div class="{{ auth()->user()->isOwner() ? 'col-md-1' : 'col-md-2' }}">
                 <a href="{{ route('sales.index') }}" class="btn btn-sm btn-outline-custom w-100">Reset</a>
             </div>
         </form>
@@ -117,6 +129,7 @@
                     d.date_from = $('input[name="date_from"]').val();
                     d.date_to = $('input[name="date_to"]').val();
                     d.status = $('select[name="status"]').val();
+                    d.shop_id = $('select[name="shop_id"]').val();
                 }
             },
             columns: [
