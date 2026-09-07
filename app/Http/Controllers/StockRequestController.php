@@ -144,13 +144,14 @@ class StockRequestController extends Controller
         return view('stock-requests._details', compact('stockRequest'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
         $items = Item::with('category')->where('is_admin_item', false)->orderBy('item_name')->get();
         $shop = $user->shop;
+        $selectedItemId = $request->get('item_id');
 
-        return view('stock-requests.create', compact('items', 'shop'));
+        return view('stock-requests.create', compact('items', 'shop', 'selectedItemId'));
     }
 
     public function store(Request $request)

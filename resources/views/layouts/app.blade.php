@@ -932,7 +932,10 @@
                         <a href="{{ route('stock-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-truck"></i> Transfers
                         </a>
-                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('shop-stock.finished') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.finished*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-archive-fill"></i> Finished Stocks
+                        </a>
+                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-layers"></i> Shop Stocks
                         </a>
                     </div>
@@ -1103,7 +1106,7 @@
                 </a>
                 <div class="collapse {{ $isStocksActiveAdmin ? 'show' : '' }}" id="stocksCollapseAdmin">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-layers"></i> Shop Stock
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
@@ -1113,6 +1116,9 @@
                             <i class="bi bi-truck"></i> Stock Transfers
                             @php $pendingDispatches = \App\Models\StockTransfer::where('to_shop', auth()->user()->shop_id)->whereIn('status', ['pending_receipt','partially_received'])->count() @endphp
                             @if($pendingDispatches > 0) <span class="nav-badge">{{ $pendingDispatches }}</span> @endif
+                        </a>
+                        <a href="{{ route('shop-stock.finished') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.finished*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-archive-fill"></i> Finished Stocks
                         </a>
                     </div>
                 </div>

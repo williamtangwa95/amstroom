@@ -263,10 +263,8 @@ class IndependentPricingModeTest extends TestCase
         ]);
 
         $shopStock->refresh();
-        // Buying price should NOT be auto-updated in DEPENDENT mode
-        $this->assertEquals(45000, (float)$shopStock->buying_price);
-        // It is still sellable
-        $this->assertTrue($shopStock->is_sellable);
+        // Buying price IS updated to match Main Store new selling price (48,000)
+        $this->assertEquals(48000, (float)$shopStock->buying_price);
         $this->assertTrue($shopStock->is_price_pending);
         $this->assertEquals(48000, (float)$shopStock->pending_selling_price);
     }

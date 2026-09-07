@@ -13,14 +13,25 @@ class NotificationController extends Controller
     /**
      * Display a listing of notifications.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $notifications = Notification::where('user_id', $user->id)
-            ->latest()
-            ->paginate(15);
+        $search = trim($request->get('search', ''));
 
-        return view('notifications.index', compact('notifications'));
+        $query = Notification::where('user_id', $user->id);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
+
+        $notifications = $query->latest()
+            ->paginate(15)
+            ->appends(['search' => $search]);
+
+        return view('notifications.index', compact('notifications', 'search'));
     }
 
     /**

@@ -311,8 +311,10 @@ class MainStockController extends Controller
             $itemName = $mainStock->item?->item_name ?? 'Item';
             $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
-            // Find all shop stocks for this item
-            $shopStocks = \App\Models\ShopStock::where('item_id', $mainStock->item_id)->get();
+            // Find all shop stocks for this item originating from main store
+            $shopStocks = \App\Models\ShopStock::where('item_id', $mainStock->item_id)
+                ->where('is_admin_stock', false)
+                ->get();
             foreach ($shopStocks as $shopStock) {
                 if ($isIndependent) {
                     $shopStock->update([
@@ -335,6 +337,7 @@ class MainStockController extends Controller
                     }
                 } else {
                     $shopStock->update([
+                        'buying_price' => $newSellingPrice,
                         'is_price_pending' => true,
                         'pending_selling_price' => $newSellingPrice,
                     ]);

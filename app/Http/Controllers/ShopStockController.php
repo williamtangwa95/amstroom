@@ -108,9 +108,16 @@ class ShopStockController extends Controller
             ->when($user->isOwner(), fn($q) => $q->where('is_admin_stock', false))
             ->count();
 
+        $pendingPriceItemsCount = ShopStock::where('is_price_pending', true)
+            ->when(!$user->isOwner(), fn($q) => $q->where('shop_id', $user->shop_id))
+            ->when($user->isOwner() && $shopId, fn($q) => $q->where('shop_id', $shopId))
+            ->when($user->isOwner() && !$shopId, fn($q) => $q->where('is_admin_stock', false))
+            ->distinct('item_id')
+            ->count('item_id');
+
         $stocks = collect();
 
-        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'items', 'categories', 'totalStockValue', 'totalExpectedProfit', 'remainingStockValue', 'remainingExpectedProfit', 'soldStockValue', 'soldExpectedProfit', 'totalQuantity', 'totalRemainingQty', 'totalSoldQty'));
+        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'pendingPriceItemsCount', 'items', 'categories', 'totalStockValue', 'totalExpectedProfit', 'remainingStockValue', 'remainingExpectedProfit', 'soldStockValue', 'soldExpectedProfit', 'totalQuantity', 'totalRemainingQty', 'totalSoldQty'));
     }
 
     public function data(Request $request)
@@ -155,7 +162,9 @@ class ShopStockController extends Controller
                 DB::raw('SUM(shop_stocks.quantity) as total_quantity'),
                 DB::raw('SUM(shop_stocks.remaining_quantity) as total_remaining_quantity'),
                 DB::raw('MIN(shop_stocks.id) as first_id'),
-                DB::raw('GROUP_CONCAT(shop_stocks.id) as all_ids_str')
+                DB::raw('GROUP_CONCAT(shop_stocks.id) as all_ids_str'),
+                DB::raw('MAX(shop_stocks.is_price_pending) as has_price_pending'),
+                DB::raw('MAX(shop_stocks.pending_selling_price) as max_pending_selling_price')
             )
             ->groupBy(
                 'shop_stocks.shop_id',
@@ -170,6 +179,9 @@ class ShopStockController extends Controller
             ->mergeBindings($groupedQuery->toBase())
             ->count();
         $recordsFiltered = $recordsTotal;
+
+        // Order affected items with pending price changes to the top first
+        $groupedQuery->orderBy(DB::raw('MAX(shop_stocks.is_price_pending)'), 'desc');
 
         $orderColumnIndex = $request->input('order.0.column', 3);
         $orderDirection = strtolower($request->input('order.0.dir', 'asc')) === 'desc' ? 'desc' : 'asc';
@@ -212,13 +224,17 @@ class ShopStockController extends Controller
         $iterator = $start + 1;
 
         foreach ($pageGroupedStocks as $groupRow) {
-            $firstSt = ShopStock::with('item.category', 'shop')->find($groupRow->first_id);
+            $allIds = array_map('intval', explode(',', $groupRow->all_ids_str));
+
+            $firstSt = ShopStock::with('item.category', 'shop')
+                ->whereIn('id', $allIds)
+                ->where('remaining_quantity', '>', 0)
+                ->first() ?? ShopStock::with('item.category', 'shop')->find($groupRow->first_id);
             if (!$firstSt) continue;
 
             $totalQty = (int) $groupRow->total_quantity;
             $totalRemainingQty = (int) $groupRow->total_remaining_quantity;
             $isLowStockGroup = $totalRemainingQty <= $groupRow->low_stock_alert;
-            $allIds = array_map('intval', explode(',', $groupRow->all_ids_str));
 
             $checkbox = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))
                 ? '<input type="checkbox" class="stock-checkbox-parent" data-ids=\'' . json_encode($allIds) . '\' style="cursor:pointer;">'
@@ -235,14 +251,22 @@ class ShopStockController extends Controller
                 </div>'
                 : '<div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width:36px;height:36px;border:1px solid var(--card-border);flex-shrink:0;"><i class="bi bi-image" style="font-size:0.8rem;"></i></div>';
 
+            $hasPendingPrice = ShopStock::whereIn('id', $allIds)->where('is_price_pending', true)->exists();
+
+            $activeStocks = ShopStock::whereIn('id', $allIds)->where('remaining_quantity', '>', 0)->orderByDesc('id')->get();
+            $activeBatchesCount = $activeStocks->count();
+
             $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
             $productHtml .= '<div style="font-weight:600;font-size:.83rem;">' . e($firstSt->item->item_name ?? 'N/A') . '</div>';
             $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e($firstSt->item->brand ?? '');
-            if (count($allIds) > 1) {
-                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . count($allIds) . ' Batches</span>';
+            if ($activeBatchesCount > 1) {
+                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . $activeBatchesCount . ' Batches</span>';
             }
             if ($firstSt->is_admin_stock) {
                 $productHtml .= ' <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>';
+            }
+            if ($hasPendingPrice) {
+                $productHtml .= ' <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;" title="Main Store buying price updated! Selling price update required."><i class="bi bi-exclamation-triangle-fill me-1"></i> Price Pending</span>';
             }
             $productHtml .= '</div></div></div>';
 
@@ -275,19 +299,18 @@ class ShopStockController extends Controller
             $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
-            // Build batch details sub-table HTML inside child template
-            $allStocks = ShopStock::whereIn('id', $allIds)->orderByDesc('id')->get();
+            // Build batch details sub-table HTML inside child template (only showing batches with remaining_quantity > 0)
             $childTableHtml = '<div class="child-details-template d-none"><div class="p-3 my-2 rounded border" style="background:var(--body-bg); border-color:var(--card-border) !important;">';
-            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . count($allStocks) . ' Batch' . (count($allStocks) > 1 ? 'es' : '') . ')</h6>';
+            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $activeBatchesCount . ' Batch' . ($activeBatchesCount > 1 ? 'es' : '') . ')</h6>';
             $childTableHtml .= '<table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.75rem; border-color:var(--card-border);">';
             $childTableHtml .= '<thead><tr class="table-dark" style="font-size:0.72rem;">';
-            $childTableHtml .= '<th>Batch #</th><th>Date Received</th><th>Stock Type</th><th>Initial Qty</th><th>Remaining Qty</th><th>Selling Price</th>';
+            $childTableHtml .= '<th>Batch #</th><th>Date Received</th><th>Stock Type</th><th>Initial Qty</th><th>Remaining Qty</th>';
             if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
                 $childTableHtml .= '<th>Buying Price</th>';
             }
-            $childTableHtml .= '<th class="text-end">Batch Actions</th></tr></thead><tbody>';
+            $childTableHtml .= '<th>Selling Price</th><th class="text-end">Batch Actions</th></tr></thead><tbody>';
 
-            foreach ($allStocks as $batch) {
+            foreach ($activeStocks as $batch) {
                 $canDeleteBatch = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id && $batch->is_admin_stock);
                 $batchTypeTag = $batch->is_admin_stock 
                     ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
@@ -299,10 +322,10 @@ class ShopStockController extends Controller
                 $childTableHtml .= '<td>' . $batchTypeTag . '</td>';
                 $childTableHtml .= '<td>' . $batch->quantity . '</td>';
                 $childTableHtml .= '<td><strong class="text-success">' . $batch->remaining_quantity . '</strong></td>';
-                $childTableHtml .= '<td>TZS ' . number_format($batch->selling_price, 0) . '</td>';
                 if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
                     $childTableHtml .= '<td>TZS ' . number_format($batch->buying_price, 0) . '</td>';
                 }
+                $childTableHtml .= '<td>TZS ' . number_format($batch->selling_price, 0) . '</td>';
                 $childTableHtml .= '<td class="text-end">';
                 $childTableHtml .= '<div class="d-inline-flex align-items-center gap-1">';
                 $childTableHtml .= '<a href="' . route('shop-stock.show', $batch) . '" class="btn btn-xs btn-outline-custom p-0 px-1.5" title="View Batch Details"><i class="bi bi-eye"></i></a>';
@@ -310,11 +333,15 @@ class ShopStockController extends Controller
                     $childTableHtml .= '<a href="' . route('shop-stock.edit', $batch) . '" class="btn btn-xs btn-outline-custom p-0 px-1.5" title="Edit Batch"><i class="bi bi-pencil"></i></a>';
                 }
                 if ($canDeleteBatch) {
-                    $childTableHtml .= '<form action="' . route('shop-stock.destroy', $batch) . '" method="POST" class="d-inline delete-stock-form">'
-                        . csrf_field()
-                        . method_field('DELETE')
-                        . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn p-0 px-1.5" title="Delete Batch"><i class="bi bi-trash"></i></button>'
-                        . '</form>';
+                    if ($batch->quantity != $batch->remaining_quantity) {
+                        $childTableHtml .= '<button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1.5" disabled title="Cannot delete stock batch because sales have already occurred"><i class="bi bi-trash"></i></button>';
+                    } else {
+                        $childTableHtml .= '<form action="' . route('shop-stock.destroy', $batch) . '" method="POST" class="d-inline delete-stock-form">'
+                            . csrf_field()
+                            . method_field('DELETE')
+                            . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn p-0 px-1.5" title="Delete Batch"><i class="bi bi-trash"></i></button>'
+                            . '</form>';
+                    }
                 }
                 if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
                     $batchChecked = $batch->allow_components ? 'checked' : '';
@@ -331,6 +358,21 @@ class ShopStockController extends Controller
 
             $actions = '<div class="d-flex align-items-center gap-2">';
             $actions .= '<button type="button" class="btn btn-xs btn-outline-info toggle-child-details" title="Toggle batch details"><i class="bi bi-chevron-down"></i></button>';
+            
+            if ($hasPendingPrice && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))) {
+                $pendingPriceVal = $firstSt->pending_selling_price > 0 ? $firstSt->pending_selling_price : $firstSt->selling_price;
+                $actions .= '<button type="button" class="btn btn-xs btn-warning text-dark fw-bold btn-update-shop-selling-price" '
+                    . 'data-id="' . $firstSt->id . '" '
+                    . 'data-all-ids=\'' . json_encode($allIds) . '\' '
+                    . 'data-item-name="' . e($firstSt->item->item_name ?? 'Item') . '" '
+                    . 'data-buying-price="' . (float)$firstSt->buying_price . '" '
+                    . 'data-selling-price="' . (float)$firstSt->selling_price . '" '
+                    . 'data-pending-price="' . (float)$pendingPriceVal . '" '
+                    . 'title="Update Shop Stock Selling Price">'
+                    . '<i class="bi bi-currency-dollar me-1"></i> Update Selling Price'
+                    . '</button>';
+            }
+
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 $actions .= '<button type="button" class="btn btn-xs btn-outline-success btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="' . ($firstSt->is_admin_stock ? 1 : 0) . '" title="Quick Restock"><i class="bi bi-plus-square me-1"></i></button>';
             }
@@ -338,11 +380,15 @@ class ShopStockController extends Controller
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 $actions .= '<a href="' . route('shop-stock.edit', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
                 if ($canDeleteFirst) {
-                    $actions .= '<form action="' . route('shop-stock.destroy', $firstSt) . '" method="POST" class="d-inline delete-stock-form">'
-                        . csrf_field()
-                        . method_field('DELETE')
-                        . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch"><i class="bi bi-trash"></i></button>'
-                        . '</form>';
+                    if ($firstSt->quantity != $firstSt->remaining_quantity) {
+                        $actions .= '<button type="button" class="btn btn-xs btn-outline-secondary" disabled title="Cannot delete stock batch because sales have already occurred"><i class="bi bi-trash"></i></button>';
+                    } else {
+                        $actions .= '<form action="' . route('shop-stock.destroy', $firstSt) . '" method="POST" class="d-inline delete-stock-form">'
+                            . csrf_field()
+                            . method_field('DELETE')
+                            . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn" title="Delete stock batch"><i class="bi bi-trash"></i></button>'
+                            . '</form>';
+                    }
                 }
                 $checked = $firstSt->allow_components ? 'checked' : '';
                 $actions .= '<div class="form-check form-switch ms-1 mb-0 d-flex align-items-center" title="Toggle custom components capability on sell">
@@ -925,6 +971,9 @@ class ShopStockController extends Controller
     {
         $user = Auth::user();
         if (!$user->isOwner() && !$user->isShopAdmin()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
             abort(403);
         }
 
@@ -937,15 +986,22 @@ class ShopStockController extends Controller
         $itemName = $shopStock->item?->item_name ?? 'Item';
         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
+        // Target all batches for this shop and item
+        $stocksToUpdate = ShopStock::where('shop_id', $shopStock->shop_id)
+            ->where('item_id', $shopStock->item_id)
+            ->get();
+
         if ($user->isShopAdmin()) {
-            if ($isIndependent) {
-                // Admin price update is direct in INDEPENDENT mode, bypassing owner approval
-                $shopStock->update([
-                    'selling_price' => $request->selling_price,
-                    'is_price_pending' => false,
-                    'pending_selling_price' => null,
-                    'is_sellable' => true,
-                ]);
+            if ($shopStock->is_admin_stock || $isIndependent) {
+                // Admin price update is direct for admin stock or in INDEPENDENT mode, bypassing owner approval
+                foreach ($stocksToUpdate as $st) {
+                    $st->update([
+                        'selling_price' => $request->selling_price,
+                        'is_price_pending' => false,
+                        'pending_selling_price' => null,
+                        'is_sellable' => true,
+                    ]);
+                }
 
                 // Notify all sellers of this shop
                 $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
@@ -959,14 +1015,20 @@ class ShopStockController extends Controller
                     ]);
                 }
 
-                return back()->with('success', 'Selling price updated and item unlocked successfully.');
+                $msg = 'Selling price updated and item unlocked successfully.';
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => true, 'message' => $msg]);
+                }
+                return back()->with('success', $msg);
             }
 
             // Admin update is pending Owner approval in DEPENDENT mode
-            $shopStock->update([
-                'is_price_pending' => true,
-                'pending_selling_price' => $request->selling_price,
-            ]);
+            foreach ($stocksToUpdate as $st) {
+                $st->update([
+                    'is_price_pending' => true,
+                    'pending_selling_price' => $request->selling_price,
+                ]);
+            }
 
             // Notify all owners
             $owners = \App\Models\User::where('role', 'owner')->get();
@@ -978,16 +1040,22 @@ class ShopStockController extends Controller
                 ]);
             }
 
-            return back()->with('success', 'Selling price update is pending owner approval.');
+            $msg = 'Selling price update is pending owner approval.';
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return back()->with('success', $msg);
         }
 
         // Owner update is direct
-        $shopStock->update([
-            'selling_price' => $request->selling_price,
-            'is_price_pending' => false,
-            'pending_selling_price' => null,
-            'is_sellable' => true,
-        ]);
+        foreach ($stocksToUpdate as $st) {
+            $st->update([
+                'selling_price' => $request->selling_price,
+                'is_price_pending' => false,
+                'pending_selling_price' => null,
+                'is_sellable' => true,
+            ]);
+        }
 
         // Notify all sellers of this shop
         $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
@@ -1001,7 +1069,11 @@ class ShopStockController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Selling price updated successfully.');
+        $msg = 'Selling price updated successfully.';
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+        return back()->with('success', $msg);
     }
 
     public function approvePrice(Request $request, ShopStock $shopStock)
@@ -1631,7 +1703,7 @@ class ShopStockController extends Controller
                 ->with('success', 'Shop stock updated successfully, activity recorded, and shop admin notified.');
         }
 
-        // ── SHOP ADMIN EDITING STOCK (Requires Owner Approval) ───────────────
+        // ── SHOP ADMIN EDITING STOCK ─────────────────────────────────────────
         if ($user->isShopAdmin()) {
             $rules = [
                 'buying_price'       => 'required|numeric|min:0',
@@ -1644,6 +1716,54 @@ class ShopStockController extends Controller
                 'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
             ]);
 
+            // Admin stock (is_admin_stock = true) is edited directly without owner approval or notification
+            if ($shopStock->is_admin_stock) {
+                $oldBp = floatval($shopStock->buying_price);
+                $oldSp = floatval($shopStock->selling_price);
+                $oldQty = intval($shopStock->remaining_quantity);
+                $newQty = intval($request->remaining_quantity);
+                $oldInitialQty = intval($shopStock->quantity);
+                $diff = $newQty - $oldQty;
+
+                $shopStock->update([
+                    'buying_price'          => $request->buying_price,
+                    'selling_price'         => $request->selling_price,
+                    'remaining_quantity'    => $newQty,
+                    'quantity'              => $oldInitialQty + $diff,
+                    'date_received'         => $request->date_received,
+                    'is_price_pending'      => false,
+                    'pending_selling_price' => null,
+                ]);
+
+                $changes = [];
+                if ($oldBp != floatval($request->buying_price)) {
+                    $changes[] = "BP: TZS " . number_format($oldBp) . " -> TZS " . number_format($request->buying_price);
+                }
+                if ($oldSp != floatval($request->selling_price)) {
+                    $changes[] = "SP: TZS " . number_format($oldSp) . " -> TZS " . number_format($request->selling_price);
+                }
+                if ($oldQty != $newQty) {
+                    $changes[] = "Qty: {$oldQty} -> {$newQty}";
+                }
+                $changeSummary = !empty($changes) ? implode(', ', $changes) : 'Stock details updated';
+
+                StockLog::create([
+                    'item_id'          => $shopStock->item_id,
+                    'from_location'    => $shopName,
+                    'to_location'      => $shopName,
+                    'quantity'         => abs($diff),
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => "Shop Admin updated admin stock batch #{$shopStock->id} ({$itemName}): {$changeSummary}",
+                    'is_admin_stock'   => true,
+                ]);
+
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('success', 'Admin stock updated successfully.');
+            }
+
+            // Non-admin stock (Transferred from Main Store) requires Owner approval
             $priceChanged = floatval($request->selling_price) != floatval($shopStock->selling_price);
             $qtyChanged = intval($request->remaining_quantity) != intval($shopStock->remaining_quantity);
 
@@ -1692,32 +1812,38 @@ class ShopStockController extends Controller
         $itemName = $shopStock->item?->item_name ?? 'Product';
         $shopName = $shopStock->shop?->shop_name ?? 'Shop';
 
-        // ── SHOP ADMIN DELETING STOCK (Route as Request to Owner) ────────────
+        // ── SHOP ADMIN DELETING STOCK ─────────────────────────────────────────
         if ($user->isShopAdmin()) {
             if (!$shopStock->is_admin_stock) {
                 return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
                     ->with('error', 'Shop Admins cannot delete stock transferred from the Main Store.');
             }
 
-            $reason = $request->input('reason', 'Deletion requested by shop admin');
-
-            $shopStock->update([
-                'is_delete_pending'     => true,
-                'pending_delete_reason' => $reason,
-            ]);
-
-            // Notify Owners
-            $owners = User::where('role', 'owner')->get();
-            foreach ($owners as $owner) {
-                Notification::create([
-                    'user_id' => $owner->id,
-                    'title'   => 'Stock Deletion Request',
-                    'message' => "Admin {$user->name} ({$shopName}) requested to delete stock batch #{$shopStock->id} (\"{$itemName}\"). Reason: {$reason}",
-                ]);
+            if ($shopStock->quantity != $shopStock->remaining_quantity) {
+                return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
+                    ->with('error', 'Cannot delete stock batch because some items have already been sold or modified.');
             }
 
-            return redirect()->route('shop-stock.index', ['shop_id' => $shopStock->shop_id])
-                ->with('success', "Deletion request for \"{$itemName}\" (Batch #{$shopStock->id}) submitted to Owner for approval.");
+            $itemId = $shopStock->item_id;
+            $quantity = $shopStock->quantity;
+            $shopId = $shopStock->shop_id;
+
+            $shopStock->delete();
+
+            StockLog::create([
+                'item_id'          => $itemId,
+                'from_location'    => $shopName,
+                'to_location'      => 'Supplier (Deleted)',
+                'quantity'         => $quantity,
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => $user->id,
+                'date'             => now(),
+                'notes'            => "Shop Admin deleted admin stock batch #{$shopStock->id} (\"{$itemName}\").",
+                'is_admin_stock'   => true,
+            ]);
+
+            return redirect()->route('shop-stock.index', ['shop_id' => $shopId])
+                ->with('success', "Admin stock batch \"{$itemName}\" deleted permanently.");
         }
 
         // ── OWNER DELETING STOCK DIRECTLY ────────────────────────────────────
@@ -1790,7 +1916,7 @@ class ShopStockController extends Controller
                 continue;
             }
 
-            if ($user->isOwner() && $shopStock->quantity != $shopStock->remaining_quantity) {
+            if ($shopStock->quantity != $shopStock->remaining_quantity) {
                 $soldQty = max(0, $shopStock->quantity - $shopStock->remaining_quantity);
                 $errors[] = "Item '{$itemName}' (Batch #{$shopStock->id}): {$soldQty} unit(s) have already been sold or modified.";
                 continue;
@@ -1814,31 +1940,39 @@ class ShopStockController extends Controller
             ], 422);
         }
 
-        // ── IF SHOP ADMIN: Send Deletion Requests ───────────────────────────
+        // ── IF SHOP ADMIN: Delete Admin Stock Permanently ────────────────────
         if ($user->isShopAdmin()) {
-            $requestCount = 0;
-            $reason = $request->input('reason', 'Bulk deletion requested by shop admin');
+            $deletedCount = 0;
+            \DB::transaction(function () use ($validStocks, $user, &$deletedCount) {
+                foreach ($validStocks as $shopStock) {
+                    if ($shopStock->is_admin_stock) {
+                        $itemId       = $shopStock->item_id;
+                        $quantity     = $shopStock->quantity;
+                        $shopName     = $shopStock->shop?->shop_name ?? 'Shop';
+                        $itemName     = $shopStock->item?->item_name ?? 'Product';
 
-            foreach ($validStocks as $shopStock) {
-                $shopStock->update([
-                    'is_delete_pending'     => true,
-                    'pending_delete_reason' => $reason,
-                ]);
-                $requestCount++;
-            }
+                        $shopStock->delete();
+                        $deletedCount++;
 
-            $owners = User::where('role', 'owner')->get();
-            foreach ($owners as $owner) {
-                Notification::create([
-                    'user_id' => $owner->id,
-                    'title'   => 'Bulk Stock Deletion Request',
-                    'message' => "Admin {$user->name} requested to delete {$requestCount} stock batch(es). Reason: {$reason}",
-                ]);
-            }
+                        StockLog::create([
+                            'item_id'          => $itemId,
+                            'from_location'    => $shopName,
+                            'to_location'      => 'Supplier (Deleted)',
+                            'quantity'         => $quantity,
+                            'transaction_type' => 'ADJUSTMENT',
+                            'performed_by'     => $user->id,
+                            'date'             => now(),
+                            'notes'            => "Shop Admin deleted admin stock batch #{$shopStock->id} (\"{$itemName}\") via bulk delete.",
+                            'is_admin_stock'   => true,
+                        ]);
+                    }
+                }
+            });
 
             return response()->json([
-                'success' => true,
-                'message' => "Submitted deletion requests for {$requestCount} stock batch(es) to Owner for approval.",
+                'success'       => true,
+                'message'       => "Successfully deleted {$deletedCount} admin stock batch(es).",
+                'deleted_count' => $deletedCount,
             ]);
         }
 
@@ -1971,6 +2105,32 @@ class ShopStockController extends Controller
             'requested_quantity' => 'required|integer|min:0',
             'reason'             => 'required|string|max:255',
         ]);
+
+        if ($shopStock->is_admin_stock) {
+            $oldQty = intval($shopStock->remaining_quantity);
+            $newQty = intval($request->requested_quantity);
+            $oldInitialQty = intval($shopStock->quantity);
+            $diff = $newQty - $oldQty;
+
+            $shopStock->update([
+                'remaining_quantity' => $newQty,
+                'quantity'           => $oldInitialQty + $diff,
+            ]);
+
+            StockLog::create([
+                'item_id'          => $shopStock->item_id,
+                'from_location'    => $user->shop?->shop_name ?? 'Shop',
+                'to_location'      => $user->shop?->shop_name ?? 'Shop',
+                'quantity'         => abs($diff),
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => $user->id,
+                'date'             => now(),
+                'notes'            => "Shop Admin adjusted admin stock batch #{$shopStock->id} quantity from {$oldQty} to {$newQty} (Reason: {$request->reason})",
+                'is_admin_stock'   => true,
+            ]);
+
+            return back()->with('success', 'Admin stock quantity updated successfully.');
+        }
 
         $shopStock->update([
             'pending_quantity_request' => $request->requested_quantity,
@@ -2231,6 +2391,218 @@ class ShopStockController extends Controller
             ->sum('remaining_quantity');
 
         return response()->json(['available' => (int) $available]);
+    }
+
+    public function finishedIndex(Request $request)
+    {
+        $user = Auth::user();
+        $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
+
+        $finishedQuery = ShopStock::query();
+        if ($shopId) {
+            $finishedQuery->where('shop_stocks.shop_id', $shopId);
+        }
+        if ($user->isOwner()) {
+            $finishedQuery->where('shop_stocks.is_admin_stock', false);
+        }
+
+        $finishedCount = DB::table(DB::raw("({$finishedQuery->select('shop_stocks.shop_id', 'shop_stocks.item_id', DB::raw('SUM(shop_stocks.remaining_quantity) as total_rem'))->groupBy('shop_stocks.shop_id', 'shop_stocks.item_id')->havingRaw('SUM(shop_stocks.remaining_quantity) = 0')->toSql()}) as sub"))
+            ->mergeBindings($finishedQuery->toBase())
+            ->count();
+
+        $shops = $user->isOwner() ? Shop::active()->get() : collect();
+        $lowStockItems = ShopStock::with('item', 'shop')
+            ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
+            ->when(!$user->isOwner(), fn($q) => $q->where('shop_id', $user->shop_id))
+            ->when($user->isOwner(), fn($q) => $q->where('is_admin_stock', false))
+            ->count();
+
+        return view('shop-stock.finished', compact('shops', 'shopId', 'finishedCount', 'lowStockItems'));
+    }
+
+    public function finishedData(Request $request)
+    {
+        $user = Auth::user();
+        $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
+
+        $query = ShopStock::query();
+
+        if ($shopId) {
+            $query->where('shop_stocks.shop_id', $shopId);
+        }
+
+        if ($user->isOwner()) {
+            $query->where('shop_stocks.is_admin_stock', false);
+        }
+
+        $searchValue = trim($request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $query->where(function ($q) use ($searchValue) {
+                $q->orWhereHas('item', function ($sq) use ($searchValue) {
+                    $sq->where('item_name', 'like', "%{$searchValue}%")
+                       ->orWhere('brand', 'like', "%{$searchValue}%")
+                       ->orWhere('model', 'like', "%{$searchValue}%")
+                       ->orWhereHas('category', function ($cq) use ($searchValue) {
+                           $cq->where('category_name', 'like', "%{$searchValue}%");
+                       });
+                })->orWhereHas('shop', function ($sq) use ($searchValue) {
+                    $sq->where('shop_name', 'like', "%{$searchValue}%");
+                });
+            });
+        }
+
+        $groupedQuery = (clone $query)
+            ->select(
+                'shop_stocks.shop_id',
+                'shop_stocks.item_id',
+                'shop_stocks.buying_price',
+                'shop_stocks.selling_price',
+                'shop_stocks.is_admin_stock',
+                'shop_stocks.low_stock_alert',
+                DB::raw('SUM(shop_stocks.quantity) as total_quantity'),
+                DB::raw('SUM(shop_stocks.remaining_quantity) as total_remaining_quantity'),
+                DB::raw('MIN(shop_stocks.id) as first_id'),
+                DB::raw('GROUP_CONCAT(shop_stocks.id) as all_ids_str')
+            )
+            ->groupBy(
+                'shop_stocks.shop_id',
+                'shop_stocks.item_id',
+                'shop_stocks.buying_price',
+                'shop_stocks.selling_price',
+                'shop_stocks.is_admin_stock',
+                'shop_stocks.low_stock_alert'
+            )
+            ->havingRaw('SUM(shop_stocks.remaining_quantity) = 0');
+
+        $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
+            ->mergeBindings($groupedQuery->toBase())
+            ->count();
+        $recordsFiltered = $recordsTotal;
+
+        $orderColumnIndex = $request->input('order.0.column', 3);
+        $orderDirection = strtolower($request->input('order.0.dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        switch ((int) $orderColumnIndex) {
+            case 2:
+                $groupedQuery->leftJoin('shops', 'shops.id', '=', 'shop_stocks.shop_id')
+                      ->orderBy('shops.shop_name', $orderDirection);
+                break;
+            case 3:
+                $groupedQuery->leftJoin('items', 'items.id', '=', 'shop_stocks.item_id')
+                      ->orderBy('items.item_name', $orderDirection);
+                break;
+            case 5:
+                $groupedQuery->orderBy(DB::raw('SUM(shop_stocks.quantity)'), $orderDirection);
+                break;
+            default:
+                $groupedQuery->leftJoin('items', 'items.id', '=', 'shop_stocks.item_id')
+                      ->orderBy('items.item_name', $orderDirection);
+                break;
+        }
+
+        $start = max(0, (int) $request->input('start', 0));
+        $allowedLengths = [10, 25, 50, 100];
+        $requestedLength = (int) $request->input('length', 10);
+        $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
+
+        $pageGroupedStocks = $groupedQuery->skip($start)->take($length)->get();
+
+        $data = [];
+        $iterator = $start + 1;
+
+        foreach ($pageGroupedStocks as $groupRow) {
+            $allIds = array_map('intval', explode(',', $groupRow->all_ids_str));
+            $firstSt = ShopStock::with('item.category', 'shop')->find($groupRow->first_id);
+            if (!$firstSt) continue;
+
+            $totalQty = (int) $groupRow->total_quantity;
+            $shopName = e($firstSt->shop->shop_name ?? 'N/A');
+
+            $imageHtml = $firstSt->item?->image_path
+                ? '<div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage(\'' . asset('media/' . $firstSt->item->image_path) . '\', \'' . addslashes(e($firstSt->item->item_name ?? '')) . '\')" title="Click to zoom image">
+                    <img src="' . asset('media/' . $firstSt->item->image_path) . '" alt="' . e($firstSt->item->item_name ?? '') . '" class="product-img-thumb w-100 h-100" style="object-fit: cover; transition: transform 0.25s ease;">
+                    <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.45); opacity: 0; transition: opacity 0.2s ease;">
+                        <i class="bi bi-zoom-in text-white fs-6"></i>
+                    </div>
+                </div>'
+                : '<div class="rounded d-flex align-items-center justify-content-center bg-light text-muted" style="width:36px;height:36px;border:1px solid var(--card-border);flex-shrink:0;"><i class="bi bi-image" style="font-size:0.8rem;"></i></div>';
+
+            $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
+            $productHtml .= '<div style="font-weight:600;font-size:.83rem;">' . e($firstSt->item->item_name ?? 'N/A') . '</div>';
+            $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e($firstSt->item->brand ?? '');
+            if ($firstSt->is_admin_stock) {
+                $productHtml .= ' <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>';
+            }
+            $productHtml .= '</div></div></div>';
+
+            $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($firstSt->item?->category?->category_name ?? 'General') . '</span>';
+
+            $remainingHtml = '<span class="badge bg-danger text-white px-2 py-1" style="font-size:0.75rem;"><i class="bi bi-x-circle-fill me-1"></i> Finished (0)</span>';
+
+            // Calculate sales velocity & average sales
+            $totalSold = (int) \App\Models\SaleItem::whereHas('sale', function ($q) use ($firstSt) {
+                $q->where('status', 'completed')->where('shop_id', $firstSt->shop_id);
+            })->where('item_id', $firstSt->item_id)->sum('quantity');
+
+            $firstSale = \App\Models\Sale::where('status', 'completed')
+                ->where('shop_id', $firstSt->shop_id)
+                ->whereHas('items', fn($q) => $q->where('item_id', $firstSt->item_id))
+                ->min('sale_date');
+
+            if ($firstSale && $totalSold > 0) {
+                $months = max(1, \Carbon\Carbon::parse($firstSale)->diffInMonths(now()) + 1);
+                $avgMonthly = round($totalSold / $months, 1);
+                $avgSalesHtml = '<div class="fw-bold text-primary" style="font-size:0.83rem;">' . number_format($totalSold) . ' units sold</div>'
+                    . '<div class="text-muted" style="font-size:0.7rem;"><i class="bi bi-graph-up-arrow me-1 text-success"></i> ~' . $avgMonthly . ' units / month</div>';
+            } else if ($totalSold > 0) {
+                $avgSalesHtml = '<div class="fw-bold text-primary" style="font-size:0.83rem;">' . number_format($totalSold) . ' units sold</div>';
+            } else {
+                $avgSalesHtml = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:0.68rem;">No sales recorded</span>';
+            }
+
+            $buyingPriceHtml = 'TZS ' . number_format($firstSt->buying_price, 0);
+            $sellingPriceHtml = 'TZS ' . number_format($firstSt->selling_price, 0);
+
+            $actions = '<div class="d-flex align-items-center gap-2">';
+            if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
+                if ($firstSt->is_admin_stock) {
+                    $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="1" title="Quick Restock Admin Stock"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
+                } else {
+                    if (auth()->user()->isShopAdmin()) {
+                        $actions .= '<a href="' . route('stock-requests.create', ['item_id' => $firstSt->item_id]) . '" class="btn btn-xs btn-primary fw-bold" title="Request Stock from Main Warehouse"><i class="bi bi-cart-plus me-1"></i> Request Stock</a>';
+                    } else {
+                        $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="0" title="Quick Restock Out of Stock Item"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
+                    }
+                }
+            }
+            $actions .= '<a href="' . route('shop-stock.show', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>';
+            $actions .= '</div>';
+
+            $row = [
+                'iteration' => $iterator++,
+                'shop' => $shopName,
+                'product' => $productHtml,
+                'category' => $categoryHtml,
+                'initial_qty' => $totalQty,
+                'remaining_qty' => $remainingHtml,
+                'average_sales' => $avgSalesHtml,
+                'selling_price' => $sellingPriceHtml,
+                'actions' => $actions,
+            ];
+
+            if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
+                $row['buying_price'] = $buyingPriceHtml;
+            }
+
+            $data[] = $row;
+        }
+
+        return response()->json([
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
     }
 }
 

@@ -62,8 +62,33 @@
             <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ $lowStockItems }} item(s) low in stock!
         </div>
         @endif
+        @if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
+        <div class="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-600 shadow-xs" style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.18); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);" title="Main Store selling price changed affecting shop stock buying price">
+            <i class="bi bi-exclamation-circle-fill text-warning me-1"></i> {{ $pendingPriceItemsCount }} price update(s) required!
+        </div>
+        @endif
     </div>
 </div>
+
+@if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
+<div class="alert alert-warning alert-dismissible fade show border-warning-subtle d-flex align-items-center justify-content-between mb-4 p-3 rounded-3 shadow-xs" role="alert" style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+    <div class="d-flex align-items-center gap-2.5">
+        <div class="d-flex align-items-center justify-content-center rounded-2 p-2" style="background: rgba(245, 158, 11, 0.2);">
+            <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+        </div>
+        <div>
+            <h6 class="fw-bold mb-0" style="font-size: 0.92rem; color: #b45309;"><i class="bi bi-bell-fill me-1"></i> Price Action Needed: Buying Price Updated from Main Store</h6>
+            <span class="small" style="font-size: 0.8rem; color: #92400e;">Main Store updated selling prices, changing the buying price for <strong>{{ $pendingPriceItemsCount }} shop stock item(s)</strong>. Affected items are displayed at the top of the table below. Please review and update their shop selling prices.</span>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="#shopStockTable" class="btn btn-sm btn-warning text-dark fw-bold px-3 py-1.5 shadow-xs hover-lift" style="font-size: 0.8rem;">
+            <i class="bi bi-arrow-down-circle-fill me-1"></i> Review {{ $pendingPriceItemsCount }} Item(s) Below
+        </a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</div>
+@endif
 
 @if(session('import_errors'))
 <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="background: rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
@@ -824,6 +849,46 @@
             $('#alertModalError').hide().text('');
             $('#saveAlertBtn').prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>Save');
             new bootstrap.Modal(document.getElementById('editAlertModal')).show();
+        });
+
+        // ── Update Shop Stock Selling Price ─────────────────────────────
+        $(document).on('click', '.btn-update-shop-selling-price', function() {
+            const id = $(this).data('id');
+            const itemName = $(this).data('item-name');
+            const buyingPrice = parseFloat($(this).data('buying-price')) || 0;
+            const sellingPrice = parseFloat($(this).data('selling-price')) || 0;
+            const pendingPrice = parseFloat($(this).data('pending-price')) || sellingPrice;
+
+            $('#modalItemName').text(itemName);
+            $('#modalProposedPrice').text(pendingPrice.toLocaleString());
+            $('#modalSellingPrice').val(pendingPrice || sellingPrice);
+            $('#modalSellingPriceHidden').val(pendingPrice || sellingPrice);
+            $('#approvePriceModal').data('buying-price', buyingPrice);
+            $('#modalBuyingPriceHelp').html('<i class="bi bi-info-circle me-1"></i> Current Buying Price: <strong>TZS ' + buyingPrice.toLocaleString() + '</strong>. Selling price must be equal or higher.');
+
+            $('#approvePriceForm').attr('action', '/shop-stock/' + id + '/price');
+            if ($('#approvePriceForm input[name="_method"]').length === 0) {
+                $('#approvePriceForm').append('<input type="hidden" name="_method" value="PATCH">');
+            }
+
+            $('#approveModalPriceWarning').hide();
+            $('#approvePriceForm button[type="submit"]').prop('disabled', false);
+            new bootstrap.Modal(document.getElementById('approvePriceModal')).show();
+        });
+
+        $('#modalSellingPrice').on('input', function() {
+            const raw = $(this).val().replace(/[^0-9.]/g, '');
+            const num = parseFloat(raw) || 0;
+            $('#modalSellingPriceHidden').val(num);
+            
+            const buyingPrice = parseFloat($('#approvePriceModal').data('buying-price')) || 0;
+            if (num > 0 && num < buyingPrice) {
+                $('#approveModalPriceWarning').show();
+                $('#approvePriceForm button[type="submit"]').prop('disabled', true);
+            } else {
+                $('#approveModalPriceWarning').hide();
+                $('#approvePriceForm button[type="submit"]').prop('disabled', false);
+            }
         });
 
         $('#saveAlertBtn').on('click', function() {

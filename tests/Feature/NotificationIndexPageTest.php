@@ -49,4 +49,37 @@ class NotificationIndexPageTest extends TestCase
         $response->assertSee('Notification Center');
         $response->assertSee('pagination');
     }
+
+    public function test_notification_index_page_filters_by_search_query()
+    {
+        Notification::create([
+            'user_id' => $this->user->id,
+            'title'   => 'Stock Transfer Approved',
+            'message' => 'Transfer #42 has been approved by Owner.',
+            'is_read' => false,
+        ]);
+
+        Notification::create([
+            'user_id' => $this->user->id,
+            'title'   => 'Low Stock Alert',
+            'message' => 'Item Dell XPS 15 is running low.',
+            'is_read' => false,
+        ]);
+
+        $this->actingAs($this->user);
+
+        // Search for "Transfer"
+        $response = $this->get(route('notifications.index', ['search' => 'Transfer']));
+
+        $response->assertStatus(200);
+        $results = $response->viewData('notifications');
+        $this->assertEquals(1, $results->total());
+        $this->assertEquals('Stock Transfer Approved', $results->first()->title);
+
+        // Search for non-existent keyword
+        $noResultResponse = $this->get(route('notifications.index', ['search' => 'NonExistentKeywordXYZ']));
+        $noResultResponse->assertStatus(200);
+        $noResults = $noResultResponse->viewData('notifications');
+        $this->assertEquals(0, $noResults->total());
+    }
 }

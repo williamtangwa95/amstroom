@@ -149,6 +149,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('sales-returns/bulk', [SaleReturnController::class, 'bulkDestroy'])->name('sales-returns.bulk-destroy');
         Route::delete('sales-returns/{saleReturn}', [SaleReturnController::class, 'destroy'])->name('sales-returns.destroy');
 
+        // Finished Stocks (Out of Stock items)
+        Route::get('finished-stocks', [ShopStockController::class, 'finishedIndex'])->name('shop-stock.finished');
+        Route::get('finished-stocks/data', [ShopStockController::class, 'finishedData'])->name('shop-stock.finished-data');
+
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');

@@ -20,7 +20,7 @@
                                 <select name="items[0][item_id]" class="form-select item-select" required>
                                     <option value="">Select product...</option>
                                     @foreach($items as $item)
-                                    <option value="{{ $item->id }}" data-stock="{{ $item->getTotalMainStock() }}">[{{ $item->category->category_name }}] {{ $item->item_name }} (Warehouse Stock: {{ $item->getTotalMainStock() }})</option>
+                                    <option value="{{ $item->id }}" data-stock="{{ $item->getTotalMainStock() }}" {{ (isset($selectedItemId) && $selectedItemId == $item->id) || request('item_id') == $item->id ? 'selected' : '' }}>[{{ $item->category->category_name }}] {{ $item->item_name }} (Warehouse Stock: {{ $item->getTotalMainStock() }})</option>
                                     @endforeach
                                 </select>
                             </div>

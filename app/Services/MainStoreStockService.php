@@ -130,7 +130,7 @@ class MainStoreStockService
             // Sync shop stock prices if main store selling price dropped
             if ($priceChanged) {
                 $isIndependent = Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
-                $shopStocks = ShopStock::where('item_id', $itemId)->get();
+                $shopStocks = ShopStock::where('item_id', $itemId)->where('is_admin_stock', false)->get();
 
                 foreach ($shopStocks as $shopStock) {
                     if ($isIndependent) {
@@ -155,6 +155,7 @@ class MainStoreStockService
                         }
                     } else {
                         $shopStock->update([
+                            'buying_price'         => $finalPrice,
                             'is_price_pending'      => true,
                             'pending_selling_price' => $finalPrice,
                         ]);
