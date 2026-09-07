@@ -81,8 +81,9 @@ class ShopStockController extends Controller
         $shops  = $user->isOwner() ? Shop::active()->get() : collect();
 
         $items = collect();
-        $categories = collect();
-        if ($user->isShopAdmin()) {
+        if ($user->isOwner()) {
+            $categories = \App\Models\Category::where('is_admin_category', false)->orderBy('category_name')->get();
+        } elseif ($user->isShopAdmin()) {
             $items = \App\Models\Item::with(['shopStocks' => function ($q) use ($user) {
                 $q->where('shop_id', $user->shop_id);
             }, 'mainStocks'])->where(function ($q) use ($user) {

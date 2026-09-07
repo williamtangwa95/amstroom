@@ -30,6 +30,98 @@
         transform: translateY(-1.5px) !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
     }
+
+    /* Modern Premium Action Buttons */
+    .btn-action-custom {
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        padding: 0.45rem 0.95rem !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.45rem !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        backdrop-filter: blur(8px) !important;
+        border: 1px solid transparent !important;
+        text-decoration: none !important;
+    }
+    .btn-action-custom i {
+        font-size: 0.95rem !important;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .btn-action-custom:hover i {
+        transform: scale(1.18) rotate(-4deg) !important;
+    }
+
+    .btn-action-success {
+        background: rgba(16, 185, 129, 0.08) !important;
+        color: #10b981 !important;
+        border-color: rgba(16, 185, 129, 0.25) !important;
+    }
+    .btn-action-success:hover {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .btn-action-secondary {
+        background: rgba(100, 116, 139, 0.08) !important;
+        color: var(--text-primary) !important;
+        border-color: rgba(148, 163, 184, 0.3) !important;
+    }
+    .btn-action-secondary:hover {
+        background: linear-gradient(135deg, #475569, #334155) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 18px rgba(51, 65, 85, 0.3) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+    .btn-action-secondary:hover .text-success {
+        color: #a7f3d0 !important;
+    }
+
+    .btn-action-purple {
+        background: rgba(139, 92, 246, 0.09) !important;
+        color: #8b5cf6 !important;
+        border-color: rgba(139, 92, 246, 0.25) !important;
+    }
+    .btn-action-purple:hover {
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 18px rgba(139, 92, 246, 0.38) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .btn-action-emerald {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22) !important;
+    }
+    .btn-action-emerald:hover {
+        background: linear-gradient(135deg, #059669, #047857) !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.38) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .btn-action-blue {
+        background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.22) !important;
+    }
+    .btn-action-blue:hover {
+        background: linear-gradient(135deg, #0369a1, #075985) !important;
+        color: #ffffff !important;
+        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.38) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
 </style>
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
     <div>
@@ -38,22 +130,25 @@
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn btn-sm btn-outline-success border-success-subtle text-success fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" style="font-size: 0.82rem;">
-            <i class="bi bi-file-earmark-arrow-down-fill me-1.5"></i> Download Available Stock
+        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn-action-custom btn-action-success shadow-xs">
+            <i class="bi bi-file-earmark-arrow-down-fill"></i> Download Available Stock
         </a>
-        <button type="button" class="btn btn-sm btn-outline-secondary border-secondary-subtle fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal" style="font-size: 0.82rem; color: var(--text-primary);">
-            <i class="bi bi-file-earmark-excel-fill me-1.5 text-success"></i> Upload Stock
+        <button type="button" class="btn-action-custom btn-action-secondary shadow-xs" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
+            <i class="bi bi-file-earmark-excel-fill text-success"></i> Upload Stock
+        </button>
+        <button type="button" class="btn-action-custom btn-action-purple shadow-xs" data-bs-toggle="modal" data-bs-target="#categoryComponentsModal">
+            <i class="bi bi-sliders"></i> Category Components
         </button>
         @endif
 
         @if(auth()->user()->isShopAdmin())
             @if(auth()->user()->allow_stock_addition)
-            <button type="button" class="btn btn-sm btn-success text-white fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal" style="font-size: 0.82rem; background: linear-gradient(135deg, #10b981, #059669); border: none;">
-                <i class="bi bi-plus-lg me-1.5"></i> Add Owner Stock
+            <button type="button" class="btn-action-custom btn-action-emerald shadow-xs" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
+                <i class="bi bi-plus-lg"></i> Add Owner Stock
             </button>
             @endif
-            <button type="button" class="btn btn-sm btn-accent text-white fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" data-bs-toggle="modal" data-bs-target="#addAdminStockModal" style="font-size: 0.82rem; background: linear-gradient(135deg, #0284c7, #0369a1); border: none;">
-                <i class="bi bi-plus-circle-fill me-1.5"></i> Add Admin Stock
+            <button type="button" class="btn-action-custom btn-action-blue shadow-xs" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
+                <i class="bi bi-plus-circle-fill"></i> Add Admin Stock
             </button>
         @endif
 
@@ -603,6 +698,48 @@
 @endif
 
 @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+<!-- Category Components Bulk Manage Modal -->
+<div class="modal fade" id="categoryComponentsModal" tabindex="-1" aria-labelledby="categoryComponentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header border-bottom py-3" style="border-color:var(--card-border) !important;">
+                <h6 class="modal-title fw-700 mb-0" id="categoryComponentsModalLabel" style="color:var(--text-primary);">
+                    <i class="bi bi-sliders text-accent me-2"></i>Enable / Disable Components by Category
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-3">
+                    Batch enable or disable selling with custom components (RAM, Storage, GPU, etc.) for all stock items belonging to a selected category (e.g. Desktop, Laptop, Monitor).
+                </p>
+                <div class="mb-3">
+                    <label for="categoryToggleSelect" class="form-label fw-600 small">Target Category *</label>
+                    <select id="categoryToggleSelect" class="form-select form-select-sm" required>
+                        <option value="">-- Select Category (Desktop, Laptop, Monitor, etc.) --</option>
+                        @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @if(auth()->user()->isOwner())
+                <input type="hidden" id="categoryToggleShopId" value="{{ $shopId ?? '' }}">
+                @endif
+            </div>
+            <div class="modal-footer border-top py-2.5 d-flex justify-content-between" style="border-color:var(--card-border) !important;">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning fw-600 px-3" id="btnDisableCategoryComp">
+                        <i class="bi bi-toggle-off me-1"></i> Disable for Category
+                    </button>
+                    <button type="button" class="btn btn-sm btn-accent fw-600 px-3" id="btnEnableCategoryComp">
+                        <i class="bi bi-toggle-on me-1"></i> Enable for Category
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Upload Shop Stock Modal -->
 <div class="modal fade" id="uploadShopStockModal" tabindex="-1" aria-labelledby="uploadShopStockModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1636,6 +1773,66 @@
                 });
         }
 
+        function sendCategoryComponentUpdate(enabled) {
+            const categoryId = $('#categoryToggleSelect').val();
+            if (!categoryId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Select Category',
+                    text: 'Please select a category first.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
+
+            const shopId = $('#categoryToggleShopId').val();
+            const categoryName = $('#categoryToggleSelect option:selected').text();
+            const actionText = enabled ? 'enable' : 'disable';
+
+            Swal.fire({
+                title: 'Please wait...',
+                html: `Updating component capability for ${categoryName}...`,
+                allowOutsideClick: false,
+                background: '#161b22',
+                color: '#e6edf3',
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.post("{{ route('settings.toggle-components') }}", {
+                _token: "{{ csrf_token() }}",
+                shop_stock_category_toggle: 1,
+                category_id: categoryId,
+                enabled: enabled ? 1 : 0,
+                shop_id: shopId
+            })
+            .done(function(res) {
+                $('#categoryComponentsModal').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved',
+                    text: `Components ${actionText}d for category successfully!`,
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                }).then(() => {
+                    location.reload();
+                });
+            })
+            .fail(function(err) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to update category components. Please try again.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+            });
+        }
+
         function sendBulkDelete() {
             const checkedIds = getSelectedStockIds();
 
@@ -2089,6 +2286,8 @@
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
         $('#bulkEnableBtn').on('click', () => sendBulkUpdate(true));
         $('#bulkDisableBtn').on('click', () => sendBulkUpdate(false));
+        $('#btnEnableCategoryComp').on('click', () => sendCategoryComponentUpdate(true));
+        $('#btnDisableCategoryComp').on('click', () => sendCategoryComponentUpdate(false));
         @endif
         $('#bulkDeleteBtn').on('click', sendBulkDelete);
 

@@ -460,6 +460,39 @@ class SettingController extends Controller
             return response()->json(['success' => true]);
         }
         
+        // --- BULK ACTION BY CATEGORY FOR SHOP STOCK ---
+        if ($request->has('category_id') && $request->has('shop_stock_category_toggle')) {
+            $categoryId = $request->input('category_id');
+            $enabled = $request->input('enabled') ? true : false;
+            $shopId = $request->input('shop_id');
+
+            $query = ShopStock::whereHas('item', function ($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            });
+
+            if ($user->isShopAdmin()) {
+                $query->where('shop_id', $user->shop_id);
+            } elseif ($user->isOwner()) {
+                if (!empty($shopId)) {
+                    $query->where('shop_id', $shopId);
+                } else {
+                    $query->where('is_admin_stock', false);
+                }
+            } else {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            $affectedCount = $query->update(['allow_components' => $enabled]);
+            $category = \App\Models\Category::find($categoryId);
+            $catName = $category ? $category->category_name : 'Category';
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Successfully " . ($enabled ? 'enabled' : 'disabled') . " custom components for {$affectedCount} stock item(s) in category \"{$catName}\".",
+                'affected' => $affectedCount,
+            ]);
+        }
+
         // --- BULK ACTION FOR SHOP STOCK ---
         if ($request->has('shop_stock_ids')) {
             $ids = (array) $request->input('shop_stock_ids');

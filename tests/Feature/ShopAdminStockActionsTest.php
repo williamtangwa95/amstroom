@@ -253,4 +253,128 @@ class ShopAdminStockActionsTest extends TestCase
         $this->assertStringContainsString('btn-quick-restock', $adminData['actions']);
         $this->assertStringContainsString('Quick Restock', $adminData['actions']);
     }
+
+    public function test_category_component_toggle_enables_and_disables_components_by_category_for_shop_admin()
+    {
+        $desktopCategory = Category::create(['category_name' => 'Desktop']);
+        $laptopCategory  = Category::create(['category_name' => 'Laptop']);
+
+        $desktopItem = Item::create([
+            'item_name'   => 'Custom PC Desktop',
+            'category_id' => $desktopCategory->id,
+        ]);
+        $laptopItem = Item::create([
+            'item_name'   => 'HP Laptop',
+            'category_id' => $laptopCategory->id,
+        ]);
+
+        $desktopStock = ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $desktopItem->id,
+            'buying_price'       => 1000,
+            'selling_price'      => 1500,
+            'quantity'           => 5,
+            'remaining_quantity' => 5,
+            'date_received'      => now()->toDateString(),
+            'allow_components'   => false,
+        ]);
+
+        $laptopStock = ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $laptopItem->id,
+            'buying_price'       => 800,
+            'selling_price'      => 1200,
+            'quantity'           => 3,
+            'remaining_quantity' => 3,
+            'date_received'      => now()->toDateString(),
+            'allow_components'   => false,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        // Enable components for Desktop category
+        $response = $this->postJson(route('settings.toggle-components'), [
+            'shop_stock_category_toggle' => 1,
+            'category_id'                => $desktopCategory->id,
+            'enabled'                    => 1,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+
+        $this->assertTrue((bool)$desktopStock->fresh()->allow_components);
+        $this->assertFalse((bool)$laptopStock->fresh()->allow_components);
+
+        // Disable components for Desktop category
+        $response2 = $this->postJson(route('settings.toggle-components'), [
+            'shop_stock_category_toggle' => 1,
+            'category_id'                => $desktopCategory->id,
+            'enabled'                    => 0,
+        ]);
+
+        $response2->assertStatus(200);
+        $this->assertFalse((bool)$desktopStock->fresh()->allow_components);
+    }
+
+    public function test_category_component_toggle_for_owner()
+    {
+        $shop2 = Shop::create([
+            'shop_name' => 'Test Shop 2',
+            'location'  => 'Arusha',
+        ]);
+
+        $monitorCategory = Category::create(['category_name' => 'Monitor']);
+        $monitorItem = Item::create([
+            'item_name'   => 'Dell 27-inch Monitor',
+            'category_id' => $monitorCategory->id,
+        ]);
+
+        $shop1Stock = ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $monitorItem->id,
+            'buying_price'       => 300,
+            'selling_price'      => 450,
+            'quantity'           => 10,
+            'remaining_quantity' => 10,
+            'date_received'      => now()->toDateString(),
+            'allow_components'   => false,
+        ]);
+
+        $shop2Stock = ShopStock::create([
+            'shop_id'            => $shop2->id,
+            'item_id'            => $monitorItem->id,
+            'buying_price'       => 300,
+            'selling_price'      => 450,
+            'quantity'           => 5,
+            'remaining_quantity' => 5,
+            'date_received'      => now()->toDateString(),
+            'allow_components'   => false,
+        ]);
+
+        $this->actingAs($this->owner);
+
+        // Enable components for Shop 1 stock
+        $response = $this->postJson(route('settings.toggle-components'), [
+            'shop_stock_category_toggle' => 1,
+            'category_id'                => $monitorCategory->id,
+            'enabled'                    => 1,
+            'shop_id'                    => $this->shop->id,
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertTrue((bool)$shop1Stock->fresh()->allow_components);
+        $this->assertFalse((bool)$shop2Stock->fresh()->allow_components);
+
+        // Enable components for Shop 2 stock
+        $response2 = $this->postJson(route('settings.toggle-components'), [
+            'shop_stock_category_toggle' => 1,
+            'category_id'                => $monitorCategory->id,
+            'enabled'                    => 1,
+            'shop_id'                    => $shop2->id,
+        ]);
+
+        $response2->assertStatus(200);
+        $this->assertTrue((bool)$shop2Stock->fresh()->allow_components);
+    }
 }
+
