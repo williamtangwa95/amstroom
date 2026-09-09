@@ -170,7 +170,17 @@ class ExpenseController extends Controller
     {
         $user = Auth::user();
 
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existingId = \Illuminate\Support\Facades\Cache::get("idempotency_expense_{$idempotencyKey}");
+            if ($existingId) {
+                return redirect()->route('expenses.index')
+                    ->with('success', 'Expense already recorded!');
+            }
+        }
+
         $request->validate([
+            'idempotency_key'     => 'nullable|string|max:64',
             'expense_category_id' => 'required|exists:expense_categories,id',
             'activity'            => 'required|string|max:150',
             'description'         => 'nullable|string',
@@ -187,6 +197,10 @@ class ExpenseController extends Controller
             'recorded_by'         => $user->id,
             'status'              => 'pending',
         ]);
+
+        if ($idempotencyKey) {
+            \Illuminate\Support\Facades\Cache::put("idempotency_expense_{$idempotencyKey}", $expense->id, now()->addMinutes(10));
+        }
 
         if ($user->isSeller()) {
             $admins = \App\Models\User::where('role', 'shop_admin')->get();

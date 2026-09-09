@@ -57,6 +57,7 @@
             <div class="card-body">
                 <form method="POST" action="{{ route('handovers.store') }}" enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="idempotency_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                     <input type="hidden" name="shop_id" value="{{ $shop->id }}">
                     <input type="hidden" name="start_date" value="{{ $startDate }}">
                     <input type="hidden" name="end_date" value="{{ $endDate }}">

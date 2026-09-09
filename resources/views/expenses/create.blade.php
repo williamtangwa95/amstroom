@@ -14,6 +14,7 @@
             <div class="card-body p-4">
                 <form method="POST" action="{{ route('expenses.store') }}">
                     @csrf
+                    <input type="hidden" name="idempotency_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                     
                     <div class="row g-3">
                         <div class="col-md-6">

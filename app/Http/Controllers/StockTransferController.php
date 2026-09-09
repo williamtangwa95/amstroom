@@ -203,7 +203,17 @@ class StockTransferController extends Controller
      */
     public function store(Request $request)
     {
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existingId = \Illuminate\Support\Facades\Cache::get("idempotency_transfer_{$idempotencyKey}");
+            if ($existingId) {
+                return redirect()->route('transfers.show', $existingId)
+                    ->with('success', 'Stock transfer already submitted!');
+            }
+        }
+
         $request->validate([
+            'idempotency_key' => 'nullable|string|max:64',
             'shop_id'       => 'required|exists:shops,id',
             'items'         => 'required|array|min:1',
             'items.*.id'    => 'required|exists:items,id',
@@ -226,7 +236,7 @@ class StockTransferController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $shop, $shopId) {
+        DB::transaction(function () use ($request, $shop, $shopId, $idempotencyKey) {
             // Create the transfer record
             $transfer = StockTransfer::create([
                 'from_store'    => 'Main Warehouse',
@@ -283,6 +293,10 @@ class StockTransferController extends Controller
                     'title'   => 'New Stock Transfer Dispatched',
                     'message' => "Owner has dispatched a new stock transfer #{$transfer->id} to your shop ({$shop->shop_name}). Please review and confirm receipt.",
                 ]);
+            }
+
+            if ($idempotencyKey) {
+                \Illuminate\Support\Facades\Cache::put("idempotency_transfer_{$idempotencyKey}", $transfer->id, now()->addMinutes(10));
             }
         });
 

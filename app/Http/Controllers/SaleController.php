@@ -381,7 +381,32 @@ class SaleController extends Controller
         $isOwner = $user->isOwner();
         $isDraftProforma = $request->input('sale_status') === 'draft_proforma';
 
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existingSaleId = \Illuminate\Support\Facades\Cache::get("idempotency_sale_{$idempotencyKey}");
+            if ($existingSaleId) {
+                $existingSale = Sale::find($existingSaleId);
+                if ($existingSale) {
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Sale already processed.',
+                            'sale_id' => $existingSale->id,
+                            'redirect_url' => route('sales.receipt', $existingSale->id)
+                        ]);
+                    }
+                    if ($existingSale->status === 'draft_proforma') {
+                        return redirect()->route('sales.show', $existingSale->id)
+                            ->with('success', 'Proforma quote saved.');
+                    }
+                    return redirect()->route('sales.receipt', $existingSale->id)
+                        ->with('success', 'Sale completed successfully!');
+                }
+            }
+        }
+
         $request->validate([
+            'idempotency_key'    => 'nullable|string|max:64',
             'customer_name'      => 'nullable|string|max:150',
             'payment_method'     => 'required|in:cash,card,mobile_money,bank_transfer',
             'items'              => 'required|array|min:1',
@@ -422,7 +447,7 @@ class SaleController extends Controller
             'terms_of_payment'   => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($request, $user, $isOwner, $isDraftProforma) {
+        DB::transaction(function () use ($request, $user, $isOwner, $isDraftProforma, $idempotencyKey) {
             $hasAdminStock = false;
             $hasNormalStock = false;
 
@@ -730,6 +755,10 @@ class SaleController extends Controller
             }
 
             session(['last_sale_id' => $sale->id]);
+
+            if ($idempotencyKey) {
+                \Illuminate\Support\Facades\Cache::put("idempotency_sale_{$idempotencyKey}", $sale->id, now()->addMinutes(10));
+            }
         });
 
         $saleId = session('last_sale_id');

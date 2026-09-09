@@ -116,6 +116,7 @@
             <div class="card-body d-flex flex-column">
                 <form method="POST" action="{{ route('sales.store') }}" id="checkoutForm" class="flex-grow-1 d-flex flex-column">
                     @csrf
+                    <input type="hidden" name="idempotency_key" id="idempotencyKeyInput" value="{{ \Illuminate\Support\Str::uuid() }}">
 
                     <div id="cartItemsList" class="flex-grow-1 mb-3" style="max-height:350px;overflow-y:auto;">
                         <div class="text-center py-5 text-muted" id="emptyCartMsg">

@@ -127,7 +127,17 @@ class DefectController extends Controller
 
     public function store(Request $request)
     {
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existingId = \Illuminate\Support\Facades\Cache::get("idempotency_defect_{$idempotencyKey}");
+            if ($existingId) {
+                return redirect()->route('defects.index')
+                    ->with('success', 'Defect report already submitted!');
+            }
+        }
+
         $request->validate([
+            'idempotency_key' => 'nullable|string|max:64',
             'item_id'    => 'required|exists:items,id',
             'quantity'   => 'required|integer|min:1',
             'reason'     => 'required|string|max:500',
@@ -198,7 +208,7 @@ class DefectController extends Controller
                 ]);
             }
 
-            Defect::create([
+            $defect = Defect::create([
                 'shop_id'     => $shopId,
                 'item_id'     => $request->item_id,
                 'quantity'    => $request->quantity,
@@ -207,6 +217,10 @@ class DefectController extends Controller
                 'reported_by' => $user->id,
                 'date'        => now()->toDateString(),
             ]);
+
+            if ($idempotencyKey) {
+                \Illuminate\Support\Facades\Cache::put("idempotency_defect_{$idempotencyKey}", $defect->id, now()->addMinutes(10));
+            }
         });
 
         return redirect()->route('defects.index')

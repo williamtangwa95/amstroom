@@ -839,6 +839,12 @@
 
 <body>
 
+    {{-- Global Floating Offline Notification Toast --}}
+    <div id="globalOfflineBanner" class="align-items-center justify-content-center gap-2 shadow-lg" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; font-size: 0.85rem; font-weight: 600; background: linear-gradient(135deg, #e11d48, #be123c); color: #ffffff; border-radius: 50px; padding: 0.65rem 1.4rem; max-width: 580px; width: calc(100% - 32px); box-shadow: 0 10px 25px rgba(225, 29, 72, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;">
+        <i class="bi bi-wifi-off fs-6 text-white-50 flex-shrink-0"></i>
+        <span class="text-truncate">No Internet Connection. Data submissions are locked until reconnected.</span>
+    </div>
+
     {{-- ── SIDEBAR ── --}}
     <div id="sidebar">
         <div class="sidebar-brand">
@@ -1990,6 +1996,78 @@
                 $(this).remove();
             });
         });
+
+        // ── Global Network Status & Form Double-Submit Guard ──
+        (function() {
+            function updateNetworkStatus() {
+                const isOnline = navigator.onLine;
+                const banner = document.getElementById('globalOfflineBanner');
+                const submitButtons = document.querySelectorAll('form button[type="submit"], form input[type="submit"]');
+
+                if (banner) {
+                    if (!isOnline) {
+                        banner.style.display = 'flex';
+                        submitButtons.forEach(btn => {
+                            if (!btn.disabled) {
+                                btn.dataset.disabledByOffline = "true";
+                                btn.disabled = true;
+                            }
+                        });
+                    } else {
+                        banner.style.display = 'none';
+                        submitButtons.forEach(btn => {
+                            if (btn.dataset.disabledByOffline === "true") {
+                                delete btn.dataset.disabledByOffline;
+                                btn.disabled = false;
+                            }
+                        });
+                    }
+                }
+            }
+
+            window.addEventListener('online', updateNetworkStatus);
+            window.addEventListener('offline', updateNetworkStatus);
+            document.addEventListener('DOMContentLoaded', updateNetworkStatus);
+
+            // Global Form Double-Submit Guard for all forms across the app
+            $(document).on('submit', 'form', function(e) {
+                const form = this;
+
+                // Check offline status first
+                if (!navigator.onLine) {
+                    e.preventDefault();
+                    alert('You are currently offline. Please restore internet connection before submitting data.');
+                    return false;
+                }
+
+                // Prevent double submission if already submitting
+                if (form.dataset.submitting === 'true') {
+                    e.preventDefault();
+                    return false;
+                }
+
+                form.dataset.submitting = 'true';
+
+                const submitBtn = $(form).find('button[type="submit"], input[type="submit"]').first();
+                if (submitBtn.length) {
+                    setTimeout(function() {
+                        submitBtn.prop('disabled', true);
+                        if (submitBtn.is('button') && !submitBtn.find('.spinner-border').length) {
+                            submitBtn.prepend('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>');
+                        }
+                    }, 50);
+                }
+
+                // Safety timeout: reset after 10s if page does not unload (e.g., validation error response)
+                setTimeout(function() {
+                    delete form.dataset.submitting;
+                    if (submitBtn.length) {
+                        submitBtn.prop('disabled', false);
+                        submitBtn.find('.spinner-border').remove();
+                    }
+                }, 10000);
+            });
+        })();
 
     </script>
 

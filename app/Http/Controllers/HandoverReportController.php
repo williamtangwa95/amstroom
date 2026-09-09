@@ -176,8 +176,18 @@ class HandoverReportController extends Controller
         $shopId = $user->isOwner() ? $request->shop_id : $user->shop_id;
         $shop = Shop::findOrFail($shopId);
 
+        $idempotencyKey = $request->input('idempotency_key');
+        if ($idempotencyKey) {
+            $existingId = \Illuminate\Support\Facades\Cache::get("idempotency_handover_{$idempotencyKey}");
+            if ($existingId) {
+                return redirect()->route('handovers.show', $existingId)
+                    ->with('success', 'Handover report already submitted!');
+            }
+        }
+
         $request->validate([
-            'start_date' => 'required|date',
+            'idempotency_key'   => 'nullable|string|max:64',
+            'start_date'        => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'actual_amount' => 'required|numeric|min:0',
             'commission_amount' => 'nullable|numeric|min:0',
@@ -313,6 +323,10 @@ class HandoverReportController extends Controller
             }
 
             DB::commit();
+
+            if ($idempotencyKey) {
+                \Illuminate\Support\Facades\Cache::put("idempotency_handover_{$idempotencyKey}", $handover->id, now()->addMinutes(10));
+            }
 
             // Notify Owners if status is submitted
             if ($status === 'submitted') {
