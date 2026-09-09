@@ -121,6 +121,17 @@ class DefectController extends Controller
             ->orderBy('item_name')
             ->get();
         $isMainStore = $user->isOwner() && request()->boolean('main_store');
+        $shopId = $user->shop_id;
+
+        $items->transform(function ($item) use ($isMainStore, $shopId) {
+            if ($isMainStore) {
+                $item->available_stock = (int) MainStock::where('item_id', $item->id)->sum('remaining_quantity');
+            } else {
+                $shopStock = ShopStock::where('shop_id', $shopId)->where('item_id', $item->id)->first();
+                $item->available_stock = $shopStock ? (int) $shopStock->remaining_quantity : 0;
+            }
+            return $item;
+        });
 
         return view('defects.create', compact('items', 'isMainStore'));
     }
@@ -163,7 +174,7 @@ class DefectController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $user, $shopId, $isMainStore) {
+        DB::transaction(function () use ($request, $user, $shopId, $isMainStore, $idempotencyKey) {
             if ($isMainStore) {
                 // Deduct from main stock
                 $remaining = $request->quantity;
