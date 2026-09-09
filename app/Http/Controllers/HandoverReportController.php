@@ -151,7 +151,8 @@ class HandoverReportController extends Controller
                 }
 
                 $totalOwnerSales += $itemRevenue;
-                $adminCostOfGoods += (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $itemCost = ($item->parent_id !== null) ? 0.0 : (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $adminCostOfGoods += $itemCost;
                 $adminViewSales += (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
             }
         }
@@ -239,7 +240,8 @@ class HandoverReportController extends Controller
                 }
 
                 $totalOwnerSales += $itemRevenue;
-                $adminCostOfGoods += (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $itemCost = ($item->parent_id !== null) ? 0.0 : (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $adminCostOfGoods += $itemCost;
                 $adminViewSales += (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
             }
         }
@@ -424,7 +426,8 @@ class HandoverReportController extends Controller
                     $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
                 }
                 $totalOwnerSales += $itemRevenue;
-                $adminCostOfGoods += (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $itemCost = ($item->parent_id !== null) ? 0.0 : (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? $item->selling_price ?? 0) * $item->quantity;
+                $adminCostOfGoods += $itemCost;
                 $adminViewSales += (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
             }
         }

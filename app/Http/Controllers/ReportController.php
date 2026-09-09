@@ -112,7 +112,9 @@ class ReportController extends Controller
                     $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
                 }
 
-                if ($isOwner) {
+                if ($item->parent_id !== null) {
+                    $itemCost = 0.0;
+                } elseif ($isOwner) {
                     $itemCost = (float) ($item->owner_cost_price ?? 0) * $item->quantity;
                 } else {
                     $itemCost = (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
@@ -541,9 +543,9 @@ class ReportController extends Controller
                 } else {
                     $rev = (float)($si->shop_realized_sp  ?? $si->selling_price) * $si->quantity;
                 }
-                $cost = $isOwner
+                $cost = ($si->parent_id !== null) ? 0.0 : ($isOwner
                     ? (float)($si->owner_cost_price ?? 0) * $si->quantity
-                    : (float)($si->shop_cost_price ?? $si->owner_realized_sp ?? 0) * $si->quantity;
+                    : (float)($si->shop_cost_price ?? $si->owner_realized_sp ?? 0) * $si->quantity);
 
                 $profit = $rev - $cost;
 
@@ -954,7 +956,9 @@ class ReportController extends Controller
                     $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
                 }
 
-                if ($isOwner) {
+                if ($item->parent_id !== null) {
+                    $itemCost = 0.0;
+                } elseif ($isOwner) {
                     $itemCost = (float) ($item->owner_cost_price ?? 0) * $item->quantity;
                 } else {
                     $itemCost = (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;

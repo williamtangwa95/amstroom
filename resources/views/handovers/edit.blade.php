@@ -164,7 +164,9 @@
                             <th>Type</th>
                             <th>Qty</th>
                             <th class="text-end">Selling Price</th>
+                            @if(auth()->user()->isOwner())
                             <th class="text-end">Cost</th>
+                            @endif
                             <th class="text-end">Total</th>
                         </tr>
                     </thead>
@@ -190,13 +192,15 @@
                                     </td>
                                     <td>{{ $item->quantity }}</td>
                                     <td class="text-end">TZS {{ number_format($priceVal, 0) }}</td>
+                                    @if(auth()->user()->isOwner())
                                     <td class="text-end text-muted">TZS {{ number_format($item->owner_cost_price, 0) }}</td>
+                                    @endif
                                     <td class="text-end fw-bold">TZS {{ number_format($priceVal * $item->quantity, 0) }}</td>
                                 </tr>
                             @endforeach
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-3 text-muted">No sales in this period.</td>
+                            <td colspan="{{ auth()->user()->isOwner() ? 8 : 7 }}" class="text-center py-3 text-muted">No sales in this period.</td>
                         </tr>
                         @endforelse
                     </tbody>

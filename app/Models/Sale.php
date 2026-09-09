@@ -79,6 +79,9 @@ class Sale extends Model
             if ($isOwner && $item->is_admin_stock) {
                 return 0.0;
             }
+            if ($item->parent_id !== null) {
+                return 0.0;
+            }
             if ($isOwner) {
                 return (float) ($item->owner_cost_price ?? 0) * $item->quantity;
             }

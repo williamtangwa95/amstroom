@@ -637,9 +637,9 @@ class SaleController extends Controller
                                 'item_id'           => $childItem->id,
                                 'quantity'          => $childQty,
                                 'selling_price'     => 0.0,
-                                'owner_cost_price'  => $ownerCostPrice,
+                                'owner_cost_price'  => 0.0,
                                 'owner_realized_sp' => 0.0,
-                                'shop_cost_price'   => $shopCostPrice,
+                                'shop_cost_price'   => 0.0,
                                 'shop_realized_sp'  => 0.0,
                                 'is_admin_stock'    => $data['is_admin_stock'],
                             ]);
@@ -693,9 +693,9 @@ class SaleController extends Controller
                                     'item_id'           => $childItem->id,
                                     'quantity'          => $childQty,
                                     'selling_price'     => 0.0,
-                                    'owner_cost_price'  => $ownerCostPrice,
+                                    'owner_cost_price'  => 0.0,
                                     'owner_realized_sp' => 0.0,
-                                    'shop_cost_price'   => $shopCostPrice,
+                                    'shop_cost_price'   => 0.0,
                                     'shop_realized_sp'  => 0.0,
                                     'is_admin_stock'    => $data['is_admin_stock'],
                                 ]);
