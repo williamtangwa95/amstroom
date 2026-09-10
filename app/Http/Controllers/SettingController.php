@@ -525,11 +525,15 @@ class SettingController extends Controller
         if ($request->has('shop_stock_id')) {
             $shopStock = ShopStock::findOrFail($request->input('shop_stock_id'));
             
+            // Owner cannot toggle components for shop stock
+            if ($user->isOwner() && !$shopStock->is_admin_stock) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action for shop stock.'], 403);
+            }
+
             // Shop Admin can only toggle their own shop's components visibility
             if ($user->isShopAdmin() && $user->shop_id !== $shopStock->shop_id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
-            // Owner can toggle any
             if (!$user->isOwner() && !$user->isShopAdmin()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }

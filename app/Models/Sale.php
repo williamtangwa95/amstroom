@@ -93,4 +93,17 @@ class Sale extends Model
     {
         return $this->report_revenue - $this->report_cost;
     }
+
+    public function isFromShopOrShopStaff(): bool
+    {
+        if ($this->shop_id !== null) {
+            return true;
+        }
+        $seller = $this->relationLoaded('seller') ? $this->seller : $this->seller()->first();
+        if ($seller && !$seller->isOwner()) {
+            return true;
+        }
+        return false;
+    }
 }
+

@@ -17,35 +17,40 @@
                         <span class="badge ms-2" style="background:#d1fae5;color:#065f46;font-size:.72rem;">Completed</span>
                     @endif
                 </span>
+                @php
+                    $isOwnerRestricted = auth()->check() && auth()->user()->isOwner() && $sale->isFromShopOrShopStaff();
+                @endphp
                 <div class="d-flex gap-2 flex-wrap">
-                    @if($sale->status === 'completed')
-                        {{-- Completed sale: Invoice + Proforma + Delivery Note available --}}
-                        <a href="{{ route('sales.invoice', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Invoice">
-                            <i class="bi bi-file-earmark-text me-1"></i>Invoice
-                        </a>
-                        <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Proforma/Quotation">
-                            <i class="bi bi-file-earmark me-1"></i>Proforma
-                        </a>
-                        <a href="{{ route('sales.delivery-note', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Delivery Note">
-                            <i class="bi bi-truck me-1"></i>Delivery Note
-                        </a>
-                        <a href="{{ route('sales.receipt', $sale) }}" class="btn btn-sm btn-accent" title="Print Receipt">
-                            <i class="bi bi-receipt me-1"></i>Receipt
-                        </a>
-                    @else
-                        {{-- Draft Proforma: Proforma printable; Invoice + Delivery Note locked --}}
-                        <button class="btn btn-sm btn-outline-secondary" disabled title="Invoice requires a completed/committed sale. Convert this proforma first.">
-                            <i class="bi bi-file-earmark-text me-1"></i>Invoice
-                        </button>
-                        <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Proforma Invoice">
-                            <i class="bi bi-file-earmark me-1"></i>Proforma
-                        </a>
-                        <button class="btn btn-sm btn-outline-secondary" disabled title="Delivery Note requires a completed sale. Stock must be committed first.">
-                            <i class="bi bi-truck me-1"></i>Delivery Note
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" disabled title="Receipt is only available for completed sales.">
-                            <i class="bi bi-receipt me-1"></i>Receipt
-                        </button>
+                    @if(!$isOwnerRestricted)
+                        @if($sale->status === 'completed')
+                            {{-- Completed sale: Invoice + Proforma + Delivery Note available --}}
+                            <a href="{{ route('sales.invoice', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Invoice">
+                                <i class="bi bi-file-earmark-text me-1"></i>Invoice
+                            </a>
+                            <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Proforma/Quotation">
+                                <i class="bi bi-file-earmark me-1"></i>Proforma
+                            </a>
+                            <a href="{{ route('sales.delivery-note', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Delivery Note">
+                                <i class="bi bi-truck me-1"></i>Delivery Note
+                            </a>
+                            <a href="{{ route('sales.receipt', $sale) }}" class="btn btn-sm btn-accent" title="Print Receipt">
+                                <i class="bi bi-receipt me-1"></i>Receipt
+                            </a>
+                        @else
+                            {{-- Draft Proforma: Proforma printable; Invoice + Delivery Note locked --}}
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="Invoice requires a completed/committed sale. Convert this proforma first.">
+                                <i class="bi bi-file-earmark-text me-1"></i>Invoice
+                            </button>
+                            <a href="{{ route('sales.proforma', $sale) }}" class="btn btn-sm btn-outline-custom" target="_blank" title="Print Proforma Invoice">
+                                <i class="bi bi-file-earmark me-1"></i>Proforma
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="Delivery Note requires a completed sale. Stock must be committed first.">
+                                <i class="bi bi-truck me-1"></i>Delivery Note
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="Receipt is only available for completed sales.">
+                                <i class="bi bi-receipt me-1"></i>Receipt
+                            </button>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -56,9 +61,11 @@
                         <p class="mb-1" style="color:var(--text-secondary);">Seller: <strong style="color:var(--text-primary);">{{ $sale->seller->name }}</strong></p>
                         <p class="mb-1" style="color:var(--text-secondary);">
                             Customer: <strong style="color:var(--text-primary);">{{ $sale->customer_name ?: 'Walk-in' }}</strong>
+                            @if(!$isOwnerRestricted)
                             <button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="{{ $sale->id }}" data-name="{{ $sale->customer_name }}" title="Add / Edit Customer Name">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
+                            @endif
                         </p>
 
                         @if($sale->customer_id)<p class="mb-1" style="color:var(--text-secondary);">Customer ID: <strong style="color:var(--text-primary);">{{ $sale->customer_id }}</strong></p>@endif
@@ -142,9 +149,11 @@
                                 $alreadyReturned = \App\Models\SaleReturn::where('sale_id', $sale->id)->where('status', 'approved')->exists();
                             @endphp
                             @if(!$alreadyReturned)
-                                <a href="{{ route('sales-returns.create', $sale) }}" class="btn btn-danger">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Return Items / Refund
-                                </a>
+                                @if(!$isOwnerRestricted)
+                                    <a href="{{ route('sales-returns.create', $sale) }}" class="btn btn-danger">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Return Items / Refund
+                                    </a>
+                                @endif
                             @else
                                 <span class="badge bg-success p-2"><i class="bi bi-check-circle-fill me-1"></i> Returned / Refunded</span>
                             @endif

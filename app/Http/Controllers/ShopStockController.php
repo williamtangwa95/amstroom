@@ -961,6 +961,10 @@ class ShopStockController extends Controller
 
     public function updateAlert(Request $request, ShopStock $shopStock)
     {
+        if (Auth::user()->isOwner() && !$shopStock->is_admin_stock) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $request->validate([
             'low_stock_alert' => 'required|integer|min:1',
         ]);
@@ -971,6 +975,13 @@ class ShopStockController extends Controller
     public function updatePrice(Request $request, ShopStock $shopStock)
     {
         $user = Auth::user();
+        if ($user->isOwner() && !$shopStock->is_admin_stock) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+            abort(403, 'Unauthorized action.');
+        }
+
         if (!$user->isOwner() && !$user->isShopAdmin()) {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
@@ -1806,6 +1817,13 @@ class ShopStockController extends Controller
     public function destroy(Request $request, ShopStock $shopStock)
     {
         $user = Auth::user();
+        if ($user->isOwner() && !$shopStock->is_admin_stock) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+            abort(403, 'Unauthorized action.');
+        }
+
         if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
             abort(403, 'Unauthorized.');
         }
