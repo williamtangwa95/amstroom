@@ -154,15 +154,9 @@ class SaleReturnController extends Controller
     {
         $user = Auth::user();
 
-        // Authorization check: User can only return for their own shop (and Owner cannot return shop sales)
-        if ($user->isOwner()) {
-            if ($sale->isFromShopOrShopStaff()) {
-                abort(403, 'Unauthorized action.');
-            }
-        } else {
-            if ($sale->shop_id !== $user->shop_id) {
-                abort(403, 'Unauthorized action.');
-            }
+        // Authorization check: User can only return for their own shop
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
         }
 
         $sale->load('items.item', 'shop');
@@ -176,15 +170,9 @@ class SaleReturnController extends Controller
     {
         $user = Auth::user();
 
-        // Authorization check: User can only return for their own shop (and Owner cannot return shop sales)
-        if ($user->isOwner()) {
-            if ($sale->isFromShopOrShopStaff()) {
-                abort(403, 'Unauthorized action.');
-            }
-        } else {
-            if ($sale->shop_id !== $user->shop_id) {
-                abort(403, 'Unauthorized action.');
-            }
+        // Authorization
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
         }
 
         $request->validate([

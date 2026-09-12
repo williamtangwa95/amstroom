@@ -38,6 +38,7 @@
                     @if(auth()->user()->isOwner())
                     <tr><th style="color:var(--text-secondary);">Main Store Buying Price (BP)</th><td><strong style="color:var(--text-secondary);">TZS {{ number_format($displayBp, 0) }}</strong></td></tr>
                     <tr><th style="color:var(--text-secondary);">Main Store Selling Price (SP)</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($displaySp, 0) }}</strong></td></tr>
+                    <tr><th style="color:var(--text-secondary);">Shop Retail Price</th><td><span class="text-info">TZS {{ number_format($shopStock->selling_price, 0) }}</span></td></tr>
                     @else
                     <tr><th style="color:var(--text-secondary);">Selling Price</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($shopStock->selling_price, 0) }}</strong></td></tr>
                     @endif
@@ -53,11 +54,6 @@
                     <tr><th style="color:var(--text-secondary);">Date Received</th><td>{{ $shopStock->date_received ? $shopStock->date_received->format('F d, Y') : '—' }}</td></tr>
                 </table>
 
-                @php
-                    $isOwnerOnShopStock = auth()->check() && auth()->user()->isOwner() && !$shopStock->is_admin_stock;
-                @endphp
-
-                @if(!$isOwnerOnShopStock)
                 <form method="POST" action="{{ route('items.upload-image', $shopStock->item) }}" enctype="multipart/form-data" class="mt-3 pt-3 border-top">
                     @csrf
                     <label class="form-label fw-600 small">Upload/Change Product Photo (Max {{ \App\Models\Setting::get('max_upload_size_mb', 5) }}MB)</label>
@@ -131,7 +127,6 @@
                 </div>
                 @endif
                 @endif
-                @endif
 
                 <a href="{{ route('shop-stock.index') }}" class="btn btn-outline-custom mt-3">Back</a>
             </div>
@@ -140,7 +135,6 @@
 </div>
 @endsection
 
-@if(!$isOwnerOnShopStock)
 @push('scripts')
 <script>
 $(document).ready(function() {
@@ -216,4 +210,3 @@ $(document).ready(function() {
 });
 </script>
 @endpush
-@endif
