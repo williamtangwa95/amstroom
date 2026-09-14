@@ -25,7 +25,9 @@ class ExpenseController extends Controller
                   ->orWhereIn('status', ['approved', 'review_requested', 'editable']);
             });
         } elseif ($user->isShopAdmin()) {
-            $sellerIds = \App\Models\User::where('role', 'seller')->pluck('id');
+            $sellerIds = \App\Models\User::where('role', 'seller')
+                ->where('shop_id', $user->shop_id)
+                ->pluck('id');
             $query->where(function ($q) use ($user, $sellerIds) {
                 $q->where('recorded_by', $user->id)
                   ->orWhereIn('recorded_by', $sellerIds);
@@ -203,7 +205,9 @@ class ExpenseController extends Controller
         }
 
         if ($user->isSeller()) {
-            $admins = \App\Models\User::where('role', 'shop_admin')->get();
+            $admins = \App\Models\User::where('role', 'shop_admin')
+                ->where('shop_id', $user->shop_id)
+                ->get();
             foreach ($admins as $admin) {
                 \App\Models\Notification::create([
                     'user_id' => $admin->id,
@@ -224,13 +228,13 @@ class ExpenseController extends Controller
         if ($user->isOwner()) {
             // Owner is always allowed
         } elseif ($expense->isPending()) {
-            if ($user->isShopAdmin() || $expense->recorded_by === $user->id) {
+            if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
                 // allowed
             } else {
                 abort(403, 'Unauthorized action.');
             }
         } elseif ($expense->isEditable()) {
-            if ($user->isShopAdmin()) {
+            if ($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) {
                 // allowed
             } else {
                 abort(403, 'Unauthorized action. Only admins can edit granted expenses.');
@@ -250,13 +254,13 @@ class ExpenseController extends Controller
         if ($user->isOwner()) {
             // Owner is always allowed
         } elseif ($expense->isPending()) {
-            if ($user->isOwner() || $user->isShopAdmin() || $expense->recorded_by === $user->id) {
+            if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
                 // allowed
             } else {
                 abort(403, 'Unauthorized action.');
             }
         } elseif ($expense->isEditable()) {
-            if ($user->isShopAdmin()) {
+            if ($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) {
                 // allowed
             } else {
                 abort(403, 'Unauthorized action.');
@@ -293,7 +297,7 @@ class ExpenseController extends Controller
             abort(403, 'Cannot delete an approved or locked expense.');
         }
 
-        if ($user->isOwner() || $user->isShopAdmin() || $expense->recorded_by === $user->id) {
+        if ($user->isOwner() || ($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
             $expense->delete();
             return redirect()->route('expenses.index')
                 ->with('success', 'Expense deleted successfully.');
@@ -307,6 +311,10 @@ class ExpenseController extends Controller
         $user = Auth::user();
 
         if (!$user->isShopAdmin() && !$user->isOwner()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($user->isShopAdmin() && $expense->recorder?->shop_id !== $user->shop_id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -347,12 +355,19 @@ class ExpenseController extends Controller
             'ids.*' => 'exists:expenses,id',
         ]);
 
-        Expense::whereIn('id', $request->ids)
-            ->where('status', 'pending')
-            ->update([
-                'status' => 'approved',
-                'approved_by' => $user->id,
-            ]);
+        $query = Expense::whereIn('id', $request->ids)
+            ->where('status', 'pending');
+
+        if ($user->isShopAdmin()) {
+            $query->whereHas('recorder', function ($q) use ($user) {
+                $q->where('shop_id', $user->shop_id);
+            });
+        }
+
+        $query->update([
+            'status' => 'approved',
+            'approved_by' => $user->id,
+        ]);
 
         if ($user->isShopAdmin()) {
             $owners = \App\Models\User::where('role', 'owner')->get();
@@ -375,6 +390,10 @@ class ExpenseController extends Controller
 
         if (!$user->isShopAdmin()) {
             abort(403, 'Only admins can request edit review.');
+        }
+
+        if ($expense->recorder?->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
         }
 
         if (!$expense->isApproved()) {

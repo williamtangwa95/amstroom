@@ -158,18 +158,29 @@
                             @enderror
                         </div>
 
-                        <div class="col-sm-6">
+                        <div class="col-sm-4">
+                            <label class="form-label fw-600">Stocked Quantity <span class="text-danger">*</span></label>
+                            <input type="number" id="quantity" name="quantity"
+                                class="form-control @error('quantity') is-invalid @enderror"
+                                value="{{ old('quantity', $shopStock->quantity) }}" min="1" required autocomplete="off">
+                            <small class="text-muted">Must be at least 1</small>
+                            @error('quantity')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-sm-4">
                             <label class="form-label fw-600">Remaining Quantity <span class="text-danger">*</span></label>
                             <input type="number" id="remaining_quantity" name="remaining_quantity"
                                 class="form-control @error('remaining_quantity') is-invalid @enderror"
-                                value="{{ old('remaining_quantity', $shopStock->remaining_quantity) }}" min="0" required>
-                            <small class="text-muted">Current stocked qty: <strong>{{ $shopStock->quantity }}</strong>. Stocked qty auto-adjusts.</small>
+                                value="{{ old('remaining_quantity', $shopStock->remaining_quantity) }}" min="0" required autocomplete="off">
+                            <small class="text-muted">Cannot exceed stocked qty</small>
                             @error('remaining_quantity')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="col-sm-6">
+                        <div class="col-sm-4">
                             <label class="form-label fw-600">Date Received <span class="text-danger">*</span></label>
                             <input type="date" id="date_received" name="date_received"
                                 class="form-control @error('date_received') is-invalid @enderror"
@@ -178,25 +189,28 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="col-12">
+                            <div id="qtyWarning" class="alert alert-danger py-2 px-3 small mb-0" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="qtyWarningMsg"></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);font-size:0.84rem;">
                         <div class="row g-0 text-center">
                             <div class="col">
                                 <div class="text-muted mb-1">Stocked</div>
-                                <div class="fw-700" style="font-size:1.1rem;">{{ $shopStock->quantity }}</div>
+                                <div class="fw-700" style="font-size:1.1rem;" id="summary_stocked">{{ $shopStock->quantity }}</div>
                             </div>
                             <div class="col border-start border-end">
                                 <div class="text-muted mb-1">Remaining</div>
-                                <div class="fw-700" style="font-size:1.1rem;color:{{ $shopStock->isLowStock() ? '#e94560' : '#3fb950' }};">{{ $shopStock->remaining_quantity }}</div>
+                                <div class="fw-700" style="font-size:1.1rem;color:{{ $shopStock->isLowStock() ? '#e94560' : '#3fb950' }};" id="summary_remaining">{{ $shopStock->remaining_quantity }}</div>
                             </div>
                             <div class="col">
                                 <div class="text-muted mb-1">Sold</div>
-                                <div class="fw-700" style="font-size:1.1rem;">{{ $shopStock->quantity - $shopStock->remaining_quantity }}</div>
+                                <div class="fw-700" style="font-size:1.1rem;" id="summary_sold">{{ $shopStock->quantity - $shopStock->remaining_quantity }}</div>
                             </div>
-                        </div>
-                        <div class="text-muted text-center mt-2" style="font-size:0.76rem;">
-                            <i class="bi bi-info-circle me-1"></i>Changing remaining qty proportionally adjusts stocked qty.
                         </div>
                     </div>
 
@@ -251,32 +265,72 @@ $(document).ready(function () {
     var bpHidden  = $('#buying_price');
     var spDisplay = $('#selling_price_display');
     var spHidden  = $('#selling_price');
-    var warning   = $('#priceWarning');
+    var priceWarning = $('#priceWarning');
+    var qtyWarning   = $('#qtyWarning');
+    var qtyWarningMsg = $('#qtyWarningMsg');
     var submitBtn = $('#submitBtn');
+    var qtyInput  = $('#quantity');
+    var remInput  = $('#remaining_quantity');
 
-    function validatePrices() {
+    function validateForm() {
         var bp = parseInt(bpHidden.val() || 0);
         var sp = parseInt(spHidden.val() || 0);
+        var stocked = parseInt(qtyInput.val() || 0);
+        var remaining = parseInt(remInput.val() || 0);
+
+        var priceValid = true;
+        var qtyValid = true;
+
         if (sp < bp) {
-            warning.show(); spDisplay.addClass('is-invalid'); submitBtn.prop('disabled', true);
+            priceWarning.show(); spDisplay.addClass('is-invalid'); priceValid = false;
         } else {
-            warning.hide(); spDisplay.removeClass('is-invalid'); submitBtn.prop('disabled', false);
+            priceWarning.hide(); spDisplay.removeClass('is-invalid');
         }
+
+        if (stocked < 1) {
+            qtyWarningMsg.text('Stocked quantity cannot be zero (must be at least 1).');
+            qtyWarning.show();
+            qtyInput.addClass('is-invalid');
+            qtyValid = false;
+        } else if (remaining > stocked) {
+            qtyWarningMsg.text('Remaining quantity (' + remaining + ') cannot be greater than stocked quantity (' + stocked + ').');
+            qtyWarning.show();
+            remInput.addClass('is-invalid');
+            qtyValid = false;
+        } else if (remaining < 0) {
+            qtyWarningMsg.text('Remaining quantity cannot be negative.');
+            qtyWarning.show();
+            remInput.addClass('is-invalid');
+            qtyValid = false;
+        } else {
+            qtyWarning.hide();
+            qtyInput.removeClass('is-invalid');
+            remInput.removeClass('is-invalid');
+        }
+
+        $('#summary_stocked').text(stocked);
+        $('#summary_remaining').text(remaining);
+        $('#summary_sold').text(stocked - remaining);
+
+        submitBtn.prop('disabled', !(priceValid && qtyValid));
     }
 
     bpDisplay.on('input', function () {
         var clean = this.value.replace(/[^0-9]/g, '');
         this.value = formatNum(clean);
         bpHidden.val(clean);
-        validatePrices();
+        validateForm();
     });
 
     spDisplay.on('input', function () {
         var clean = this.value.replace(/[^0-9]/g, '');
         this.value = formatNum(clean);
         spHidden.val(clean);
-        validatePrices();
+        validateForm();
     });
+
+    qtyInput.on('input change', validateForm);
+    remInput.on('input change', validateForm);
     @endif
 });
 </script>

@@ -1643,11 +1643,15 @@ class ShopStockController extends Controller
                 'buying_price'       => 'required|numeric|min:0',
                 'selling_price'      => 'required|numeric|min:0|gte:buying_price',
                 'date_received'      => 'required|date',
-                'remaining_quantity' => 'required|integer|min:0',
+                'quantity'           => 'required|integer|min:1|gte:remaining_quantity',
+                'remaining_quantity' => 'required|integer|min:0|lte:quantity',
             ];
 
             $request->validate($rules, [
-                'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
+                'selling_price.gte'      => 'The selling price must be greater than or equal to the buying price.',
+                'quantity.min'           => 'Stocked quantity cannot be zero (must be at least 1).',
+                'quantity.gte'           => 'Stocked quantity must be greater than or equal to remaining quantity.',
+                'remaining_quantity.lte' => 'Remaining quantity cannot be greater than stocked quantity.',
             ]);
 
             $oldBp = floatval($shopStock->buying_price);
@@ -1655,13 +1659,14 @@ class ShopStockController extends Controller
             $oldQty = intval($shopStock->remaining_quantity);
             $newQty = intval($request->remaining_quantity);
             $oldInitialQty = intval($shopStock->quantity);
+            $newInitialQty = intval($request->quantity);
             $diff = $newQty - $oldQty;
 
             $shopStock->update([
                 'buying_price'       => $request->buying_price,
                 'selling_price'      => $request->selling_price,
                 'remaining_quantity' => $newQty,
-                'quantity'           => $oldInitialQty + $diff,
+                'quantity'           => $newInitialQty,
                 'date_received'      => $request->date_received,
             ]);
 
@@ -1710,11 +1715,15 @@ class ShopStockController extends Controller
                 'buying_price'       => 'required|numeric|min:0',
                 'selling_price'      => 'required|numeric|min:0|gte:buying_price',
                 'date_received'      => 'required|date',
-                'remaining_quantity' => 'required|integer|min:0',
+                'quantity'           => 'required|integer|min:1|gte:remaining_quantity',
+                'remaining_quantity' => 'required|integer|min:0|lte:quantity',
             ];
 
             $request->validate($rules, [
-                'selling_price.gte'  => 'The selling price must be greater than or equal to the buying price.',
+                'selling_price.gte'      => 'The selling price must be greater than or equal to the buying price.',
+                'quantity.min'           => 'Stocked quantity cannot be zero (must be at least 1).',
+                'quantity.gte'           => 'Stocked quantity must be greater than or equal to remaining quantity.',
+                'remaining_quantity.lte' => 'Remaining quantity cannot be greater than stocked quantity.',
             ]);
 
             // Admin stock (is_admin_stock = true) is edited directly without owner approval or notification
@@ -1724,13 +1733,14 @@ class ShopStockController extends Controller
                 $oldQty = intval($shopStock->remaining_quantity);
                 $newQty = intval($request->remaining_quantity);
                 $oldInitialQty = intval($shopStock->quantity);
+                $newInitialQty = intval($request->quantity);
                 $diff = $newQty - $oldQty;
 
                 $shopStock->update([
                     'buying_price'          => $request->buying_price,
                     'selling_price'         => $request->selling_price,
                     'remaining_quantity'    => $newQty,
-                    'quantity'              => $oldInitialQty + $diff,
+                    'quantity'              => $newInitialQty,
                     'date_received'         => $request->date_received,
                     'is_price_pending'      => false,
                     'pending_selling_price' => null,
