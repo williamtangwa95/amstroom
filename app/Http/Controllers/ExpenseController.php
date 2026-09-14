@@ -109,15 +109,18 @@ class ExpenseController extends Controller
                 } elseif ($expense->isApproved()) {
                     $actions .= '<form method="POST" action="' . route('expenses.request-review', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom text-warning" title="Request Edit Review"><i class="bi bi-shield-exclamation"></i> Request Edit</button></form>';
                 } elseif ($expense->isEditable()) {
-                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-accent" title="Edit"><i class="bi bi-pencil"></i> Edit</a>';
+                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-accent me-1" title="Edit"><i class="bi bi-pencil"></i> Edit</a>';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
                 }
             } elseif ($user->isOwner()) {
                 if ($expense->isReviewRequested()) {
                     $actions .= '<form method="POST" action="' . route('expenses.grant-edit', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-info text-dark" title="Grant Edit Ability"><i class="bi bi-unlock-fill"></i> Grant Edit</button></form>';
                 }
+                if ($expense->isPending() || $expense->isEditable()) {
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                }
                 if ($expense->isPending()) {
                     $actions .= '<form method="POST" action="' . route('expenses.approve', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-success" title="Approve Expense"><i class="bi bi-check-lg"></i> </button></form>';
-                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
                 }
                 if ($expense->isApproved() || $expense->isReviewRequested() || $expense->isEditable()) {
                     $actions .= '<form method="POST" action="' . route('expenses.revert-approval', $expense) . '" class="d-inline" onsubmit="return confirm(\'Revert approval for this expense?\');">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom text-warning" title="Revert Approval"><i class="bi bi-arrow-counterclockwise"></i> Revert</button></form>';
@@ -127,8 +130,10 @@ class ExpenseController extends Controller
                 if ($expense->isPending()) {
                     $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
                     $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
-                }
-                if ($expense->isApproved()) {
+                } elseif ($expense->isEditable()) {
+                    $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-accent me-1" title="Edit"><i class="bi bi-pencil"></i> Edit</a>';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                } elseif ($expense->isApproved()) {
                     $actions .= '<span class="text-muted small py-1 px-2"><i class="bi bi-lock-fill"></i> Locked</span>';
                 }
             }
@@ -234,10 +239,10 @@ class ExpenseController extends Controller
                 abort(403, 'Unauthorized action.');
             }
         } elseif ($expense->isEditable()) {
-            if ($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) {
+            if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
                 // allowed
             } else {
-                abort(403, 'Unauthorized action. Only admins can edit granted expenses.');
+                abort(403, 'Unauthorized action. Only authorized admins or the recording seller can edit granted expenses.');
             }
         } else {
             abort(403, 'This expense is locked. Request a review from the owner to edit it.');
@@ -260,7 +265,7 @@ class ExpenseController extends Controller
                 abort(403, 'Unauthorized action.');
             }
         } elseif ($expense->isEditable()) {
-            if ($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) {
+            if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
                 // allowed
             } else {
                 abort(403, 'Unauthorized action.');
@@ -293,7 +298,7 @@ class ExpenseController extends Controller
     {
         $user = Auth::user();
 
-        if (!$expense->isPending()) {
+        if (!$expense->isPending() && !$expense->isEditable()) {
             abort(403, 'Cannot delete an approved or locked expense.');
         }
 
