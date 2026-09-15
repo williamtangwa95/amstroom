@@ -126,7 +126,7 @@ class ShopStockController extends Controller
         $user = Auth::user();
         $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
 
-        $query = ShopStock::query();
+        $query = ShopStock::query()->where('shop_stocks.remaining_quantity', '>', 0);
 
         if ($shopId) {
             $query->where('shop_stocks.shop_id', $shopId);
@@ -174,7 +174,8 @@ class ShopStockController extends Controller
                 'shop_stocks.selling_price',
                 'shop_stocks.is_admin_stock',
                 'shop_stocks.low_stock_alert'
-            );
+            )
+            ->havingRaw('SUM(shop_stocks.remaining_quantity) > 0');
 
         $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
             ->mergeBindings($groupedQuery->toBase())

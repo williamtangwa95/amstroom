@@ -38,7 +38,6 @@
                     @if(auth()->user()->isOwner())
                     <tr><th style="color:var(--text-secondary);">Main Store Buying Price (BP)</th><td><strong style="color:var(--text-secondary);">TZS {{ number_format($displayBp, 0) }}</strong></td></tr>
                     <tr><th style="color:var(--text-secondary);">Main Store Selling Price (SP)</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($displaySp, 0) }}</strong></td></tr>
-                    <tr><th style="color:var(--text-secondary);">Shop Retail Price</th><td><span class="text-info">TZS {{ number_format($shopStock->selling_price, 0) }}</span></td></tr>
                     @else
                     <tr><th style="color:var(--text-secondary);">Selling Price</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($shopStock->selling_price, 0) }}</strong></td></tr>
                     @endif
@@ -66,6 +65,7 @@
 
                 </form>
 
+                @if(!auth()->user()->isOwner())
                 <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
                     <form method="POST" action="{{ route('shop-stock.update-alert', $shopStock) }}">
                         @csrf @method('PATCH')
@@ -77,7 +77,7 @@
                     </form>
                 </div>
 
-                @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+                @if(auth()->user()->isShopAdmin())
                 <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
                     <form method="POST" action="{{ route('shop-stock.update-price', $shopStock) }}">
                         @csrf @method('PATCH')
@@ -106,16 +106,12 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && $shopStock->is_admin_stock))
+                @if(auth()->user()->isShopAdmin() && $shopStock->is_admin_stock)
                 <div class="p-3 rounded mt-3 d-flex align-items-center justify-content-between" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
                     <div>
                         <strong class="text-danger d-block" style="font-size:0.85rem;">Delete Stock Batch</strong>
                         <small class="text-muted d-block" style="font-size:0.75rem;">
-                            @if(auth()->user()->isShopAdmin())
-                                Submit a request to the owner to delete this stock batch.
-                            @else
-                                Permanently delete this unsold stock batch.
-                            @endif
+                            Submit a request to the owner to delete this stock batch.
                         </small>
                     </div>
                     <form method="POST" action="{{ route('shop-stock.destroy', $shopStock) }}">
@@ -125,6 +121,7 @@
                         </button>
                     </form>
                 </div>
+                @endif
                 @endif
                 @endif
 
@@ -139,22 +136,24 @@
 <script>
 $(document).ready(function() {
     const input = $('.update-selling-price-input');
-    const buyingPrice = parseFloat('{{ (int)$shopStock->buying_price }}');
-    const warning = $('#shopStockShowWarning');
-    const submitBtn = input.closest('form').find('button[type="submit"]');
+    if (input.length) {
+        const buyingPrice = parseFloat('{{ (int)$shopStock->buying_price }}');
+        const warning = $('#shopStockShowWarning');
+        const submitBtn = input.closest('form').find('button[type="submit"]');
 
-    input.on('input', function() {
-        const currentVal = parseFloat(input.val().replace(/,/g, '') || 0);
-        if (currentVal < buyingPrice) {
-            warning.show();
-            input.addClass('is-invalid');
-            submitBtn.prop('disabled', true);
-        } else {
-            warning.hide();
-            input.removeClass('is-invalid');
-            submitBtn.prop('disabled', false);
-        }
-    });
+        input.on('input', function() {
+            const currentVal = parseFloat(input.val().replace(/,/g, '') || 0);
+            if (currentVal < buyingPrice) {
+                warning.show();
+                input.addClass('is-invalid');
+                submitBtn.prop('disabled', true);
+            } else {
+                warning.hide();
+                input.removeClass('is-invalid');
+                submitBtn.prop('disabled', false);
+            }
+        });
+    }
 
     $(document).on('change', '.toggle-components-btn', function() {
         const isChecked = $(this).is(':checked');

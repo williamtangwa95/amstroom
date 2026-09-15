@@ -129,6 +129,31 @@
                     @csrf @method('PUT')
 
                     <div class="row g-3">
+                        @if(auth()->user()->isOwner())
+                        <input type="hidden" id="buying_price" name="buying_price" value="{{ old('buying_price', (int)$shopStock->buying_price) }}">
+                        <input type="hidden" id="selling_price" name="selling_price" value="{{ old('selling_price', (int)$shopStock->selling_price) }}">
+                        @php
+                            $msStock = \App\Models\MainStock::where('item_id', $shopStock->item_id)->orderByDesc('date_received')->first();
+                        @endphp
+                        @if($msStock)
+                        <div class="col-sm-6">
+                            <label class="form-label fw-600">Main Store Buying Price (BP)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">TZS</span>
+                                <input type="text" class="form-control" style="background-color: var(--input-bg); opacity: 0.7;"
+                                    value="{{ number_format($msStock->buying_price, 0) }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-600">Main Store Selling Price (SP)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">TZS</span>
+                                <input type="text" class="form-control" style="background-color: var(--input-bg); opacity: 0.7;"
+                                    value="{{ number_format($msStock->selling_price, 0) }}" readonly>
+                            </div>
+                        </div>
+                        @endif
+                        @else
                         <div class="col-sm-6">
                             <label class="form-label fw-600">Buying Price <span class="text-danger">*</span></label>
                             <div class="input-group">
@@ -157,6 +182,7 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <div class="col-sm-4">
                             <label class="form-label fw-600">Stocked Quantity <span class="text-danger">*</span></label>
@@ -281,10 +307,12 @@ $(document).ready(function () {
         var priceValid = true;
         var qtyValid = true;
 
-        if (sp < bp) {
-            priceWarning.show(); spDisplay.addClass('is-invalid'); priceValid = false;
-        } else {
-            priceWarning.hide(); spDisplay.removeClass('is-invalid');
+        if (spDisplay.length && priceWarning.length) {
+            if (sp < bp) {
+                priceWarning.show(); spDisplay.addClass('is-invalid'); priceValid = false;
+            } else {
+                priceWarning.hide(); spDisplay.removeClass('is-invalid');
+            }
         }
 
         if (stocked < 1) {
@@ -315,19 +343,23 @@ $(document).ready(function () {
         submitBtn.prop('disabled', !(priceValid && qtyValid));
     }
 
-    bpDisplay.on('input', function () {
-        var clean = this.value.replace(/[^0-9]/g, '');
-        this.value = formatNum(clean);
-        bpHidden.val(clean);
-        validateForm();
-    });
+    if (bpDisplay.length) {
+        bpDisplay.on('input', function () {
+            var clean = this.value.replace(/[^0-9]/g, '');
+            this.value = formatNum(clean);
+            bpHidden.val(clean);
+            validateForm();
+        });
+    }
 
-    spDisplay.on('input', function () {
-        var clean = this.value.replace(/[^0-9]/g, '');
-        this.value = formatNum(clean);
-        spHidden.val(clean);
-        validateForm();
-    });
+    if (spDisplay.length) {
+        spDisplay.on('input', function () {
+            var clean = this.value.replace(/[^0-9]/g, '');
+            this.value = formatNum(clean);
+            spHidden.val(clean);
+            validateForm();
+        });
+    }
 
     qtyInput.on('input change', validateForm);
     remInput.on('input change', validateForm);

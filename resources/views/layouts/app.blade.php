@@ -839,10 +839,14 @@
 
 <body>
 
-    {{-- Global Floating Offline Notification Toast --}}
-    <div id="globalOfflineBanner" class="align-items-center justify-content-center gap-2 shadow-lg" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2000; font-size: 0.85rem; font-weight: 600; background: linear-gradient(135deg, #e11d48, #be123c); color: #ffffff; border-radius: 50px; padding: 0.65rem 1.4rem; max-width: 580px; width: calc(100% - 32px); box-shadow: 0 10px 25px rgba(225, 29, 72, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;">
-        <i class="bi bi-wifi-off fs-6 text-white-50 flex-shrink-0"></i>
-        <span class="text-truncate">No Internet Connection. Data submissions are locked until reconnected.</span>
+    {{-- Global Floating Offline / Online Notification Toasts --}}
+    <div id="globalOfflineBanner" class="align-items-center justify-content-center gap-2 shadow-lg" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; font-size: 0.88rem; font-weight: 600; background: linear-gradient(135deg, #dc2626, #be123c); color: #ffffff; border-radius: 50px; padding: 0.7rem 1.5rem; max-width: 620px; width: calc(100% - 32px); box-shadow: 0 10px 25px rgba(220, 38, 38, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;">
+        <i class="bi bi-wifi-off fs-5 text-white flex-shrink-0"></i>
+        <span class="text-truncate">No Internet Connection. Form submissions are disabled until reconnected.</span>
+    </div>
+    <div id="globalOnlineBanner" class="align-items-center justify-content-center gap-2 shadow-lg" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; font-size: 0.88rem; font-weight: 600; background: linear-gradient(135deg, #059669, #047857); color: #ffffff; border-radius: 50px; padding: 0.7rem 1.5rem; max-width: 620px; width: calc(100% - 32px); box-shadow: 0 10px 25px rgba(5, 150, 105, 0.4) !important;">
+        <i class="bi bi-wifi fs-5 text-white flex-shrink-0"></i>
+        <span class="text-truncate">Internet Connection Restored. You can now submit forms.</span>
     </div>
 
     {{-- ── SIDEBAR ── --}}
@@ -1997,31 +2001,52 @@
             });
         });
 
-        // ── Global Network Status & Form Double-Submit Guard ──
+        // ── Global Network Status & Form Submission Guard ──
         (function() {
+            let onlineTimer = null;
+
             function updateNetworkStatus() {
                 const isOnline = navigator.onLine;
-                const banner = document.getElementById('globalOfflineBanner');
-                const submitButtons = document.querySelectorAll('form button[type="submit"], form input[type="submit"]');
+                const offlineBanner = document.getElementById('globalOfflineBanner');
+                const onlineBanner = document.getElementById('globalOnlineBanner');
+                const submitButtons = document.querySelectorAll('form button[type="submit"], form input[type="submit"], button.btn-submit, [data-action="submit"]');
 
-                if (banner) {
-                    if (!isOnline) {
-                        banner.style.display = 'flex';
-                        submitButtons.forEach(btn => {
-                            if (!btn.disabled) {
-                                btn.dataset.disabledByOffline = "true";
-                                btn.disabled = true;
-                            }
-                        });
-                    } else {
-                        banner.style.display = 'none';
-                        submitButtons.forEach(btn => {
-                            if (btn.dataset.disabledByOffline === "true") {
-                                delete btn.dataset.disabledByOffline;
-                                btn.disabled = false;
-                            }
-                        });
+                if (onlineTimer) {
+                    clearTimeout(onlineTimer);
+                    onlineTimer = null;
+                }
+
+                if (!isOnline) {
+                    if (offlineBanner) offlineBanner.style.display = 'flex';
+                    if (onlineBanner) onlineBanner.style.display = 'none';
+
+                    submitButtons.forEach(btn => {
+                        if (!btn.disabled) {
+                            btn.dataset.disabledByOffline = "true";
+                            btn.disabled = true;
+                        }
+                    });
+                } else {
+                    const wasOffline = offlineBanner && offlineBanner.dataset.wasOffline === "true";
+                    if (offlineBanner) offlineBanner.style.display = 'none';
+
+                    if (onlineBanner && wasOffline) {
+                        onlineBanner.style.display = 'flex';
+                        onlineTimer = setTimeout(() => {
+                            onlineBanner.style.display = 'none';
+                        }, 3500);
                     }
+
+                    submitButtons.forEach(btn => {
+                        if (btn.dataset.disabledByOffline === "true") {
+                            delete btn.dataset.disabledByOffline;
+                            btn.disabled = false;
+                        }
+                    });
+                }
+
+                if (offlineBanner) {
+                    offlineBanner.dataset.wasOffline = (!isOnline).toString();
                 }
             }
 
@@ -2029,14 +2054,27 @@
             window.addEventListener('offline', updateNetworkStatus);
             document.addEventListener('DOMContentLoaded', updateNetworkStatus);
 
-            // Global Form Double-Submit Guard for all forms across the app
+            // Global Form Double-Submit & Offline Guard for all forms across the app
             $(document).on('submit', 'form', function(e) {
                 const form = this;
 
-                // Check offline status first
+                // Check offline status first and restrict submission
                 if (!navigator.onLine) {
                     e.preventDefault();
-                    alert('You are currently offline. Please restore internet connection before submitting data.');
+                    e.stopPropagation();
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'No Internet Connection',
+                            text: 'Form submission is restricted because you are currently offline. Please reconnect to the internet and try again.',
+                            confirmButtonColor: '#dc2626',
+                            background: '#161b22',
+                            color: '#e6edf3'
+                        });
+                    } else {
+                        alert('No Internet Connection. Form submission is restricted until your internet connection is restored.');
+                    }
                     return false;
                 }
 

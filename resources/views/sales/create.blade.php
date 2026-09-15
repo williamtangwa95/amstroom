@@ -437,8 +437,18 @@
 
         list.innerHTML = html;
         document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
-        document.getElementById('checkoutBtn').disabled = false;
-        document.getElementById('proformaBtn').disabled = false;
+        
+        const isOffline = !navigator.onLine;
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        const proformaBtn = document.getElementById('proformaBtn');
+        if (checkoutBtn) {
+            checkoutBtn.disabled = isOffline;
+            if (isOffline) checkoutBtn.dataset.disabledByOffline = "true";
+        }
+        if (proformaBtn) {
+            proformaBtn.disabled = isOffline;
+            if (isOffline) proformaBtn.dataset.disabledByOffline = "true";
+        }
     }
 
     function updateItemPrice(id, val) {
@@ -601,15 +611,19 @@
         }
     });
 
-    window.availableComponentsOptions = `
+    const availableComponentsData = [
         @foreach($shopStocks as $ss)
             @if(!str_starts_with($ss->id, 'item_') && $ss->remaining_quantity > 0)
-                <option value="{{ $ss->item_id }}" data-name="{{ addslashes($ss->item->item_name) }}">
-                    {{ $ss->item->item_name }} ({{ $ss->item->brand ?: '—' }}) [Stock: {{ $ss->remaining_quantity }}]
-                </option>
+            {
+                item_id: {{ $ss->item_id }},
+                item_name: {!! json_encode($ss->item->item_name) !!},
+                brand: {!! json_encode($ss->item->brand ?: '—') !!},
+                stock: {{ $ss->remaining_quantity }},
+                is_admin_stock: {{ (isset($ss->is_admin_stock) && $ss->is_admin_stock) ? 'true' : 'false' }}
+            },
             @endif
         @endforeach
-    `;
+    ];
 
     function addComponentToCartItem(cartItemId) {
         const select = document.getElementById('comp-select-' + cartItemId);
@@ -639,6 +653,27 @@
     }
 
     function showAddComponentDropdown(cartItemId) {
+        const item = cart[cartItemId];
+        const targetIsAdminStock = item ? !!item.isAdminStock : false;
+
+        const select = document.getElementById('comp-select-' + cartItemId);
+        if (select) {
+            let optionsHtml = '<option value="" disabled selected>Search / select item...</option>';
+            const filteredComponents = availableComponentsData.filter(c => c.is_admin_stock === targetIsAdminStock);
+
+            if (filteredComponents.length === 0) {
+                const stockLabel = targetIsAdminStock ? 'Admin Shop Stock' : 'Shop Stock (Main Store)';
+                optionsHtml += `<option value="" disabled>No available components in ${stockLabel}</option>`;
+            } else {
+                filteredComponents.forEach(c => {
+                    const labelType = c.is_admin_stock ? '(Admin Stock)' : '(Shop Stock)';
+                    const escapedName = (c.item_name || '').replace(/"/g, '&quot;');
+                    optionsHtml += `<option value="${c.item_id}" data-name="${escapedName}">${c.item_name} (${c.brand}) [Stock: ${c.stock}] ${labelType}</option>`;
+                });
+            }
+            select.innerHTML = optionsHtml;
+        }
+
         const container = document.getElementById('comp-select-container-' + cartItemId);
         container.classList.remove('d-none');
 
