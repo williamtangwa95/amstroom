@@ -628,6 +628,18 @@ class SaleController extends Controller
                 ]);
 
                 if (!$data['is_custom']) {
+                    // If the parent item is a physical leaf item (has no static DB components), deduct its physical stock
+                    if (!$isDraftProforma && !$parentSaleItem->item->components()->exists()) {
+                        $parentSaleItem->item->deductStock(
+                            $isOwner ? null : $user->shop_id,
+                            $parentSaleItem->quantity,
+                            $user->id,
+                            $sale->id,
+                            (bool) $data['is_admin_stock'],
+                            $request->customer_name ?? 'Walk-in Customer'
+                        );
+                    }
+
                     // Check if customized components were submitted in the request
                     if (isset($cartItem['components']) && is_array($cartItem['components'])) {
                         foreach ($cartItem['components'] as $componentData) {
@@ -736,18 +748,6 @@ class SaleController extends Controller
                                         $parentSaleItem->item
                                     );
                                 }
-                            }
-                        } else {
-                            // Regular leaf item - deduct its own stock
-                            if (!$isDraftProforma) {
-                                $parentSaleItem->item->deductStock(
-                                    $isOwner ? null : $user->shop_id,
-                                    $parentSaleItem->quantity,
-                                    $user->id,
-                                    $sale->id,
-                                    (bool) $data['is_admin_stock'],
-                                    $request->customer_name ?? 'Walk-in Customer'
-                                );
                             }
                         }
                     }

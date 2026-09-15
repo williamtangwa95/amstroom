@@ -258,6 +258,8 @@ test('custom components at point of sale flow works', function () {
     // Verify stock deduction
     $hdmiStock->refresh();
     expect($hdmiStock->remaining_quantity)->toBe(8); // 10 - 2
+    $parentStock->refresh();
+    expect($parentStock->remaining_quantity)->toBe(0); // 1 - 1
 });
 
 test('toggle components visibility setting works', function () {

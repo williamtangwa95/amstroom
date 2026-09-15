@@ -155,6 +155,7 @@ class ShopAdminStockActionsTest extends TestCase
         $response = $this->put(route('shop-stock.update', $adminStock), [
             'buying_price'       => 600,
             'selling_price'      => 900,
+            'quantity'           => 8,
             'remaining_quantity' => 8,
             'date_received'      => now()->toDateString(),
         ]);

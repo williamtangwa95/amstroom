@@ -504,8 +504,10 @@ class ReportController extends Controller
         // ── Build base date range ───────────────────────────────────────────
         [$dateFrom, $dateTo] = $this->resolveDateRange($period, $request);
 
+        $itemId = $request->get('item_id');
+
         // ── Sales query helper ─────────────────────────────────────────────
-        $baseSaleQuery = function () use ($user, $shopId) {
+        $baseSaleQuery = function () use ($user, $shopId, $itemId) {
             $q = Sale::completed()->with('items.item.category', 'seller', 'shop');
             if ($user->isOwner()) {
                 $q->where('is_admin_stock', false);
@@ -516,6 +518,11 @@ class ReportController extends Controller
                 } else {
                     $q->where('shop_id', $shopId);
                 }
+            }
+            if ($itemId) {
+                $q->whereHas('items', function ($sq) use ($itemId) {
+                    $sq->where('item_id', $itemId);
+                });
             }
             return $q;
         };
@@ -537,6 +544,7 @@ class ReportController extends Controller
         foreach ($sales as $sale) {
             foreach ($sale->items as $si) {
                 if ($isOwner && $si->is_admin_stock) continue;
+                if ($itemId && $si->item_id != $itemId) continue;
 
                 if ($isOwner && $isIndependent && $sale->shop_id !== null) {
                     $rev = (float)($si->owner_realized_sp ?? $si->selling_price) * $si->quantity;
@@ -591,6 +599,9 @@ class ReportController extends Controller
                 ->where('shop_id', $user->shop_id)
                 ->groupBy('item_id')
                 ->having('total_qty', '>', 0);
+        }
+        if ($itemId) {
+            $stopItemsQuery->where('item_id', $itemId);
         }
         $stopItems = $stopItemsQuery->get()
             ->filter(fn($s) => !in_array($s->item_id, $soldItemIds))

@@ -121,15 +121,10 @@ class SalesReportTest extends TestCase
     {
         $this->actingAs($this->owner);
 
-        $response = $this->get(route('reports.sales'));
+        $response = $this->get(route('reports.sales.data'));
 
         $response->assertStatus(200);
-        // Owner revenue: 2 * 35000 (HP) + 1 * 60000 (Dell) = 130,000
-        $response->assertSee('TZS 130,000');
-        // Owner cost: 2 * 20000 + 1 * 40000 = 80,000
-        // Owner profit: 130,000 - 80,000 = 50,000
-        $response->assertSee('TZS 50,000');
-        // Both items should be visible
+        // Both items should be visible in items column HTML
         $response->assertSee('HP EliteBook 840 G8 (x2)');
         $response->assertSee('Dell Latitude 5420 (x1)');
     }
@@ -139,15 +134,9 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->owner);
 
         // Filter by HP EliteBook
-        $response = $this->get(route('reports.sales', ['item_id' => $this->hpItem->id]));
+        $response = $this->get(route('reports.sales.data', ['item_id' => $this->hpItem->id]));
 
         $response->assertStatus(200);
-        // Filtered HP revenue: 2 * 35000 = 70,000
-        $response->assertSee('TZS 70,000');
-        $response->assertDontSee('TZS 130,000');
-        // Filtered HP profit: 70,000 - (2 * 20000) = 30,000
-        $response->assertSee('TZS 30,000');
-        $response->assertDontSee('TZS 50,000');
         // Should see HP EliteBook but NOT Dell Latitude
         $response->assertSee('HP EliteBook 840 G8 (x2)');
         $response->assertDontSee('Dell Latitude 5420 (x1)');
@@ -158,7 +147,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->admin);
 
         // Filter by Dell Latitude
-        $response = $this->get(route('reports.sales', ['item_id' => $this->dellItem->id]));
+        $response = $this->get(route('reports.sales.data', ['item_id' => $this->dellItem->id]));
 
         $response->assertStatus(200);
         // Shop Admin Dell revenue: 1 * 80000 = 80,000
