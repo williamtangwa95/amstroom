@@ -1821,13 +1821,70 @@
             });
         };
 
-        // Run poll on load and every 10 seconds
+        // ─── 15-MINUTE INACTIVITY AUTO-LOGOUT & IDLE POLLING MANAGEMENT ──────
+        (function() {
+            const FIFTEEN_MINUTES_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)
+            const IDLE_PAUSE_MS = 3 * 60 * 1000;      // 3 minutes idle to pause background polling
+            const STORAGE_KEY = 'amstroom_last_activity_time';
+
+            function updateActivity() {
+                localStorage.setItem(STORAGE_KEY, Date.now().toString());
+            }
+
+            if (!localStorage.getItem(STORAGE_KEY)) {
+                updateActivity();
+            }
+
+            let lastUpdate = 0;
+            function onUserAction() {
+                const now = Date.now();
+                if (now - lastUpdate > 3000) {
+                    lastUpdate = now;
+                    updateActivity();
+                }
+            }
+
+            ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(function(evt) {
+                window.addEventListener(evt, onUserAction, { passive: true });
+            });
+
+            $(document).ajaxError(function(event, jqXHR) {
+                if (jqXHR.status === 401) {
+                    window.location.href = "{{ route('login') }}?timeout=1";
+                }
+            });
+
+            setInterval(function() {
+                const lastActivity = parseInt(localStorage.getItem(STORAGE_KEY) || Date.now());
+                const inactiveMs = Date.now() - lastActivity;
+
+                if (inactiveMs >= FIFTEEN_MINUTES_MS) {
+                    window.location.href = "{{ route('login') }}?timeout=1";
+                }
+            }, 5000);
+
+            window.isUserActiveForPolling = function() {
+                const lastActivity = parseInt(localStorage.getItem(STORAGE_KEY) || Date.now());
+                const inactiveMs = Date.now() - lastActivity;
+                return !document.hidden && (inactiveMs < IDLE_PAUSE_MS);
+            };
+        })();
+
+        // Run poll on load and periodically when active
         $(document).ready(function() {
             window.pollNotifications();
-            setInterval(window.pollNotifications, 10000);
+            setInterval(function() {
+                if (window.isUserActiveForPolling()) {
+                    window.pollNotifications();
+                }
+            }, 10000);
 
             window.pollUnreadChatCount();
-            setInterval(window.pollUnreadChatCount, 8000);
+            setInterval(function() {
+                if (window.isUserActiveForPolling()) {
+                    window.pollUnreadChatCount();
+                }
+            }, 8000);
         });
 
         window.formatCurrencyValue = function(val) {

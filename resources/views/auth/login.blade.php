@@ -383,6 +383,13 @@
             <h4>Welcome back</h4>
             <p class="sub">Sign in to your account to continue</p>
 
+            @if(session('info'))
+            <div class="alert alert-info mb-3 p-2.5 rounded-3 d-flex align-items-center gap-2" style="font-size:.82rem; background: rgba(57, 178, 255, 0.12); color: #0284c7; border: 1px solid rgba(57, 178, 255, 0.3);">
+                <i class="bi bi-clock-history fs-6"></i>
+                <div>{{ session('info') }}</div>
+            </div>
+            @endif
+
             @if(session('success'))
             <div class="alert alert-success mb-3 p-2 border border-success-subtle bg-success-subtle text-success rounded-3" style="font-size:.82rem;">
                 <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}

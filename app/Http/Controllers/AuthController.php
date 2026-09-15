@@ -36,6 +36,7 @@ class AuthController extends Controller
             }
 
             $request->session()->regenerate();
+            session(['last_user_activity' => time()]);
             return redirect()->intended(route('dashboard'));
         }
 
@@ -49,6 +50,11 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($request->has('timeout')) {
+            return redirect()->route('login')->with('info', 'You have been automatically logged out due to 15 minutes of inactivity.');
+        }
+
         return redirect()->route('login');
     }
 }
