@@ -126,7 +126,7 @@ class ShopStockController extends Controller
         $user = Auth::user();
         $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
 
-        $query = ShopStock::query();
+        $query = ShopStock::query()->where('shop_stocks.remaining_quantity', '>', 0);
 
         if ($shopId) {
             $query->where('shop_stocks.shop_id', $shopId);
@@ -174,7 +174,8 @@ class ShopStockController extends Controller
                 'shop_stocks.selling_price',
                 'shop_stocks.is_admin_stock',
                 'shop_stocks.low_stock_alert'
-            );
+            )
+            ->havingRaw('SUM(shop_stocks.remaining_quantity) > 0');
 
         $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
             ->mergeBindings($groupedQuery->toBase())
@@ -254,7 +255,7 @@ class ShopStockController extends Controller
 
             $hasPendingPrice = ShopStock::whereIn('id', $allIds)->where('is_price_pending', true)->exists();
 
-            $activeStocks = ShopStock::whereIn('id', $allIds)->orderByDesc('id')->get();
+            $activeStocks = ShopStock::whereIn('id', $allIds)->where('remaining_quantity', '>', 0)->orderByDesc('id')->get();
             $activeBatchesCount = $activeStocks->count();
 
             $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
@@ -273,13 +274,9 @@ class ShopStockController extends Controller
 
             $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($firstSt->item?->category?->category_name ?? 'General') . '</span>';
 
-            if ($totalRemainingQty == 0) {
-                $remainingHtml = '<strong style="color:#e94560;font-size:.9rem;">0</strong> <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Out of Stock</span>';
-            } else {
-                $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
-                if ($isLowStockGroup) {
-                    $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
-                }
+            $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
+            if ($isLowStockGroup) {
+                $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
             }
 
             $alertHtml = e($firstSt->low_stock_alert) . ' units';
@@ -304,7 +301,7 @@ class ShopStockController extends Controller
             $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
-            // Build batch details sub-table HTML inside child template
+            // Build batch details sub-table HTML inside child template (only showing batches with remaining_quantity > 0)
             $childTableHtml = '<div class="child-details-template d-none"><div class="p-3 my-2 rounded border" style="background:var(--body-bg); border-color:var(--card-border) !important;">';
             $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $activeBatchesCount . ' Batch' . ($activeBatchesCount > 1 ? 'es' : '') . ')</h6>';
             $childTableHtml .= '<table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.75rem; border-color:var(--card-border);">';
@@ -321,14 +318,12 @@ class ShopStockController extends Controller
                     ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
                     : '<span class="badge bg-secondary" style="font-size:0.65rem;">Owner Stock</span>';
                 
-                $remClass = $batch->remaining_quantity > 0 ? 'text-success' : 'text-danger';
-
                 $childTableHtml .= '<tr>';
                 $childTableHtml .= '<td><strong>#' . $batch->id . '</strong></td>';
                 $childTableHtml .= '<td>' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</td>';
                 $childTableHtml .= '<td>' . $batchTypeTag . '</td>';
                 $childTableHtml .= '<td>' . $batch->quantity . '</td>';
-                $childTableHtml .= '<td><strong class="' . $remClass . '">' . $batch->remaining_quantity . '</strong></td>';
+                $childTableHtml .= '<td><strong class="text-success">' . $batch->remaining_quantity . '</strong></td>';
                 if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
                     $childTableHtml .= '<td>TZS ' . number_format($batch->buying_price, 0) . '</td>';
                 }
