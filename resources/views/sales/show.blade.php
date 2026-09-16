@@ -139,14 +139,14 @@
                             </form>
                         @else
                             @php
-                                $alreadyReturned = \App\Models\SaleReturn::where('sale_id', $sale->id)->where('status', 'approved')->exists();
+                                $hasPendingReturn = \App\Models\SaleReturn::where('sale_id', $sale->id)->where('status', 'pending')->exists();
                             @endphp
-                            @if(!$alreadyReturned)
+                            @if($hasPendingReturn)
+                                <span class="badge bg-warning text-dark p-2"><i class="bi bi-hourglass-split me-1"></i> Return Request Pending</span>
+                            @else
                                 <a href="{{ route('sales-returns.create', $sale) }}" class="btn btn-danger">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i> Return Items / Refund
                                 </a>
-                            @else
-                                <span class="badge bg-success p-2"><i class="bi bi-check-circle-fill me-1"></i> Returned / Refunded</span>
                             @endif
                         @endif
                     </div>

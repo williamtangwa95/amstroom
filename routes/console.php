@@ -83,3 +83,46 @@ Artisan::command('amstroom:send-summaries {--force : Send reports immediately by
         }
     }
 })->purpose('Send the summary report of sales, expenses, and stock to gmail recipients configured in settings');
+
+Artisan::command('sales:repair-partial-returns', function () {
+    $trashedSales = \App\Models\Sale::onlyTrashed()->get();
+    $restoredCount = 0;
+
+    foreach ($trashedSales as $sale) {
+        $approvedReturns = \App\Models\SaleReturn::where('sale_id', $sale->id)
+            ->where('status', 'approved')
+            ->with('items')
+            ->get();
+
+        if ($approvedReturns->isEmpty()) {
+            continue;
+        }
+
+        foreach ($approvedReturns as $return) {
+            foreach ($return->items as $returnItem) {
+                $saleItem = \App\Models\SaleItem::where('sale_id', $sale->id)
+                    ->where('item_id', $returnItem->item_id)
+                    ->first();
+
+                if ($saleItem) {
+                    if ($saleItem->quantity > $returnItem->quantity) {
+                        $saleItem->decrement('quantity', $returnItem->quantity);
+                    } else {
+                        $saleItem->delete();
+                    }
+                }
+            }
+        }
+
+        $remainingItems = \App\Models\SaleItem::where('sale_id', $sale->id)->get();
+        if ($remainingItems->count() > 0) {
+            $sale->restore();
+            $newTotal = $remainingItems->sum(fn($i) => $i->quantity * $i->selling_price);
+            $sale->update(['total_amount' => $newTotal]);
+            $restoredCount++;
+            $this->info("Restored Sale #SL-{$sale->id} with {$remainingItems->count()} remaining item(s). New Total: TZS " . number_format($newTotal));
+        }
+    }
+
+    $this->info("Repair completed. Total sales restored: {$restoredCount}");
+})->purpose('Restore soft-deleted sales that had only partial items returned');

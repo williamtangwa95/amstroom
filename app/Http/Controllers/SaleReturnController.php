@@ -220,11 +220,24 @@ class SaleReturnController extends Controller
                 if ($isAdminOrOwner) {
                     // Update shop stock immediately
                     $this->stabilizeStock($sale->shop_id, $saleItem->item_id, $entry['qty'], $sale);
+
+                    // Update or remove SaleItem from sale
+                    if ($saleItem->quantity > $entry['qty']) {
+                        $saleItem->decrement('quantity', $entry['qty']);
+                    } else {
+                        $saleItem->delete();
+                    }
                 }
             }
 
             if ($isAdminOrOwner) {
-                $sale->delete();
+                $remainingCount = $sale->items()->count();
+                if ($remainingCount === 0) {
+                    $sale->delete();
+                } else {
+                    $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
+                    $sale->update(['total_amount' => $newTotal]);
+                }
             }
 
             return $saleReturn;
@@ -272,13 +285,32 @@ class SaleReturnController extends Controller
                 'approved_by' => $user->id,
             ]);
 
-            // Stabilize stock for each item in the return
+            $sale = $saleReturn->sale;
+
+            // Stabilize stock for each item in the return & adjust sale items
             foreach ($saleReturn->items as $returnItem) {
-                $this->stabilizeStock($saleReturn->sale->shop_id, $returnItem->item_id, $returnItem->quantity, $saleReturn->sale);
+                $this->stabilizeStock($sale->shop_id, $returnItem->item_id, $returnItem->quantity, $sale);
+
+                $saleItem = SaleItem::where('sale_id', $sale->id)
+                    ->where('item_id', $returnItem->item_id)
+                    ->first();
+
+                if ($saleItem) {
+                    if ($saleItem->quantity > $returnItem->quantity) {
+                        $saleItem->decrement('quantity', $returnItem->quantity);
+                    } else {
+                        $saleItem->delete();
+                    }
+                }
             }
 
-            // Delete the sale record also
-            $saleReturn->sale->delete();
+            $remainingCount = $sale->items()->count();
+            if ($remainingCount === 0) {
+                $sale->delete();
+            } else {
+                $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
+                $sale->update(['total_amount' => $newTotal]);
+            }
         });
 
         return redirect()->route('sales-returns.index')

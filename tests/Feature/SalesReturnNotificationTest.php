@@ -157,4 +157,118 @@ class SalesReturnNotificationTest extends TestCase
         // Verify no notification is created
         $this->assertEquals(0, Notification::count());
     }
+
+    public function test_partial_return_keeps_unselected_items_on_sales_list()
+    {
+        $this->actingAs($this->admin);
+
+        // Add a second item to the sale
+        $item2 = Item::create([
+            'item_name'       => 'VGA 1.5 M',
+            'category_id'     => $this->item->category_id,
+            'specification'   => 'Cable',
+            'brand'           => 'Generic',
+            'model'           => 'VGA',
+            'warranty_period' => 'None',
+        ]);
+
+        $saleItem2 = SaleItem::create([
+            'sale_id'           => $this->sale->id,
+            'item_id'           => $item2->id,
+            'quantity'          => 1,
+            'selling_price'     => 5000,
+            'owner_cost_price'  => 2000,
+            'owner_realized_sp' => 5000,
+            'shop_cost_price'   => 2000,
+            'shop_realized_sp'  => 5000,
+        ]);
+
+        $this->sale->update(['total_amount' => 10000]); // 5000 + 5000
+
+        // Return ONLY item2 (VGA 1.5 M)
+        $response = $this->post(route('sales-returns.store', $this->sale), [
+            'reason' => 'Customer only returning VGA cable',
+            'items' => [
+                [
+                    'sale_item_id' => $saleItem2->id,
+                    'qty'          => 1,
+                ]
+            ]
+        ]);
+
+        // Sale should NOT be soft-deleted
+        $this->assertDatabaseHas('sales', [
+            'id'         => $this->sale->id,
+            'deleted_at' => null,
+        ]);
+
+        // Total amount should now be updated to 5000 (only item1 remaining)
+        $this->sale->refresh();
+        $this->assertEquals(5000, $this->sale->total_amount);
+
+        // Unselected item (item1) should still exist on the sale
+        $this->assertDatabaseHas('sale_items', [
+            'id' => $this->saleItem->id,
+        ]);
+
+        // Selected item (item2) should be removed from the sale
+        $this->assertDatabaseMissing('sale_items', [
+            'id' => $saleItem2->id,
+        ]);
+    }
+
+    public function test_repair_command_restores_partially_returned_soft_deleted_sales()
+    {
+        // Add item 2
+        $item2 = Item::create([
+            'item_name'       => 'VGA 1.5 M',
+            'category_id'     => $this->item->category_id,
+            'specification'   => 'Cable',
+            'brand'           => 'Generic',
+            'model'           => 'VGA',
+            'warranty_period' => 'None',
+        ]);
+
+        $saleItem2 = SaleItem::create([
+            'sale_id'           => $this->sale->id,
+            'item_id'           => $item2->id,
+            'quantity'          => 1,
+            'selling_price'     => 5000,
+            'owner_cost_price'  => 2000,
+            'owner_realized_sp' => 5000,
+            'shop_cost_price'   => 2000,
+            'shop_realized_sp'  => 5000,
+        ]);
+
+        // Simulate old soft deletion & approved return
+        $saleReturn = SaleReturn::create([
+            'sale_id'      => $this->sale->id,
+            'requested_by' => $this->admin->id,
+            'approved_by'  => $this->admin->id,
+            'status'       => 'approved',
+            'reason'       => 'Old return',
+            'return_date'  => now()->toDateString(),
+        ]);
+
+        \App\Models\SaleReturnItem::create([
+            'sale_return_id' => $saleReturn->id,
+            'item_id'        => $item2->id,
+            'quantity'       => 1,
+        ]);
+
+        // Soft delete sale as was done under old logic
+        $this->sale->delete();
+
+        $this->assertSoftDeleted('sales', ['id' => $this->sale->id]);
+
+        // Run repair command
+        $this->artisan('sales:repair-partial-returns')
+            ->expectsOutputToContain('Restored Sale #SL-' . $this->sale->id)
+            ->assertExitCode(0);
+
+        // Verify sale is restored and total updated
+        $this->sale->refresh();
+        $this->assertNull($this->sale->deleted_at);
+        $this->assertEquals(5000, $this->sale->total_amount);
+    }
 }
