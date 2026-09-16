@@ -2572,18 +2572,32 @@ class ShopStockController extends Controller
                 $avgSalesHtml = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:0.68rem;">No sales recorded</span>';
             }
 
-            $buyingPriceHtml = 'TZS ' . number_format($firstSt->buying_price, 0);
-            $sellingPriceHtml = 'TZS ' . number_format($firstSt->selling_price, 0);
+            if (auth()->user()->isOwner()) {
+                if ($firstSt->item && $firstSt->item->components()->exists()) {
+                    $displayBp = $firstSt->item->getDynamicPriceForMainStore('buying_price');
+                    $displaySp = $firstSt->item->getDynamicPriceForMainStore('selling_price');
+                } else {
+                    $msStock = \App\Models\MainStock::where('item_id', $firstSt->item_id)->orderByDesc('date_received')->first();
+                    $displayBp = $msStock ? $msStock->buying_price : $firstSt->buying_price;
+                    $displaySp = $msStock ? $msStock->selling_price : $firstSt->selling_price;
+                }
+            } else {
+                $displayBp = $firstSt->buying_price;
+                $displaySp = $firstSt->selling_price;
+            }
+
+            $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
+            $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
             $actions = '<div class="d-flex align-items-center gap-2">';
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 if ($firstSt->is_admin_stock) {
-                    $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="1" title="Quick Restock Admin Stock"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
+                    $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$displayBp . '" data-selling-price="' . (int)$displaySp . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="1" title="Quick Restock Admin Stock"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
                 } else {
                     if (auth()->user()->isShopAdmin()) {
                         $actions .= '<a href="' . route('stock-requests.create', ['item_id' => $firstSt->item_id]) . '" class="btn btn-xs btn-primary fw-bold" title="Request Stock from Main Warehouse"><i class="bi bi-cart-plus me-1"></i> Request Stock</a>';
                     } else {
-                        $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$firstSt->buying_price . '" data-selling-price="' . (int)$firstSt->selling_price . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="0" title="Quick Restock Out of Stock Item"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
+                        $actions .= '<button type="button" class="btn btn-xs btn-success fw-bold btn-quick-restock" data-shop-id="' . $firstSt->shop_id . '" data-item-id="' . $firstSt->item_id . '" data-item-name="' . e($firstSt->item->item_name ?? '') . '" data-buying-price="' . (int)$displayBp . '" data-selling-price="' . (int)$displaySp . '" data-low-stock-alert="' . $firstSt->low_stock_alert . '" data-is-admin-stock="0" title="Quick Restock Out of Stock Item"><i class="bi bi-plus-circle me-1"></i> Quick Restock</button>';
                     }
                 }
             }
