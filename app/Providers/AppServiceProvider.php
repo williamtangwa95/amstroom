@@ -21,6 +21,10 @@ class AppServiceProvider extends ServiceProvider
     {
         \Illuminate\Pagination\Paginator::useBootstrapFive();
 
+        \Illuminate\Support\Facades\View::composer('emails.summary_report', function ($view) {
+            $view->setPath(resource_path('views/emails/summary_report_v2.blade.php'));
+        });
+
         // System-wide SVG upload restriction & Dynamic Max File Size enforcement
         \Illuminate\Support\Facades\Validator::extend('image', function ($attribute, $value, $parameters, $validator) {
             if (!$value instanceof \Illuminate\Http\UploadedFile) {
