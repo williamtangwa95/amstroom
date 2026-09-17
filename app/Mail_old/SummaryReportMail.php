@@ -25,7 +25,7 @@ class SummaryReportMail extends Mailable
      */
     public function build()
     {
-        $subject = ($this->reportData['scope'] ?? 'System') . ' Summary Report — ' . now()->format('d M Y');
+        $subject = 'AMSTROOM ' . ($this->reportData['scope'] ?? 'System') . ' Summary Report — ' . now()->format('d M Y');
         return $this->subject($subject)
                     ->view('emails.summary_report');
     }

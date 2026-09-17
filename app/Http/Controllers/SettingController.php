@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\Sale;
+use App\Models\Shop;
 use App\Models\ShopStock;
 use App\Models\MainStock;
 use App\Helpers\ImageCompressor;
@@ -395,7 +396,30 @@ class SettingController extends Controller
                     'alert' => $st->low_stock_alert
                 ])
                 ->toArray();
+
+            // Per-shop breakdown for global report
+            $shops = Shop::active()->get()->map(function ($shop) {
+                $shopSales = Sale::completed()
+                    ->whereDate('sale_date', today())
+                    ->where('shop_id', $shop->id)
+                    ->get();
+                $shopExpenses = \App\Models\Expense::whereDate('activity_date', today())
+                    ->whereIn('recorded_by', \App\Models\User::where('shop_id', $shop->id)->pluck('id'))
+                    ->sum('amount');
+                $shopLowStock = ShopStock::where('shop_id', $shop->id)
+                    ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
+                    ->count();
+                return [
+                    'name'          => $shop->shop_name,
+                    'sales_count'   => $shopSales->count(),
+                    'sales_total'   => $shopSales->sum(fn($s) => $s->report_revenue),
+                    'expenses'      => $shopExpenses,
+                    'profit'        => $shopSales->sum(fn($s) => $s->report_profit),
+                    'low_stock'     => $shopLowStock,
+                ];
+            })->toArray();
         } else {
+            $shops = [];
             $todaySales = Sale::completed()->whereDate('sale_date', today())->where('shop_id', $user->shop_id)->get();
             $salesCount = $todaySales->count();
             $salesTotal = $todaySales->sum(fn($s) => $s->report_revenue);
@@ -431,16 +455,17 @@ class SettingController extends Controller
         }
 
         return [
-            'scope' => $scope,
-            'generated_at' => now()->format('d M Y H:i:s'),
-            'sales_count' => $salesCount,
-            'sales_total' => $salesTotal,
-            'profit' => $profit,
-            'expenses_total' => $expensesTotal,
-            'expenses_categories' => $expensesCategories,
-            'stock_total_remaining' => $stockTotalRemaining,
-            'low_stock_alerts' => $lowStockAlertsCount,
-            'low_stock_items' => $lowStockItems
+            'scope'                => $scope,
+            'generated_at'         => now()->format('d M Y H:i:s'),
+            'sales_count'          => $salesCount,
+            'sales_total'          => $salesTotal,
+            'profit'               => $profit,
+            'expenses_total'       => $expensesTotal,
+            'expenses_categories'  => $expensesCategories,
+            'stock_total_remaining'=> $stockTotalRemaining,
+            'low_stock_alerts'     => $lowStockAlertsCount,
+            'low_stock_items'      => $lowStockItems,
+            'shops'                => $shops ?? [],
         ];
     }
 

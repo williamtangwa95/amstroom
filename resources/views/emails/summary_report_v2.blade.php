@@ -234,6 +234,13 @@
         .footer p {
             margin: 4px 0;
         }
+
+        .data-table tfoot td {
+            padding: 11px 10px;
+            font-size: 12px;
+            border-top: 2px solid #e2e8f0;
+            background-color: #f1f5f9;
+        }
     </style>
 </head>
 
@@ -249,9 +256,67 @@
             </div>
 
             <div class="content">
-                <!-- ── FINANCIAL OVERVIEW (SINGLE ROWS) ── -->
+
+                {{-- ── GLOBAL REPORT: PER-SHOP SUMMARY TABLE ── --}}
+                @if(!empty($reportData['shops']) && count($reportData['shops']) > 0)
                 <div class="section-header">
+                    <span class="section-title">All Shops — Today's Performance</span>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 28%;">Shop</th>
+                            <th style="width: 16%; text-align: right;">Revenue</th>
+                            <th style="width: 16%; text-align: right;">Expenses</th>
+                            <th style="width: 16%; text-align: right;">Profit</th>
+                            <th style="width: 12%; text-align: center;">Orders</th>
+                            <th style="width: 12%; text-align: center;">⚠ Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($reportData['shops'] as $shop)
+                        <tr>
+                            <td style="font-weight:700; color:#1e293b;">{{ $shop['name'] }}</td>
+                            <td style="text-align:right; color:#059669; font-weight:700;">{{ number_format($shop['sales_total'], 0) }}</td>
+                            <td style="text-align:right; color:#dc2626; font-weight:700;">{{ number_format($shop['expenses'], 0) }}</td>
+                            <td style="text-align:right; color:#7c3aed; font-weight:700;">{{ number_format($shop['profit'], 0) }}</td>
+                            <td style="text-align:center; color:#0284c7; font-weight:700;">{{ $shop['sales_count'] }}</td>
+                            <td style="text-align:center;">
+                                @if($shop['low_stock'] > 0)
+                                <span class="badge-warning">{{ $shop['low_stock'] }}</span>
+                                @else
+                                <span style="color:#10b981; font-weight:700;">✓</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#f1f5f9;">
+                            <td style="font-weight:800; color:#0f172a; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">TOTAL</td>
+                            <td style="text-align:right; font-weight:800; color:#059669;">{{ number_format($reportData['sales_total'], 0) }}</td>
+                            <td style="text-align:right; font-weight:800; color:#dc2626;">{{ number_format($reportData['expenses_total'], 0) }}</td>
+                            <td style="text-align:right; font-weight:800; color:#7c3aed;">{{ number_format($reportData['profit'], 0) }}</td>
+                            <td style="text-align:center; font-weight:800; color:#0284c7;">{{ $reportData['sales_count'] }}</td>
+                            <td style="text-align:center; font-weight:800; color:#d97706;">
+                                @if($reportData['low_stock_alerts'] > 0)
+                                <span class="badge-warning">{{ $reportData['low_stock_alerts'] }}</span>
+                                @else
+                                <span style="color:#10b981;">✓</span>
+                                @endif
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+                @endif
+
+                {{-- ── FINANCIAL OVERVIEW (SINGLE ROWS) ── --}}
+                <div class="section-header" style="{{ !empty($reportData['shops']) && count($reportData['shops']) > 0 ? 'margin-top:28px;' : '' }}">
+                    @if(!empty($reportData['shops']) && count($reportData['shops']) > 0)
+                    <span class="section-title">System-Wide Totals (Today)</span>
+                    @else
                     <span class="section-title">Financial Summary (Today)</span>
+                    @endif
                 </div>
 
                 <!-- Row 1: Sales Revenue -->
