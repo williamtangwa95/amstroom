@@ -367,10 +367,10 @@ class SettingController extends Controller
         $lowStockItems = [];
 
         if ($user->isOwner()) {
-            $todaySales = Sale::completed()->whereDate('sale_date', today())->where('is_admin_stock', false)->get();
+            $todaySales = Sale::completed()->whereDate('sale_date', today())->where('is_admin_stock', false)->with('items')->get();
             $salesCount = $todaySales->count();
-            $salesTotal = $todaySales->sum(fn($s) => $s->report_revenue);
-            $profit     = $todaySales->sum(fn($s) => $s->report_profit);
+            $salesTotal = $todaySales->sum(fn($s) => $s->calculateRevenue(true));
+            $profit     = $todaySales->sum(fn($s) => $s->calculateProfit(true));
             
             $expensesTotal = \App\Models\Expense::whereDate('activity_date', today())->sum('amount');
             $expensesCategories = \App\Models\Expense::whereDate('activity_date', today())
@@ -402,6 +402,7 @@ class SettingController extends Controller
                 $shopSales = Sale::completed()
                     ->whereDate('sale_date', today())
                     ->where('shop_id', $shop->id)
+                    ->with('items')
                     ->get();
                 $shopExpenses = \App\Models\Expense::whereDate('activity_date', today())
                     ->whereIn('recorded_by', \App\Models\User::where('shop_id', $shop->id)->pluck('id'))
@@ -412,18 +413,18 @@ class SettingController extends Controller
                 return [
                     'name'          => $shop->shop_name,
                     'sales_count'   => $shopSales->count(),
-                    'sales_total'   => $shopSales->sum(fn($s) => $s->report_revenue),
+                    'sales_total'   => $shopSales->sum(fn($s) => $s->calculateRevenue(true)),
                     'expenses'      => $shopExpenses,
-                    'profit'        => $shopSales->sum(fn($s) => $s->report_profit),
+                    'profit'        => $shopSales->sum(fn($s) => $s->calculateProfit(true)),
                     'low_stock'     => $shopLowStock,
                 ];
             })->toArray();
         } else {
             $shops = [];
-            $todaySales = Sale::completed()->whereDate('sale_date', today())->where('shop_id', $user->shop_id)->get();
+            $todaySales = Sale::completed()->whereDate('sale_date', today())->where('shop_id', $user->shop_id)->with('items')->get();
             $salesCount = $todaySales->count();
-            $salesTotal = $todaySales->sum(fn($s) => $s->report_revenue);
-            $profit     = $todaySales->sum(fn($s) => $s->report_profit);
+            $salesTotal = $todaySales->sum(fn($s) => $s->calculateRevenue(false));
+            $profit     = $todaySales->sum(fn($s) => $s->calculateProfit(false));
             
             $userIds = \App\Models\User::where('shop_id', $user->shop_id)->pluck('id');
             $expensesTotal = \App\Models\Expense::whereDate('activity_date', today())

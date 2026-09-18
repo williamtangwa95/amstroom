@@ -1448,4 +1448,836 @@ class ReportController extends Controller
             'data' => $data,
         ]);
     }
+
+    public function sendSalesEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $itemId = $request->get('item_id');
+        $stockType = $request->get('stock_type');
+
+        if ($user->isOwner()) {
+            $stockType = 'normal';
+        }
+
+        $query = Sale::completed()->with(['shop', 'seller', 'items.item']);
+
+        if ($stockType === 'admin') {
+            $query->where(function ($q) {
+                $q->where('is_admin_stock', true)
+                  ->orWhereHas('items', function ($sq) {
+                      $sq->where('is_admin_stock', true);
+                  });
+            });
+        } elseif ($stockType === 'normal') {
+            $query->where('is_admin_stock', false);
+        } elseif ($stockType === 'all') {
+            // No constraint
+        } else {
+            if ($user->isOwner()) {
+                $query->where('is_admin_stock', false);
+            }
+        }
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $query->whereNull('shop_id');
+            } else {
+                $query->where('shop_id', $shopId);
+            }
+        }
+
+        if ($itemId) {
+            $query->whereHas('items', function ($q) use ($itemId) {
+                $q->where('item_id', $itemId);
+            });
+        }
+
+        $periodLabel = '';
+        if ($period === 'daily') {
+            $query->whereDate('sale_date', today());
+            $periodLabel = 'Today (' . today()->format('d M Y') . ')';
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('sale_date', now()->month)->whereYear('sale_date', now()->year);
+            $periodLabel = now()->format('F Y');
+        } elseif ($period === 'yearly') {
+            $query->whereYear('sale_date', now()->year);
+            $periodLabel = 'Year ' . now()->format('Y');
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) $query->whereDate('sale_date', '>=', $request->date_from);
+            if ($request->filled('date_to'))   $query->whereDate('sale_date', '<=', $request->date_to);
+            $periodLabel = ($request->date_from ?? 'Start') . ' to ' . ($request->date_to ?? 'End');
+        } else {
+            $periodLabel = ucfirst($period);
+        }
+
+        $sales = $query->orderBy('sale_date', 'desc')->orderBy('id', 'desc')->get();
+
+        $isOwner = $user->isOwner();
+        $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
+
+        $totalRevenue = 0;
+        $totalCost = 0;
+        $totalProfit = 0;
+        $salesList = [];
+
+        foreach ($sales as $sale) {
+            $filteredItems = $sale->items
+                ->when($itemId, function ($items) use ($itemId) {
+                    return $items->where('item_id', $itemId);
+                })
+                ->when($stockType === 'admin', function ($items) {
+                    return $items->where('is_admin_stock', true);
+                })
+                ->when($stockType === 'normal', function ($items) {
+                    return $items->where('is_admin_stock', false);
+                })
+                ->when(empty($stockType) && $isOwner, function ($items) {
+                    return $items->where('is_admin_stock', false);
+                });
+
+            $saleRevenue = 0;
+            $saleCost = 0;
+
+            foreach ($filteredItems as $item) {
+                if ($isOwner && $isIndependent && $sale->shop_id !== null) {
+                    $itemRevenue = (float) ($item->owner_realized_sp ?? $item->selling_price) * $item->quantity;
+                } else {
+                    $itemRevenue = (float) ($item->shop_realized_sp ?? $item->selling_price) * $item->quantity;
+                }
+
+                if ($item->parent_id !== null) {
+                    $itemCost = 0.0;
+                } elseif ($isOwner) {
+                    $itemCost = (float) ($item->owner_cost_price ?? 0) * $item->quantity;
+                } else {
+                    $itemCost = (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
+                }
+
+                $saleRevenue += $itemRevenue;
+                $saleCost += $itemCost;
+            }
+
+            $saleProfit = $saleRevenue - $saleCost;
+            $sale->filtered_revenue = $saleRevenue;
+            $sale->filtered_profit = $saleProfit;
+
+            $totalRevenue += $saleRevenue;
+            $totalCost += $saleCost;
+            $totalProfit += $saleProfit;
+
+            $itemsSummary = [];
+            foreach ($filteredItems as $fi) {
+                $name = $fi->item ? $fi->item->item_name : ($fi->custom_name ?: 'Custom Item');
+                $itemsSummary[] = "{$name} (x{$fi->quantity})";
+            }
+
+            $salesList[] = [
+                'id'       => $sale->id,
+                'date'     => $sale->sale_date ? $sale->sale_date->format('d M Y') : 'N/A',
+                'shop'     => $sale->shop?->shop_name ?? ($sale->shop_id === null ? 'Main Store (Owner)' : 'Shop'),
+                'seller'   => $sale->seller?->name ?? 'System',
+                'customer' => $sale->customer_name ?: 'Walk-in',
+                'method'   => strtoupper($sale->payment_method ?: 'Cash'),
+                'items'    => $itemsSummary,
+                'revenue'  => $saleRevenue,
+                'profit'   => $saleProfit,
+            ];
+        }
+
+        // Limit sales rows in email to avoid huge payload if thousands of sales, e.g. first 100
+        $hasMoreSales = count($salesList) > 100;
+        $displaySalesList = array_slice($salesList, 0, 100);
+
+        // Sales by shop summary
+        $salesByShop = $sales->groupBy('shop_id')->map(function ($group, $sId) {
+            return [
+                'shop_name' => $group->first()->shop ? $group->first()->shop->shop_name : ($sId === null ? 'Main Store (Owner)' : 'Shop'),
+                'count'     => $group->count(),
+                'revenue'   => $group->sum(fn($s) => $s->filtered_revenue),
+                'profit'    => $group->sum(fn($s) => $s->filtered_profit),
+            ];
+        })->values()->toArray();
+
+        // Scope / Filter descriptions
+        $shopLabel = 'All Shops';
+        if ($shopId === 'owner') {
+            $shopLabel = 'Main Store (Owner)';
+        } elseif ($shopId) {
+            $shopObj = Shop::find($shopId);
+            $shopLabel = $shopObj ? $shopObj->shop_name : 'Selected Shop';
+        }
+
+        $itemLabel = null;
+        if ($itemId) {
+            $itemObj = Item::find($itemId);
+            $itemLabel = $itemObj ? $itemObj->item_name : null;
+        }
+
+        $stockTypeLabel = null;
+        if ($stockType === 'admin') {
+            $stockTypeLabel = 'Admin Stock Only';
+        } elseif ($stockType === 'normal') {
+            $stockTypeLabel = 'Normal Stock Only';
+        } elseif ($stockType === 'all') {
+            $stockTypeLabel = 'All Stock Types';
+        }
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$isOwner && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'scope'              => $shopLabel,
+            'period_label'       => $periodLabel,
+            'shop_label'         => $shopLabel,
+            'item_label'         => $itemLabel,
+            'stock_type_label'   => $stockTypeLabel,
+            'total_revenue'      => $totalRevenue,
+            'total_profit'       => $totalProfit,
+            'total_transactions' => $sales->count(),
+            'sales_by_shop'      => $salesByShop,
+            'sales_list'         => $displaySalesList,
+            'has_more_sales'     => $hasMoreSales,
+            'note'               => $request->input('note'),
+            'sender_name'        => $user->name,
+            'generated_at'       => now()->format('d M Y H:i:s'),
+            'branding'           => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredSalesReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Sales report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send sales report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendStockEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $type = $request->get('type', 'main');
+        if (!$user->isOwner()) {
+            $type = 'shop';
+        }
+
+        $itemsList = [];
+        $totalQty = 0;
+        $totalCostValue = null;
+        $totalSellValue = 0;
+        $stockTypeLabel = '';
+        $isShopView = false;
+        $showShopColumn = false;
+
+        if ($type === 'main' && $user->isOwner()) {
+            $stockTypeLabel = 'Main Store Stock';
+            $mainStocks = \App\Models\MainStock::with('item.category')
+                ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
+                ->groupBy('item_id')
+                ->get();
+
+            $totalQty = (float) $mainStocks->sum('qty');
+            $totalCostValue = (float) $mainStocks->sum('value');
+            $totalSellValue = (float) $mainStocks->sum('sell_value');
+
+            foreach ($mainStocks as $ms) {
+                $itemsList[] = [
+                    'name'      => $ms->item?->item_name ?? 'Unknown Item',
+                    'category'  => $ms->item?->category?->category_name ?? '—',
+                    'qty'       => (float) $ms->qty,
+                    'valuation' => (float) $ms->sell_value,
+                    'cost'      => (float) $ms->value,
+                ];
+            }
+        } else {
+            $stockTypeLabel = $user->isOwner() ? 'Shop Stock Distribution' : ($user->shop?->shop_name . ' Stock');
+            $isShopView = true;
+            $showShopColumn = $user->isOwner();
+
+            $shopStocksQuery = \App\Models\ShopStock::with('item.category', 'shop')
+                ->where('remaining_quantity', '>', 0);
+
+            if (!$user->isOwner()) {
+                $shopStocksQuery->where('shop_id', $user->shop_id);
+            } else {
+                $shopStocksQuery->where('is_admin_stock', false);
+            }
+
+            $shopStocks = $shopStocksQuery->get();
+
+            $totalQty = (float) $shopStocks->sum('remaining_quantity');
+            $totalSellValue = (float) $shopStocks->sum(fn($s) => $s->remaining_quantity * $s->selling_price);
+
+            foreach ($shopStocks as $ss) {
+                $itemsList[] = [
+                    'name'      => $ss->item?->item_name ?? 'Unknown Item',
+                    'category'  => $ss->item?->category?->category_name ?? '—',
+                    'shop'      => $ss->shop?->shop_name ?? 'Shop',
+                    'qty'       => (float) $ss->remaining_quantity,
+                    'valuation' => (float) ($ss->remaining_quantity * $ss->selling_price),
+                ];
+            }
+        }
+
+        $hasMore = count($itemsList) > 100;
+        $displayItemsList = array_slice($itemsList, 0, 100);
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$user->isOwner() && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'type'               => $type,
+            'scope'              => $stockTypeLabel,
+            'stock_type_label'   => $stockTypeLabel,
+            'total_qty'          => $totalQty,
+            'total_cost_value'   => $totalCostValue,
+            'total_sell_value'   => $totalSellValue,
+            'items_list'         => $displayItemsList,
+            'has_more'           => $hasMore,
+            'is_shop_view'       => $isShopView,
+            'show_shop_column'   => $showShopColumn,
+            'note'               => $request->input('note'),
+            'sender_name'        => $user->name,
+            'generated_at'       => now()->format('d M Y H:i:s'),
+            'branding'           => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredStockReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send stock report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendExpensesEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $categoryId = $request->get('expense_category_id');
+
+        $query = Expense::with(['category', 'recorder.shop'])
+            ->whereIn('status', ['approved', 'review_requested', 'editable']);
+
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $query->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $query->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        if ($categoryId) {
+            $query->where('expense_category_id', $categoryId);
+        }
+
+        $periodLabel = '';
+        if ($period === 'daily') {
+            $query->whereDate('activity_date', today());
+            $periodLabel = 'Today (' . today()->format('d M Y') . ')';
+        } elseif ($period === 'monthly') {
+            $query->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year);
+            $periodLabel = now()->format('F Y');
+        } elseif ($period === 'yearly') {
+            $query->whereYear('activity_date', now()->year);
+            $periodLabel = 'Year ' . now()->format('Y');
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) $query->whereDate('activity_date', '>=', $request->date_from);
+            if ($request->filled('date_to'))   $query->whereDate('activity_date', '<=', $request->date_to);
+            $periodLabel = ($request->date_from ?? 'Start') . ' to ' . ($request->date_to ?? 'End');
+        } else {
+            $periodLabel = ucfirst($period);
+        }
+
+        $expenses = $query->orderBy('activity_date', 'desc')->orderBy('id', 'desc')->get();
+        $totalAmount = (float) $expenses->sum('amount');
+
+        // By Category
+        $byCategory = $expenses->groupBy('expense_category_id')->map(function ($group) {
+            return [
+                'name'  => $group->first()->category?->name ?? 'Uncategorized',
+                'count' => $group->count(),
+                'total' => (float) $group->sum('amount'),
+            ];
+        })->values()->toArray();
+
+        $expensesList = [];
+        foreach ($expenses as $exp) {
+            $expensesList[] = [
+                'id'          => $exp->id,
+                'date'        => $exp->activity_date ? $exp->activity_date->format('d M Y') : 'N/A',
+                'category'    => $exp->category?->name ?? 'General',
+                'shop'        => $exp->recorder?->shop?->shop_name ?? 'Main Store',
+                'description' => $exp->description ?: '—',
+                'recorded_by' => $exp->recorder?->name ?? 'User',
+                'amount'      => (float) $exp->amount,
+            ];
+        }
+
+        $hasMore = count($expensesList) > 100;
+        $displayExpensesList = array_slice($expensesList, 0, 100);
+
+        $shopLabel = 'All Shops';
+        if ($shopId === 'owner') {
+            $shopLabel = 'Main Store (Owner)';
+        } elseif ($shopId) {
+            $shopObj = Shop::find($shopId);
+            $shopLabel = $shopObj ? $shopObj->shop_name : 'Selected Shop';
+        }
+
+        $categoryLabel = null;
+        if ($categoryId) {
+            $catObj = ExpenseCategory::find($categoryId);
+            $categoryLabel = $catObj ? $catObj->name : null;
+        }
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$user->isOwner() && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'scope'          => $shopLabel,
+            'period_label'   => $periodLabel,
+            'shop_label'     => $shopLabel,
+            'category_label' => $categoryLabel,
+            'total_amount'   => $totalAmount,
+            'total_records'  => $expenses->count(),
+            'by_category'    => $byCategory,
+            'expenses_list'  => $displayExpensesList,
+            'has_more'       => $hasMore,
+            'note'           => $request->input('note'),
+            'sender_name'    => $user->name,
+            'generated_at'   => now()->format('d M Y H:i:s'),
+            'branding'       => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredExpensesReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Expenses report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send expenses report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendSalesVsExpensesEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $period = $request->get('period', 'monthly');
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+
+        $salesQuery = Sale::completed()->with('items');
+        if ($user->isOwner()) {
+            $salesQuery->where('is_admin_stock', false);
+        }
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $salesQuery->whereNull('shop_id');
+            } else {
+                $salesQuery->where('shop_id', $shopId);
+            }
+        }
+
+        $expensesQuery = Expense::whereIn('status', ['approved', 'review_requested', 'editable']);
+        if ($shopId) {
+            if ($shopId === 'owner') {
+                $expensesQuery->whereHas('recorder', function ($q) {
+                    $q->whereNull('shop_id');
+                });
+            } else {
+                $expensesQuery->whereHas('recorder', function ($q) use ($shopId) {
+                    $q->where('shop_id', $shopId);
+                });
+            }
+        }
+
+        $periodLabel = '';
+        if ($period === 'daily') {
+            $salesQuery->whereDate('sale_date', today());
+            $expensesQuery->whereDate('activity_date', today());
+            $periodLabel = 'Today (' . today()->format('d M Y') . ')';
+        } elseif ($period === 'monthly') {
+            $salesQuery->whereMonth('sale_date', now()->month)->whereYear('sale_date', now()->year);
+            $expensesQuery->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year);
+            $periodLabel = now()->format('F Y');
+        } elseif ($period === 'yearly') {
+            $salesQuery->whereYear('sale_date', now()->year);
+            $expensesQuery->whereYear('activity_date', now()->year);
+            $periodLabel = 'Year ' . now()->format('Y');
+        } elseif ($period === 'custom') {
+            if ($request->filled('date_from')) {
+                $salesQuery->whereDate('sale_date', '>=', $request->date_from);
+                $expensesQuery->whereDate('activity_date', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $salesQuery->whereDate('sale_date', '<=', $request->date_to);
+                $expensesQuery->whereDate('activity_date', '<=', $request->date_to);
+            }
+            $periodLabel = ($request->date_from ?? 'Start') . ' to ' . ($request->date_to ?? 'End');
+        } else {
+            $periodLabel = ucfirst($period);
+        }
+
+        $isOwner = $user->isOwner();
+        $sales = $salesQuery->get();
+        $totalSales = (float) $sales->sum(fn($s) => $s->calculateRevenue($isOwner));
+        $totalExpenses = (float) $expensesQuery->sum('amount');
+        $netProfit = $totalSales - $totalExpenses;
+
+        $byShop = [];
+        if ($isOwner && empty($shopId)) {
+            $shops = Shop::active()->get();
+            foreach ($shops as $sh) {
+                $sSales = $sales->where('shop_id', $sh->id)->sum(fn($s) => $s->calculateRevenue(true));
+                $sExp = (float) Expense::whereIn('status', ['approved', 'review_requested', 'editable'])
+                    ->whereHas('recorder', fn($q) => $q->where('shop_id', $sh->id))
+                    ->when($period === 'daily', fn($q) => $q->whereDate('activity_date', today()))
+                    ->when($period === 'monthly', fn($q) => $q->whereMonth('activity_date', now()->month)->whereYear('activity_date', now()->year))
+                    ->when($period === 'yearly', fn($q) => $q->whereYear('activity_date', now()->year))
+                    ->when($period === 'custom', function ($q) use ($request) {
+                        if ($request->filled('date_from')) $q->whereDate('activity_date', '>=', $request->date_from);
+                        if ($request->filled('date_to'))   $q->whereDate('activity_date', '<=', $request->date_to);
+                    })
+                    ->sum('amount');
+                $byShop[] = [
+                    'shop_name' => $sh->shop_name,
+                    'sales'     => (float) $sSales,
+                    'expenses'  => (float) $sExp,
+                    'net'       => (float) ($sSales - $sExp),
+                ];
+            }
+        }
+
+        $shopLabel = 'All Shops';
+        if ($shopId === 'owner') {
+            $shopLabel = 'Main Store (Owner)';
+        } elseif ($shopId) {
+            $shopObj = Shop::find($shopId);
+            $shopLabel = $shopObj ? $shopObj->shop_name : 'Selected Shop';
+        }
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$user->isOwner() && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'scope'          => $shopLabel,
+            'period_label'   => $periodLabel,
+            'shop_label'     => $shopLabel,
+            'total_sales'    => $totalSales,
+            'total_expenses' => $totalExpenses,
+            'net_profit'     => $netProfit,
+            'by_shop'        => $byShop,
+            'note'           => $request->input('note'),
+            'sender_name'    => $user->name,
+            'generated_at'   => now()->format('d M Y H:i:s'),
+            'branding'       => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredSalesVsExpensesReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Sales vs Expenses report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send sales vs expenses report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendDefectEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $query = Defect::with(['shop', 'item.category', 'reporter']);
+        $shopId = $user->isShopAdmin() ? $user->shop_id : $request->get('shop_id');
+        $status = $request->get('status');
+
+        if ($request->filled('status')) {
+            $query->where('status', $status);
+        }
+        if ($shopId) {
+            $query->where('shop_id', $shopId);
+        }
+
+        $defects = $query->orderBy('created_at', 'desc')->get();
+        $totalDefective = (int) $defects->sum('quantity');
+
+        $defectsList = [];
+        foreach ($defects as $d) {
+            $defectsList[] = [
+                'id'       => $d->id,
+                'date'     => $d->created_at ? $d->created_at->format('d M Y') : 'N/A',
+                'item'     => $d->item?->item_name ?? 'Unknown Product',
+                'category' => $d->item?->category?->category_name ?? '—',
+                'shop'     => $d->shop?->shop_name ?? 'Main Warehouse',
+                'quantity' => (int) $d->quantity,
+                'reason'   => $d->reason ?: 'Defective / Damaged',
+                'reporter' => $d->reporter?->name ?? 'Staff',
+                'status'   => $d->status ?? 'pending',
+            ];
+        }
+
+        $hasMore = count($defectsList) > 100;
+        $displayDefectsList = array_slice($defectsList, 0, 100);
+
+        $shopLabel = 'All Warehouses / Shops';
+        if ($shopId) {
+            $shopObj = Shop::find($shopId);
+            $shopLabel = $shopObj ? $shopObj->shop_name : 'Selected Shop';
+        }
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$user->isOwner() && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'scope'            => $shopLabel,
+            'shop_label'       => $shopLabel,
+            'status_label'     => $status ? ucfirst($status) : null,
+            'total_defective'  => $totalDefective,
+            'incidents_count'  => $defects->count(),
+            'defects_list'     => $displayDefectsList,
+            'has_more'         => $hasMore,
+            'note'             => $request->input('note'),
+            'sender_name'      => $user->name,
+            'generated_at'     => now()->format('d M Y H:i:s'),
+            'branding'         => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredDefectReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Defect report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send defect report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function sendTransferEmail(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && !$user->isShopAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'emails' => 'required|string',
+            'note'   => 'nullable|string|max:1000',
+        ]);
+
+        $emailsArray = array_map('trim', explode(',', $request->input('emails')));
+        $emailsArray = array_filter($emailsArray, fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL));
+
+        if (empty($emailsArray)) {
+            return response()->json(['message' => 'Please provide at least one valid recipient email address.'], 422);
+        }
+
+        $status = $request->get('status', 'all');
+        $query = StockRequest::with(['shop', 'requester', 'transfer.item']);
+
+        if ($user->isShopAdmin()) {
+            $query->where('shop_id', $user->shop_id);
+        }
+
+        if ($status !== 'all' && !empty($status)) {
+            $query->where('status', $status);
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get();
+
+        $stats = [
+            'pending'  => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'pending')->count(),
+            'approved' => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'approved')->count(),
+            'rejected' => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'rejected')->count(),
+        ];
+
+        $requestsList = [];
+        foreach ($requests as $req) {
+            $itemsSummary = 'Stock Transfer';
+            if ($req->transfer && $req->transfer->item) {
+                $itemsSummary = "{$req->transfer->item->item_name} (x{$req->transfer->quantity})";
+            }
+
+            $requestsList[] = [
+                'id'            => $req->id,
+                'date'          => $req->created_at ? $req->created_at->format('d M Y') : 'N/A',
+                'shop'          => $req->shop?->shop_name ?? 'Shop',
+                'requester'     => $req->requester?->name ?? 'Staff',
+                'items_summary' => $itemsSummary,
+                'notes'         => $req->notes ?: '',
+                'status'        => $req->status ?? 'pending',
+            ];
+        }
+
+        $hasMore = count($requestsList) > 100;
+        $displayRequestsList = array_slice($requestsList, 0, 100);
+
+        $shopLabel = $user->isOwner() ? 'All Shops' : ($user->shop?->shop_name ?? 'My Shop');
+
+        $branding = [
+            'name'   => \App\Models\Setting::get('system_name', 'AMSTROOM'),
+            'slogan' => \App\Models\Setting::get('slogan', 'Technology Innovations'),
+        ];
+        if (!$user->isOwner() && $user->shop) {
+            $branding['name'] = $user->shop->shop_name ?: $branding['name'];
+            $branding['slogan'] = $user->shop->slogan ?: $branding['slogan'];
+        }
+
+        $reportData = [
+            'scope'          => $shopLabel,
+            'shop_label'     => $shopLabel,
+            'status_filter'  => $status,
+            'stats'          => $stats,
+            'requests_list'  => $displayRequestsList,
+            'has_more'       => $hasMore,
+            'note'           => $request->input('note'),
+            'sender_name'    => $user->name,
+            'generated_at'   => now()->format('d M Y H:i:s'),
+            'branding'       => $branding,
+        ];
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($emailsArray)->send(new \App\Mail\FilteredTransferReportMail($reportData));
+            return response()->json([
+                'success' => true,
+                'message' => 'Transfer report has been successfully sent to ' . implode(', ', $emailsArray) . '.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send transfer report email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

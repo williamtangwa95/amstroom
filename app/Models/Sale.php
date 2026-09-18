@@ -55,9 +55,8 @@ class Sale extends Model
         return $this->belongsTo(HandoverReport::class);
     }
 
-    public function getReportRevenueAttribute(): float
+    public function calculateRevenue(bool $isOwner): float
     {
-        $isOwner = auth()->check() && auth()->user()->isOwner();
         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';
 
         return (float) $this->items->sum(function ($item) use ($isOwner, $isIndependent) {
@@ -71,10 +70,8 @@ class Sale extends Model
         });
     }
 
-    public function getReportCostAttribute(): float
+    public function calculateCost(bool $isOwner): float
     {
-        $isOwner = auth()->check() && auth()->user()->isOwner();
-
         return (float) $this->items->sum(function ($item) use ($isOwner) {
             if ($isOwner && $item->is_admin_stock) {
                 return 0.0;
@@ -87,6 +84,23 @@ class Sale extends Model
             }
             return (float) ($item->shop_cost_price ?? $item->owner_realized_sp ?? 0) * $item->quantity;
         });
+    }
+
+    public function calculateProfit(bool $isOwner): float
+    {
+        return $this->calculateRevenue($isOwner) - $this->calculateCost($isOwner);
+    }
+
+    public function getReportRevenueAttribute(): float
+    {
+        $isOwner = auth()->check() && auth()->user()->isOwner();
+        return $this->calculateRevenue($isOwner);
+    }
+
+    public function getReportCostAttribute(): float
+    {
+        $isOwner = auth()->check() && auth()->user()->isOwner();
+        return $this->calculateCost($isOwner);
     }
 
     public function getReportProfitAttribute(): float

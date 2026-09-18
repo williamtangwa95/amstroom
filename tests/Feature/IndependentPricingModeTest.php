@@ -353,4 +353,58 @@ class IndependentPricingModeTest extends TestCase
         $response->assertSee('LegacyInftech'); // Their shop
         $response->assertDontSee('Main Warehouse Stock Summary'); // Main store summary is hidden
     }
+
+    public function test_owner_email_summary_report_uses_main_store_buying_and_selling_prices()
+    {
+        Setting::set('store_pricing_mode', 'INDEPENDENT');
+
+        // Create a completed sale today
+        $sale = Sale::create([
+            'shop_id'        => $this->shop->id,
+            'seller_id'      => $this->seller->id,
+            'customer_name'  => 'Test Customer',
+            'payment_method' => 'cash',
+            'sale_date'      => today(),
+            'status'         => 'completed',
+            'total_amount'   => 60000,
+            'is_admin_stock' => false,
+        ]);
+
+        SaleItem::create([
+            'sale_id'           => $sale->id,
+            'item_id'           => $this->item->id,
+            'quantity'          => 2,
+            'selling_price'     => 60000,
+            'owner_cost_price'  => 20000, // Main store buying price: 20k
+            'owner_realized_sp' => 45000, // Main store selling price: 45k
+            'shop_cost_price'   => 45000, // Shop cost price: 45k
+            'shop_realized_sp'  => 60000, // Shop customer selling price: 60k
+            'is_admin_stock'    => false,
+        ]);
+
+        $controller = new \App\Http\Controllers\SettingController();
+
+        // 1. Compile report for OWNER (Global System)
+        $ownerReport = $controller->compileReportData($this->owner, 'Global System');
+
+        // For owner:
+        // Revenue = 2 * 45,000 = 90,000 (Main store selling price)
+        // Cost = 2 * 20,000 = 40,000 (Main store buying price)
+        // Profit = 90,000 - 40,000 = 50,000
+        $this->assertEquals(90000, (float)$ownerReport['sales_total']);
+        $this->assertEquals(50000, (float)$ownerReport['profit']);
+        $this->assertNotEmpty($ownerReport['shops']);
+        $this->assertEquals(90000, (float)$ownerReport['shops'][0]['sales_total']);
+        $this->assertEquals(50000, (float)$ownerReport['shops'][0]['profit']);
+
+        // 2. Compile report for SHOP ADMIN
+        $adminReport = $controller->compileReportData($this->admin, $this->shop->shop_name);
+
+        // For shop admin:
+        // Revenue = 2 * 60,000 = 120,000 (Shop customer selling price)
+        // Cost = 2 * 45,000 = 90,000 (Shop cost price)
+        // Profit = 120,000 - 90,000 = 30,000
+        $this->assertEquals(120000, (float)$adminReport['sales_total']);
+        $this->assertEquals(30000, (float)$adminReport['profit']);
+    }
 }

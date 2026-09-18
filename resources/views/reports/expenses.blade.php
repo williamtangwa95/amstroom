@@ -58,6 +58,12 @@
                 <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
             </div>
             @endif
+            <div class="col-auto ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+                    <i class="bi bi-envelope-at"></i>
+                    <span>Send via Email</span>
+                </button>
+            </div>
         </form>
     </div>
 </div>
@@ -135,6 +141,66 @@
             <tbody>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Modal: Send Filtered Expenses Report to Email -->
+<div class="modal fade" id="emailReportModal" tabindex="-1" aria-labelledby="emailReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white border-bottom border-secondary">
+                <h5 class="modal-title fs-6 fw-bold" id="emailReportModalLabel">
+                    <i class="bi bi-envelope-paper me-2 text-info"></i> Send Expenses Report
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="sendExpensesReportEmailForm">
+                @csrf
+                <div class="modal-body py-3">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="text-uppercase fw-bold text-muted mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Report Filter Summary</div>
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-calendar3 me-1"></i> {{ ucfirst($period) }} @if($period === 'custom' && request('date_from')) ({{ request('date_from') }} to {{ request('date_to') }}) @endif</span>
+                            @if(auth()->user()->isOwner())
+                                <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-shop me-1"></i> {{ request('shop_id') === 'owner' ? 'Main Store (Owner)' : (request('shop_id') ? ($shops->firstWhere('id', request('shop_id'))?->shop_name ?? 'Shop') : 'All Shops') }}</span>
+                            @else
+                                <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-shop me-1"></i> {{ auth()->user()->shop?->shop_name ?? 'My Shop' }}</span>
+                            @endif
+                            @if(request('expense_category_id'))
+                                <span class="badge bg-secondary-subtle text-dark border"><i class="bi bi-tag me-1"></i> {{ $categories->firstWhere('id', request('expense_category_id'))?->name ?? 'Selected Category' }}</span>
+                            @endif
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2" style="font-size: 0.8rem;">
+                            <span class="text-muted">Total Expenses: <strong class="text-danger">TZS {{ number_format($totalAmount, 0) }}</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reportRecipientEmails" class="form-label fw-bold small text-dark mb-1">
+                            Recipient Email Address(es) <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-sm" id="reportRecipientEmails" name="emails" 
+                               value="{{ auth()->user()->email }}" placeholder="e.g. owner@example.com, manager@example.com" required>
+                        <div class="form-text" style="font-size: 0.72rem;">Separate multiple email addresses with a comma.</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="reportEmailNote" class="form-label fw-bold small text-dark mb-1">
+                            Custom Note / Message <span class="text-muted fw-normal">(Optional)</span>
+                        </label>
+                        <textarea class="form-control form-control-sm" id="reportEmailNote" name="note" rows="3" 
+                                  placeholder="Add an optional comment or explanation to be included at the top of the email..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-accent d-flex align-items-center gap-1" id="btnSubmitSendExpensesReportEmail">
+                        <i class="bi bi-send-fill"></i>
+                        <span>Send Email Report</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection
@@ -251,6 +317,15 @@ $(() => {
         order: [[1, 'desc']],
         dom: '<"d-flex justify-content-between align-items-center p-3 border-bottom" <"d-flex align-items-center gap-3"lB> f>rt<"d-flex justify-content-between align-items-center p-3 border-top"ip>',
         buttons: [
+            /* ── Send to Email ── */
+            {
+                text:      '<i class="bi bi-envelope-at me-1"></i> Email Report',
+                className: 'btn btn-sm btn-primary me-2',
+                action:    function() {
+                    $('#emailReportModal').modal('show');
+                }
+            },
+
             /* ── Excel ── */
             {
                 extend:    'excelHtml5',
@@ -399,6 +474,57 @@ $(() => {
                 }
             }
         ]
+    });
+
+    /* ── Send Expenses Report AJAX ── */
+    $('#sendExpensesReportEmailForm').on('submit', function(e) {
+        e.preventDefault();
+        const $btn = $('#btnSubmitSendExpensesReportEmail');
+        const originalBtnHtml = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...');
+
+        const formData = {
+            _token: $('input[name="_token"]').val() || '{{ csrf_token() }}',
+            emails: $('#reportRecipientEmails').val(),
+            note: $('#reportEmailNote').val(),
+            period: "{{ $period }}",
+            shop_id: "{{ request('shop_id') }}",
+            expense_category_id: "{{ request('expense_category_id') }}",
+            date_from: "{{ request('date_from') }}",
+            date_to: "{{ request('date_to') }}"
+        };
+
+        $.ajax({
+            url: "{{ route('reports.expenses.send-email') }}",
+            type: "POST",
+            data: formData,
+            success: function(res) {
+                $btn.prop('disabled', false).html(originalBtnHtml);
+                $('#emailReportModal').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Report Sent!',
+                    text: res.message || 'Expenses report has been successfully sent to email.',
+                    confirmButtonColor: '#0088cc'
+                });
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html(originalBtnHtml);
+                let msg = 'Failed to send expenses report email.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    msg = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Sending Failed',
+                    html: msg,
+                    confirmButtonColor: '#d33'
+                });
+            }
+        });
     });
 });
 </script>

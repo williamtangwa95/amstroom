@@ -184,4 +184,68 @@ class SalesReportTest extends TestCase
         $response->assertDontSee('Main Warehouse Stock Summary');
         $response->assertSee('Shop Stocks Inventory');
     }
+
+    public function test_owner_can_send_filtered_sales_report_to_email()
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->actingAs($this->owner);
+
+        $response = $this->post(route('reports.sales.send-email'), [
+            'emails' => 'boss@example.com, partner@example.com',
+            'period' => 'monthly',
+            'note'   => 'Monthly performance summary.',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\FilteredSalesReportMail::class, function ($mail) {
+            return $mail->hasTo('boss@example.com')
+                && $mail->hasTo('partner@example.com')
+                && $mail->reportData['note'] === 'Monthly performance summary.'
+                // Owner revenue: HP (2 * 35k = 70k) + Dell (1 * 60k = 60k) = 130,000
+                && (float)$mail->reportData['total_revenue'] === 130000.0
+                // Owner cost: HP (2 * 20k = 40k) + Dell (1 * 40k = 40k) = 80,000
+                // Owner profit: 130,000 - 80,000 = 50,000
+                && (float)$mail->reportData['total_profit'] === 50000.0;
+        });
+    }
+
+    public function test_shop_admin_can_send_filtered_sales_report_to_email()
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('reports.sales.send-email'), [
+            'emails'  => 'admin@example.com',
+            'item_id' => $this->hpItem->id,
+            'period'  => 'monthly',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\FilteredSalesReportMail::class, function ($mail) {
+            return $mail->hasTo('admin@example.com')
+                // Shop admin revenue for HP: 2 * 50k = 100k
+                && (float)$mail->reportData['total_revenue'] === 100000.0
+                // Shop admin profit for HP: 100k - (2 * 30k) = 40k
+                && (float)$mail->reportData['total_profit'] === 40000.0;
+        });
+    }
+
+    public function test_send_sales_report_validates_email_input()
+    {
+        $this->actingAs($this->owner);
+
+        $response = $this->postJson(route('reports.sales.send-email'), [
+            'emails' => 'invalid-email-string',
+        ]);
+
+        $response->assertStatus(422);
+    }
 }

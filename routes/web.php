@@ -276,15 +276,21 @@ Route::middleware('auth')->group(function () {
         // Reports
         Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
         Route::get('reports/sales/data', [ReportController::class, 'salesData'])->name('reports.sales.data');
+        Route::post('reports/sales/send-email', [ReportController::class, 'sendSalesEmail'])->name('reports.sales.send-email');
         Route::get('reports/stock', [ReportController::class, 'stock'])->name('reports.stock');
         Route::get('reports/stock/data', [ReportController::class, 'stockData'])->name('reports.stock.data');
+        Route::post('reports/stock/send-email', [ReportController::class, 'sendStockEmail'])->name('reports.stock.send-email');
         Route::get('reports/transfer', [ReportController::class, 'transfer'])->name('reports.transfer');
         Route::get('reports/transfer/data', [ReportController::class, 'transferData'])->name('reports.transfer.data');
+        Route::post('reports/transfer/send-email', [ReportController::class, 'sendTransferEmail'])->name('reports.transfer.send-email');
         Route::get('reports/defect', [ReportController::class, 'defect'])->name('reports.defect');
         Route::get('reports/defect/data', [ReportController::class, 'defectData'])->name('reports.defect.data');
+        Route::post('reports/defect/send-email', [ReportController::class, 'sendDefectEmail'])->name('reports.defect.send-email');
         Route::get('reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('reports/expenses/data', [ReportController::class, 'expensesData'])->name('reports.expenses.data');
+        Route::post('reports/expenses/send-email', [ReportController::class, 'sendExpensesEmail'])->name('reports.expenses.send-email');
         Route::get('reports/sales-vs-expenses', [ReportController::class, 'salesVsExpenses'])->name('reports.sales-vs-expenses');
+        Route::post('reports/sales-vs-expenses/send-email', [ReportController::class, 'sendSalesVsExpensesEmail'])->name('reports.sales-vs-expenses.send-email');
         Route::get('reports/analytics', [ReportController::class, 'analytics'])->name('reports.analytics');
         Route::get('admin/logs/visitors', [ReportController::class, 'visitorAnalytics'])->name('reports.visitors');
         Route::get('admin/logs/visitors/data', [ReportController::class, 'visitorData'])->name('reports.visitors.data');
