@@ -180,11 +180,77 @@
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
-                        <div class="p-3">
+                        <!-- Edit preview bar (hidden by default, slides in) -->
+                        <div id="editPreviewBar" style="
+                            display:none; align-items:stretch;
+                            border-left: 4px solid #f59e0b;
+                            background: linear-gradient(90deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03));
+                            padding: 8px 14px 8px 12px;
+                            gap: 10px;
+                            font-size: 0.78rem;
+                        ">
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-700 mb-1" id="editPreviewTitle" style="font-size:0.7rem; color:#d97706; letter-spacing:0.01em;">
+                                    <i class="bi bi-pencil-square me-1"></i> Editing message
+                                </div>
+                                <div class="text-muted" id="editPreviewText" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                            </div>
+                            <button type="button" id="btnCancelEdit" title="Cancel edit (Esc)"
+                                style="flex-shrink:0; width:24px; height:24px; border-radius:50%; border:none; background:rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#666; font-size:0.85rem; align-self:center;">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <!-- Emoji Picker Popover -->
+                        <div id="emojiPickerPopup" class="shadow-lg border rounded-3 bg-white" style="
+                            display: none;
+                            position: absolute;
+                            bottom: 70px;
+                            left: 15px;
+                            width: 350px;
+                            max-width: calc(100vw - 30px);
+                            height: 380px;
+                            z-index: 1050;
+                            flex-direction: column;
+                            overflow: hidden;
+                        ">
+                            <!-- Header: Search and Categories -->
+                            <div class="p-2 border-bottom bg-light">
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="emojiSearchInput" class="form-control border-start-0" placeholder="Search emojis (e.g. smile, box, ok, fire)...">
+                                </div>
+                                <!-- Category Nav -->
+                                <div class="d-flex justify-content-between align-items-center px-1 emoji-nav-tabs">
+                                    <button type="button" class="btn btn-xs emoji-tab-btn active" data-category="quick" title="Quick & Frequent">⭐</button>
+                                    <button type="button" class="btn btn-xs emoji-tab-btn" data-category="smileys" title="Smileys & Emotion">😀</button>
+                                    <button type="button" class="btn btn-xs emoji-tab-btn" data-category="gestures" title="People & Gestures">👍</button>
+                                    <button type="button" class="btn btn-xs emoji-tab-btn" data-category="commerce" title="Shop & Commerce">📦</button>
+                                    <button type="button" class="btn btn-xs emoji-tab-btn" data-category="symbols" title="Symbols & Alerts">💡</button>
+                                    <button type="button" class="btn btn-xs text-muted py-0 px-1 ms-1" id="btnCloseEmojiPicker" title="Close"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                            
+                            <!-- Emoji List Container -->
+                            <div class="flex-grow-1 overflow-y-auto p-2" id="emojiGridContainer" style="font-size: 1.35rem; user-select: none;">
+                                <!-- Populated dynamically with categorized grid of emojis -->
+                            </div>
+                            
+                            <!-- Footer with preview label -->
+                            <div class="px-2.5 py-1.5 bg-light border-top text-muted d-flex justify-content-between align-items-center" style="font-size: 0.68rem;">
+                                <span id="emojiPreviewLabel"><i class="bi bi-cursor me-1"></i>Click emoji to insert</span>
+                                <span class="badge bg-secondary-subtle text-secondary">Esc to close</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 position-relative">
                             <form id="messageForm" class="d-flex align-items-center gap-2">
                                 <input type="hidden" id="replyToId" value="">
+                                <input type="hidden" id="editingMsgId" value="">
+                                <button type="button" class="btn btn-light border px-2.5 py-2 text-secondary flex-shrink-0" id="btnEmojiToggle" title="Add Emoji" style="border-radius: 8px;">
+                                    <i class="bi bi-emoji-smile fs-5 text-warning"></i>
+                                </button>
                                 <input type="text" id="messageInput" class="form-control py-2 px-3 border" placeholder="Type your message here..." autocomplete="off">
-                                <button type="submit" class="btn btn-accent px-4 py-2" id="btnSend">
+                                <button type="submit" class="btn btn-accent px-4 py-2 flex-shrink-0" id="btnSend">
                                     <i class="bi bi-send-fill me-1"></i> Send
                                 </button>
                             </form>
@@ -370,16 +436,30 @@
         color: rgba(255, 255, 255, 0.9);
     }
     .msg-time {
-        font-size: 0.6rem;
-        margin-top: 0.25rem;
+        font-size: 0.62rem;
+        margin-top: 0.35rem;
         text-align: right;
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
     }
     .msg-incoming .msg-time {
         color: var(--text-secondary);
     }
     .msg-outgoing .msg-time {
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.82);
+    }
+    .msg-edited-tag {
+        font-size: 0.58rem;
+        opacity: 0.85;
+        font-style: italic;
+    }
+    .msg-incoming .msg-edited-tag {
+        color: #d97706;
+    }
+    .msg-outgoing .msg-edited-tag {
+        color: #fde68a;
     }
     
     /* Product card style in chats */
@@ -412,23 +492,40 @@
         border-bottom: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* ─── WhatsApp-style reply layout ──────────────────────────────────── */
+    /* ─── WhatsApp-style Action Buttons (Reply, Edit, Delete) ──────────── */
 
-    /* Each message row is a flex row: [btn?] [bubble] or [bubble] [btn?] */
+    /* Each message row is a flex row: [actions?] [bubble] or [bubble] [actions?] */
     .msg-row {
         display: flex;
         align-items: flex-end;
         gap: 6px;
         margin-bottom: 4px;
+        position: relative;
     }
     .msg-row-out { flex-direction: row-reverse; }
     .msg-row-in  { flex-direction: row; }
 
-    /* The reply action button — always in the DOM, invisible until hover */
-    .msg-reply-btn {
+    /* Action buttons container — always in DOM, appears on hover */
+    .msg-actions {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        opacity: 0;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        transform: scale(0.9);
+        pointer-events: none;
         flex-shrink: 0;
-        width: 30px;
-        height: 30px;
+    }
+    .msg-row:hover .msg-actions {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+    }
+
+    .msg-action-btn {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: rgba(0,136,204,0.12);
         border: none;
@@ -437,22 +534,53 @@
         justify-content: center;
         cursor: pointer;
         color: #0088cc;
-        font-size: 1rem;
-        opacity: 0;
-        transition: opacity 0.18s, background 0.18s, transform 0.18s;
-        transform: scale(0.8);
-        pointer-events: none;
+        font-size: 0.85rem;
+        transition: opacity 0.15s, background 0.15s, transform 0.15s, color 0.15s;
     }
-    .msg-row:hover .msg-reply-btn {
-        opacity: 1;
-        transform: scale(1);
-        pointer-events: auto;
-    }
-    .msg-reply-btn:hover {
-        background: rgba(0,136,204,0.22);
+    .msg-action-btn:hover {
+        background: rgba(0,136,204,0.24);
         transform: scale(1.12);
     }
-    .msg-row-out .msg-reply-btn { color: #0088cc; background: rgba(0,136,204,0.1); }
+    .msg-row-out .msg-action-btn { color: #0088cc; background: rgba(0,136,204,0.1); }
+    .msg-row-out .msg-action-btn:hover { background: rgba(0,136,204,0.22); }
+
+    .msg-action-btn.msg-edit-btn {
+        color: #d97706;
+        background: rgba(245, 158, 11, 0.12);
+    }
+    .msg-action-btn.msg-edit-btn:hover {
+        color: #b45309;
+        background: rgba(245, 158, 11, 0.25);
+    }
+
+    .msg-action-btn.msg-delete-btn {
+        color: #dc2626;
+        background: rgba(239, 68, 68, 0.12);
+    }
+    .msg-action-btn.msg-delete-btn:hover {
+        color: #b91c1c;
+        background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* ── Date dividers ───────────────────────────────────────────── */
+    .chat-date-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 1.25rem 0 0.85rem;
+        position: relative;
+    }
+    .chat-date-pill {
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        color: #64748b;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 3px 12px;
+        border-radius: 20px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        letter-spacing: 0.02em;
+    }
 
     /* ── Quoted reply block inside bubble ───────────────────────── */
     .msg-reply-quote {
@@ -499,8 +627,8 @@
         text-overflow: ellipsis;
     }
 
-    /* ── Reply preview bar animation ─────────────────────────────── */
-    #replyPreviewBar {
+    /* ── Reply & Edit preview bar animation ──────────────────────── */
+    #replyPreviewBar, #editPreviewBar, #emojiPickerPopup {
         animation: slideInUp 0.18s ease-out;
     }
     @keyframes slideInUp {
@@ -508,7 +636,59 @@
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Flash highlight when clicking a quote to jump to source */
+    /* ── Emoji Picker Styling ────────────────────────────────────────── */
+    #emojiPickerPopup {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08) !important;
+        border: 1px solid rgba(0,0,0,0.12) !important;
+    }
+    .emoji-tab-btn {
+        font-size: 1.05rem;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .emoji-tab-btn:hover {
+        background: rgba(0, 136, 204, 0.1);
+    }
+    .emoji-tab-btn.active {
+        background: #0088cc;
+        color: #ffffff;
+    }
+    .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+    }
+    .emoji-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        border-radius: 8px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 1.35rem;
+        line-height: 1;
+        transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+    .emoji-btn:hover {
+        background-color: rgba(0, 136, 204, 0.12);
+        transform: scale(1.22);
+    }
+    .emoji-section-title {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin: 8px 4px 4px;
+    }
+
+    /* Flash highlight when clicking a quote or updating message */
     @keyframes msgFlash {
         0%   { box-shadow: 0 0 0 3px rgba(0,136,204,0.45); background: rgba(0,136,204,0.1); }
         100% { box-shadow: none; background: transparent; }
@@ -552,6 +732,7 @@
         let activeType = 'group'; // 'group' or 'individual'
         let activeId = 'group'; // 'group' or user_id
         let lastMessageId = 0;
+        let lastRenderedDateKey = null;
         let pollingTimer = null;
         let selectedProduct = null;
 
@@ -574,6 +755,55 @@
             messageLog.scrollTop(messageLog[0].scrollHeight);
         }
 
+        // Date & Time formatting helpers
+        function formatMessageDateTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+
+            const yesterday = new Date();
+            yesterday.setDate(now.getDate() - 1);
+            const isYesterday = d.toDateString() === yesterday.toDateString();
+
+            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (isToday) {
+                return `Today, ${timeStr}`;
+            } else if (isYesterday) {
+                return `Yesterday, ${timeStr}`;
+            } else {
+                const dateOptions = { month: 'short', day: 'numeric' };
+                if (d.getFullYear() !== now.getFullYear()) {
+                    dateOptions.year = 'numeric';
+                }
+                const dateFormatted = d.toLocaleDateString([], dateOptions);
+                return `${dateFormatted}, ${timeStr}`;
+            }
+        }
+
+        function getMessageDateGroupKey(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            return d.toISOString().split('T')[0];
+        }
+
+        function formatGroupDateHeader(dateStr) {
+            const d = new Date(dateStr);
+            const now = new Date();
+            if (d.toDateString() === now.toDateString()) return 'Today';
+            const yesterday = new Date();
+            yesterday.setDate(now.getDate() - 1);
+            if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+            const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+            if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+            return d.toLocaleDateString(undefined, opts);
+        }
+
         // Initialize Chat view
         loadConversation();
 
@@ -592,6 +822,7 @@
             activeType = $(this).data('type');
             activeId = $(this).data('id');
             lastMessageId = 0;
+            lastRenderedDateKey = null;
 
             // Reset headers and state
             if (activeType === 'group') {
@@ -631,12 +862,15 @@
                 }
             }
 
+            cancelReply();
+            cancelEdit();
             loadConversation();
         });
 
         // Load conversation messages
         function loadConversation() {
             if (lastMessageId === 0) {
+                lastRenderedDateKey = null;
                 messageLog.html(`
                     <div class="text-center py-5 text-muted small" id="initialLoadingPlaceholder">
                         <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
@@ -677,6 +911,26 @@
                         }
                     }
 
+                    // Process deleted messages sync in real-time
+                    if (response.deleted_ids && response.deleted_ids.length > 0) {
+                        response.deleted_ids.forEach(function (delId) {
+                            const $delEl = $(`#chat-msg-${delId}`);
+                            if ($delEl.length) {
+                                $delEl.fadeOut(250, function () { $(this).remove(); });
+                            }
+                            if ($('#editingMsgId').val() == delId) {
+                                cancelEdit();
+                            }
+                        });
+                    }
+
+                    // Process updated messages sync in real-time
+                    if (response.updated_messages && response.updated_messages.length > 0) {
+                        response.updated_messages.forEach(function (uMsg) {
+                            updateMessageInDOM(uMsg, curUserId);
+                        });
+                    }
+
                     if (messages.length > 0) {
                         messageLog.find('#noMessagesMsg').remove();
                         
@@ -688,8 +942,22 @@
                                 lastMessageId = msg.id;
                             }
 
+                            // Render date divider if new day
+                            const dateKey = getMessageDateGroupKey(msg.created_at);
+                            if (dateKey && dateKey !== lastRenderedDateKey) {
+                                lastRenderedDateKey = dateKey;
+                                const dateLabel = formatGroupDateHeader(msg.created_at);
+                                messageLog.append(`
+                                    <div class="chat-date-divider" data-date-key="${dateKey}">
+                                        <span class="chat-date-pill"><i class="bi bi-calendar3 me-1 text-primary"></i>${dateLabel}</span>
+                                    </div>
+                                `);
+                            }
+
                             const isOut = msg.sender_id === curUserId;
-                            const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const dateTimeStr = formatMessageDateTime(msg.created_at);
+                            const fullTimestamp = new Date(msg.created_at).toLocaleString();
+                            const editedTag = msg.is_edited ? `<span class="msg-edited-tag ms-1"><i class="bi bi-pencil-fill" style="font-size:0.55rem;"></i> edited</span>` : '';
                             const senderName = isOut ? 'You' : msg.sender.name;
                             const shopLabel = (msg.sender.shop ? msg.sender.shop.shop_name : 'Owner Store');
 
@@ -742,11 +1010,29 @@
                                             <span class="quote-name">${escapeHtml(msg.reply_to.sender ? (msg.reply_to.sender.id === curUserId ? 'You' : msg.reply_to.sender.name) : 'Unknown')}</span>
                                             <span class="quote-text">${escapeHtml(msg.reply_to.message)}</span>
                                         </div>` : '';
-                                    const replyBtnInq = `<button class="msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml('📦 ' + (msg.metadata ? msg.metadata.item_name : ''))}"><i class="bi bi-reply-fill"></i></button>`;
+                                    
+                                    const rawNote = meta.note || '';
+                                    let actionsInqHtml = '';
+                                    if (isOut) {
+                                        actionsInqHtml = `
+                                            <div class="msg-actions">
+                                                <button class="msg-action-btn msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml('📦 ' + (meta ? meta.item_name : ''))}"><i class="bi bi-reply-fill"></i></button>
+                                                <button class="msg-action-btn msg-edit-btn" title="Edit inquiry note" data-msg-id="${msg.id}" data-msg-type="inquiry" data-msg-text="${escapeHtml(rawNote)}"><i class="bi bi-pencil-fill"></i></button>
+                                                <button class="msg-action-btn msg-delete-btn" title="Delete inquiry" data-msg-id="${msg.id}"><i class="bi bi-trash3-fill"></i></button>
+                                            </div>
+                                        `;
+                                    } else {
+                                        actionsInqHtml = `
+                                            <div class="msg-actions">
+                                                <button class="msg-action-btn msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml('📦 ' + (meta ? meta.item_name : ''))}"><i class="bi bi-reply-fill"></i></button>
+                                            </div>
+                                        `;
+                                    }
+
                                     messageHtml = `
                                         <div class="msg-wrapper" id="chat-msg-${msg.id}">
                                             <div class="msg-row ${isOut ? 'msg-row-out' : 'msg-row-in'}">
-                                                ${replyBtnInq}
+                                                ${actionsInqHtml}
                                                 <div class="msg-container ${isOut ? 'msg-outgoing' : 'msg-incoming'}">
                                                     <div class="msg-sender-name">${senderName} (${shopLabel})</div>
                                                     ${replyQuoteInq}
@@ -756,7 +1042,7 @@
                                                     <div class="fw-700">${meta.item_name}</div>
                                                     <div class="text-muted small mb-2" style="font-size:0.72rem;">Brand: ${meta.brand || '-'} | Model: ${meta.model || '-'}</div>
                                                     <div class="p-2 bg-white rounded text-dark mb-2" style="font-size:0.75rem;">
-                                                        <strong>Note:</strong> ${meta.note || ''}
+                                                        <strong>Note:</strong> <span class="inquiry-note-text">${escapeHtml(meta.note || '')}</span>
                                                     </div>
                                                     <div class="fw-600 mt-2 small border-top pt-1">Stock Availability:</div>
                                                     <table class="stocks-table" style="font-size: 0.72rem;">
@@ -765,7 +1051,7 @@
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                    <div class="msg-time">${timeStr}</div>
+                                                    <div class="msg-time" title="${fullTimestamp}"><span>${dateTimeStr}</span>${editedTag}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -777,16 +1063,33 @@
                                         <span class="quote-name">${escapeHtml(msg.reply_to.sender ? (msg.reply_to.sender.id === curUserId ? 'You' : msg.reply_to.sender.name) : 'Unknown')}</span>
                                         <span class="quote-text">${escapeHtml(msg.reply_to.message)}</span>
                                     </div>` : '';
-                                const replyBtn = `<button class="msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml(msg.message)}"><i class="bi bi-reply-fill"></i></button>`;
+                                
+                                let actionsHtml = '';
+                                if (isOut) {
+                                    actionsHtml = `
+                                        <div class="msg-actions">
+                                            <button class="msg-action-btn msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml(msg.message)}"><i class="bi bi-reply-fill"></i></button>
+                                            <button class="msg-action-btn msg-edit-btn" title="Edit message" data-msg-id="${msg.id}" data-msg-type="text" data-msg-text="${escapeHtml(msg.message)}"><i class="bi bi-pencil-fill"></i></button>
+                                            <button class="msg-action-btn msg-delete-btn" title="Delete message" data-msg-id="${msg.id}"><i class="bi bi-trash3-fill"></i></button>
+                                        </div>
+                                    `;
+                                } else {
+                                    actionsHtml = `
+                                        <div class="msg-actions">
+                                            <button class="msg-action-btn msg-reply-btn" title="Reply" data-msg-id="${msg.id}" data-msg-sender="${escapeHtml(senderName)}" data-msg-text="${escapeHtml(msg.message)}"><i class="bi bi-reply-fill"></i></button>
+                                        </div>
+                                    `;
+                                }
+
                                 messageHtml = `
                                     <div class="msg-wrapper" id="chat-msg-${msg.id}">
                                         <div class="msg-row ${isOut ? 'msg-row-out' : 'msg-row-in'}">
-                                            ${replyBtn}
+                                            ${actionsHtml}
                                             <div class="msg-container ${isOut ? 'msg-outgoing' : 'msg-incoming'}">
                                                 <div class="msg-sender-name">${senderName} (${shopLabel})</div>
                                                 ${replyQuote}
                                                 <div class="msg-text">${escapeHtml(msg.message)}</div>
-                                                <div class="msg-time">${timeStr}</div>
+                                                <div class="msg-time" title="${fullTimestamp}"><span>${dateTimeStr}</span>${editedTag}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -809,12 +1112,75 @@
             });
         }
 
-        // Send text message handler
+        // Helper to update a message in the DOM when edited
+        function updateMessageInDOM(msg, curUserId) {
+            const $el = $(`#chat-msg-${msg.id}`);
+            if (!$el.length) return;
+
+            if (msg.type === 'product_inquiry') {
+                const meta = msg.metadata;
+                if (meta && meta.note) {
+                    $el.find('.inquiry-note-text').text(meta.note);
+                }
+                $el.find('.msg-edit-btn').data('msg-text', meta ? meta.note : '');
+            } else {
+                $el.find('.msg-text').text(msg.message);
+                $el.find('.msg-reply-btn').data('msg-text', msg.message);
+                $el.find('.msg-edit-btn').data('msg-text', msg.message);
+            }
+
+            const dateTimeStr = formatMessageDateTime(msg.created_at);
+            const fullTimestamp = new Date(msg.created_at).toLocaleString();
+            const editedTag = `<span class="msg-edited-tag ms-1"><i class="bi bi-pencil-fill" style="font-size:0.55rem;"></i> edited</span>`;
+            $el.find('.msg-time').attr('title', fullTimestamp).html(`<span>${dateTimeStr}</span>${editedTag}`);
+
+            // Flash highlight effect
+            $el.addClass('msg-flash');
+            setTimeout(function () { $el.removeClass('msg-flash'); }, 1500);
+        }
+
+        // Send or Edit message handler
         messageForm.on('submit', function (e) {
             e.preventDefault();
             const text = $.trim(messageInput.val());
             if (!text) return;
 
+            const editingId = $('#editingMsgId').val();
+
+            if (editingId) {
+                // Perform Edit Update
+                $('#btnSend').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Saving...');
+                $.ajax({
+                    url: `{{ url('/chats/messages') }}/${editingId}`,
+                    type: 'PUT',
+                    data: {
+                        message: text,
+                        note: text,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function (response) {
+                        $('#btnSend').prop('disabled', false);
+                        cancelEdit();
+                        messageInput.val('');
+                        if (response.success && response.message) {
+                            updateMessageInDOM(response.message, response.current_user_id || {{ auth()->id() }});
+                            showToast('Message updated successfully', 'success');
+                        }
+                    },
+                    error: function (xhr) {
+                        $('#btnSend').prop('disabled', false).html('<i class="bi bi-check2-circle me-1"></i> Save');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Update Failed',
+                            text: xhr.responseJSON?.message || 'Unable to update message. Check connection.',
+                            confirmButtonColor: '#0088cc'
+                        });
+                    }
+                });
+                return;
+            }
+
+            // Normal Send Message
             const replyToId = $('#replyToId').val() || null;
             messageInput.val('').focus();
             cancelReply();
@@ -843,6 +1209,422 @@
                     });
                 }
             });
+        });
+
+        // ─── EDIT FEATURE ────────────────────────────────────────────────────────
+        const $editBar   = $('#editPreviewBar');
+        const $editId    = $('#editingMsgId');
+        const $editText  = $('#editPreviewText');
+
+        function cancelEdit() {
+            $editId.val('');
+            $editBar.hide();
+            $editText.text('');
+            messageInput.attr('placeholder', 'Type your message here...');
+            $('#btnSend').removeClass('btn-warning text-dark fw-600').addClass('btn-accent').html('<i class="bi bi-send-fill me-1"></i> Send');
+        }
+
+        function startEditMessage(msgId, text, type) {
+            cancelReply();
+            $editId.val(msgId);
+            $editText.text(text);
+            $editBar.css('display', 'flex');
+            messageInput.val(text).focus();
+            messageInput.attr('placeholder', type === 'inquiry' ? 'Edit inquiry note...' : 'Edit your message...');
+            $('#btnSend').removeClass('btn-accent').addClass('btn-warning text-dark fw-600').html('<i class="bi bi-check2-circle me-1"></i> Save');
+        }
+
+        $('#btnCancelEdit').on('click', cancelEdit);
+
+        // Click Edit button on a message bubble
+        messageLog.on('click', '.msg-edit-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const msgId   = $(this).data('msg-id');
+            const msgType = $(this).data('msg-type');
+            const msgText = $(this).data('msg-text');
+            startEditMessage(msgId, msgText, msgType);
+        });
+
+        // ─── DELETE FEATURE ──────────────────────────────────────────────────────
+        messageLog.on('click', '.msg-delete-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const msgId = $(this).data('msg-id');
+
+            Swal.fire({
+                title: 'Delete Message?',
+                text: 'Are you sure you want to delete this message? This action cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="bi bi-trash3-fill me-1"></i> Yes, delete',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `{{ url('/chats/messages') }}/${msgId}`,
+                        type: 'DELETE',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function (res) {
+                            if (res.success) {
+                                if ($('#editingMsgId').val() == msgId) {
+                                    cancelEdit();
+                                }
+                                const $msgEl = $(`#chat-msg-${msgId}`);
+                                if ($msgEl.length) {
+                                    $msgEl.fadeOut(250, function () {
+                                        $(this).remove();
+                                    });
+                                }
+                                showToast('Message deleted successfully', 'success');
+                            }
+                        },
+                        error: function (xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Delete Failed',
+                                text: xhr.responseJSON?.message || 'Unable to delete message. Check connection.',
+                                confirmButtonColor: '#0088cc'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // ─── EMOJI PICKER FEATURE ────────────────────────────────────────────────
+        const emojiData = [
+            // Quick / Favorites
+            { emoji: '👍', name: 'thumbs up ok yes agree good', cat: 'quick' },
+            { emoji: '❤️', name: 'red heart love like best', cat: 'quick' },
+            { emoji: '😂', name: 'laughing tears joy funny lol haha', cat: 'quick' },
+            { emoji: '🔥', name: 'fire lit hot fast popular', cat: 'quick' },
+            { emoji: '😊', name: 'smiling blush happy nice friendly', cat: 'quick' },
+            { emoji: '🙏', name: 'praying hands please thanks thank you', cat: 'quick' },
+            { emoji: '📦', name: 'package box parcel stock product item', cat: 'quick' },
+            { emoji: '💰', name: 'money bag cash price shillings payment', cat: 'quick' },
+            { emoji: '🛒', name: 'shopping cart buy order customer sale', cat: 'quick' },
+            { emoji: '✅', name: 'check checkmark done finished ok yes', cat: 'quick' },
+            { emoji: '❌', name: 'cross red x cancel no reject out of stock', cat: 'quick' },
+            { emoji: '🎉', name: 'party popper celebration congrats welcome', cat: 'quick' },
+            { emoji: '🤝', name: 'handshake deal agreement partner customer', cat: 'quick' },
+            { emoji: '💡', name: 'light bulb idea note info suggestion', cat: 'quick' },
+            { emoji: '📞', name: 'telephone phone call contact call me', cat: 'quick' },
+            { emoji: '⏳', name: 'hourglass sand time waiting pending delay', cat: 'quick' },
+
+            // Smileys & Emotion
+            { emoji: '😀', name: 'grinning face happy smile laugh', cat: 'smileys' },
+            { emoji: '😃', name: 'smiling face big eyes happy joyful', cat: 'smileys' },
+            { emoji: '😄', name: 'grinning face smiling eyes happy', cat: 'smileys' },
+            { emoji: '😁', name: 'beaming face smiling eyes grin teeth', cat: 'smileys' },
+            { emoji: '😆', name: 'grinning squinting face laugh haha', cat: 'smileys' },
+            { emoji: '😅', name: 'sweat smile relief phew work', cat: 'smileys' },
+            { emoji: '🤣', name: 'rolling on floor laughing rofl funny lol', cat: 'smileys' },
+            { emoji: '🥲', name: 'smiling face with tear touched bittersweet', cat: 'smileys' },
+            { emoji: '🥹', name: 'face holding back tears proud emotional grateful', cat: 'smileys' },
+            { emoji: '☺️', name: 'smiling face calm pleasant blush', cat: 'smileys' },
+            { emoji: '😇', name: 'smiling face with halo angel good innocent', cat: 'smileys' },
+            { emoji: '🙂', name: 'slightly smiling face ok fine calm', cat: 'smileys' },
+            { emoji: '😉', name: 'winking face playful joke wink', cat: 'smileys' },
+            { emoji: '😌', name: 'relieved face peaceful calm satisfied', cat: 'smileys' },
+            { emoji: '😍', name: 'heart eyes love enamored attractive crush', cat: 'smileys' },
+            { emoji: '🥰', name: 'smiling face with hearts loved affectionate', cat: 'smileys' },
+            { emoji: '😘', name: 'face blowing a kiss love kiss', cat: 'smileys' },
+            { emoji: '😋', name: 'face savoring food delicious tasty yum', cat: 'smileys' },
+            { emoji: '😛', name: 'face with tongue playful silly tongue', cat: 'smileys' },
+            { emoji: '😜', name: 'winking face with tongue crazy joke fun', cat: 'smileys' },
+            { emoji: '🤪', name: 'zany face wild goofy silly crazy', cat: 'smileys' },
+            { emoji: '😎', name: 'smiling face with sunglasses cool boss confident smart', cat: 'smileys' },
+            { emoji: '🤩', name: 'star struck excited amazed wow great', cat: 'smileys' },
+            { emoji: '🥳', name: 'partying face celebration birthday congrats party', cat: 'smileys' },
+            { emoji: '😏', name: 'smirking face sly confident smirk', cat: 'smileys' },
+            { emoji: '🤔', name: 'thinking face wondering curious hmm puzzle', cat: 'smileys' },
+            { emoji: '🤫', name: 'shushing face quiet secret silence hush', cat: 'smileys' },
+            { emoji: '🤭', name: 'face with hand over mouth oops giggle surprise', cat: 'smileys' },
+            { emoji: '🫢', name: 'face with open eyes and hand over mouth gasp surprise shock', cat: 'smileys' },
+            { emoji: '🫡', name: 'saluting face respect yes sir copy that Roger', cat: 'smileys' },
+            { emoji: '🤐', name: 'zipper mouth face silent quiet secret zip', cat: 'smileys' },
+            { emoji: '🤨', name: 'face with raised eyebrow skeptical really huh doubt', cat: 'smileys' },
+            { emoji: '😐', name: 'neutral face poker straight neutral plain', cat: 'smileys' },
+            { emoji: '😑', name: 'expressionless face whatever no comment bored', cat: 'smileys' },
+            { emoji: '😶', name: 'face without mouth speechless mute silent', cat: 'smileys' },
+            { emoji: '🙄', name: 'face rolling eyes annoyed whatever duh eye roll', cat: 'smileys' },
+            { emoji: '😬', name: 'grimacing face nervous awkward tense eek', cat: 'smileys' },
+            { emoji: '😮‍💨', name: 'face exhaling sigh relief tired phew', cat: 'smileys' },
+            { emoji: '😔', name: 'pensive face sad regretful sorry down', cat: 'smileys' },
+            { emoji: '😴', name: 'sleeping face zzz night sleep tired', cat: 'smileys' },
+            { emoji: '😷', name: 'face with medical mask sick safe health', cat: 'smileys' },
+            { emoji: '🤒', name: 'face with thermometer sick fever unwell ill', cat: 'smileys' },
+            { emoji: '🤕', name: 'face with head bandage injured hurt pain', cat: 'smileys' },
+            { emoji: '🥵', name: 'hot face sweating warm boiling summer heat', cat: 'smileys' },
+            { emoji: '🥶', name: 'cold face freezing chilled ice cold', cat: 'smileys' },
+            { emoji: '🤯', name: 'exploding head mind blown shocked unbelievable insane', cat: 'smileys' },
+            { emoji: '🤠', name: 'cowboy hat face yeehaw partner sheriff', cat: 'smileys' },
+            { emoji: '🥸', name: 'disguised face undercover secret mask detective', cat: 'smileys' },
+            { emoji: '🤓', name: 'nerd face smart geek study tech glasses', cat: 'smileys' },
+            { emoji: '🧐', name: 'face with monocle examining analyzing inspect curious', cat: 'smileys' },
+            { emoji: '😕', name: 'confused face unsure puzzled what', cat: 'smileys' },
+            { emoji: '😟', name: 'worried face anxious concerned nervous', cat: 'smileys' },
+            { emoji: '😮', name: 'face with open mouth surprised wow oh gasp', cat: 'smileys' },
+            { emoji: '😲', name: 'astonished face shocked amazed whoa', cat: 'smileys' },
+            { emoji: '😳', name: 'flushed face embarrassed blushing shocked red', cat: 'smileys' },
+            { emoji: '🥺', name: 'pleading face puppy eyes please beg cute', cat: 'smileys' },
+            { emoji: '😨', name: 'fearful face scared frightened afraid', cat: 'smileys' },
+            { emoji: '😰', name: 'anxious face with sweat stressed worry panic', cat: 'smileys' },
+            { emoji: '😥', name: 'sad but relieved face phew sweat close', cat: 'smileys' },
+            { emoji: '😢', name: 'crying face sad tear sorrow grief', cat: 'smileys' },
+            { emoji: '😭', name: 'loudly crying face bawling heartbroken sob tears', cat: 'smileys' },
+            { emoji: '😱', name: 'face screaming in fear holy shocked panic scream', cat: 'smileys' },
+            { emoji: '😤', name: 'face with steam from nose determined triumph angry proud', cat: 'smileys' },
+            { emoji: '😡', name: 'pouting face angry mad furious red rage', cat: 'smileys' },
+            { emoji: '😠', name: 'angry face mad annoyed cross annoyed', cat: 'smileys' },
+            { emoji: '😈', name: 'smiling face with horns mischievous devil evil naughty', cat: 'smileys' },
+            { emoji: '💀', name: 'skull dead dead laughing rip skeleton', cat: 'smileys' },
+            { emoji: '💩', name: 'pile of poo poop crap funny', cat: 'smileys' },
+            { emoji: '🤡', name: 'clown face fool silly joking circus', cat: 'smileys' },
+            { emoji: '👻', name: 'ghost spooky boo phantom halloween', cat: 'smileys' },
+
+            // Gestures & People
+            { emoji: '👍', name: 'thumbs up like good yes approve correct agreed', cat: 'gestures' },
+            { emoji: '👎', name: 'thumbs down dislike bad no disapprove decline', cat: 'gestures' },
+            { emoji: '👏', name: 'clapping hands applause kudos bravo well done cheer', cat: 'gestures' },
+            { emoji: '🙌', name: 'raising hands celebration praise hooray yay', cat: 'gestures' },
+            { emoji: '👐', name: 'open hands welcome hugs open', cat: 'gestures' },
+            { emoji: '🤲', name: 'palms up together offering pray dua blessing', cat: 'gestures' },
+            { emoji: '🤝', name: 'handshake deal agreement partner client trust shake', cat: 'gestures' },
+            { emoji: '🙏', name: 'folded hands pray please thank you namaste thanks', cat: 'gestures' },
+            { emoji: '✍️', name: 'writing hand note signing record document paper', cat: 'gestures' },
+            { emoji: '💪', name: 'flexed biceps strong strength power gym work solid', cat: 'gestures' },
+            { emoji: '👀', name: 'eyes look look at see view watching attention glance', cat: 'gestures' },
+            { emoji: '👋', name: 'waving hand hello hi goodbye bye wave greet', cat: 'gestures' },
+            { emoji: '✋', name: 'raised hand stop wait high five high-five stop', cat: 'gestures' },
+            { emoji: '👌', name: 'ok hand perfect fine nice good accurate', cat: 'gestures' },
+            { emoji: '🤌', name: 'pinched fingers italian what do you want explain gesture', cat: 'gestures' },
+            { emoji: '🤏', name: 'pinching hand small little bit tiny discount few', cat: 'gestures' },
+            { emoji: '✌️', name: 'victory hand peace two 2 win v sign', cat: 'gestures' },
+            { emoji: '🤞', name: 'crossed fingers good luck hope wishing cross fingers', cat: 'gestures' },
+            { emoji: '🫰', name: 'hand with index finger and thumb crossed korean heart money love cash', cat: 'gestures' },
+            { emoji: '🤟', name: 'love you gesture rock on ily', cat: 'gestures' },
+            { emoji: '🤘', name: 'sign of the horns rock metal cool party', cat: 'gestures' },
+            { emoji: '🤙', name: 'call me hand phone shaka hang loose call', cat: 'gestures' },
+            { emoji: '👈', name: 'backhand index pointing left see this look left', cat: 'gestures' },
+            { emoji: '👉', name: 'backhand index pointing right look there check point right', cat: 'gestures' },
+            { emoji: '👆', name: 'backhand index pointing up above read previous up', cat: 'gestures' },
+            { emoji: '👇', name: 'backhand index pointing down below see message note down', cat: 'gestures' },
+            { emoji: '☝️', name: 'index pointing up one point first listen remember', cat: 'gestures' },
+            { emoji: '👊', name: 'oncoming fist bump power hit bro punch', cat: 'gestures' },
+            { emoji: '🤛', name: 'left facing fist bump greeting bro fist', cat: 'gestures' },
+            { emoji: '🤜', name: 'right facing fist bump greeting bro fist', cat: 'gestures' },
+
+            // Commerce & Shop
+            { emoji: '📦', name: 'package box product stock parcel delivery item carton goods', cat: 'commerce' },
+            { emoji: '🛍️', name: 'shopping bags retail store customer purchase buy items shopping', cat: 'commerce' },
+            { emoji: '🛒', name: 'shopping cart supermarket checkout buy goods items order cart', cat: 'commerce' },
+            { emoji: '💰', name: 'money bag shillings cash price revenue payment income paid rich', cat: 'commerce' },
+            { emoji: '💵', name: 'dollar banknote cash money paper bill shillings note', cat: 'commerce' },
+            { emoji: '💳', name: 'credit card payment card pos swipe cashless visa mastercard debit', cat: 'commerce' },
+            { emoji: '🧾', name: 'receipt bill invoice paper account transaction report slip', cat: 'commerce' },
+            { emoji: '🏷️', name: 'label tag price item model category brand discount sale promo', cat: 'commerce' },
+            { emoji: '📊', name: 'bar chart stats analytics sales report growth finance data metrics', cat: 'commerce' },
+            { emoji: '📈', name: 'chart increasing upward trend sales profit growth rise up', cat: 'commerce' },
+            { emoji: '📉', name: 'chart decreasing downward loss drop low reduce down', cat: 'commerce' },
+            { emoji: '📋', name: 'clipboard list inventory checklist audit verification task checklist', cat: 'commerce' },
+            { emoji: '📌', name: 'pushpin pin important notice memo fix location pinned', cat: 'commerce' },
+            { emoji: '📍', name: 'round pushpin location map pin shop branch store address map', cat: 'commerce' },
+            { emoji: '🏢', name: 'office building company headquarters owner main store building', cat: 'commerce' },
+            { emoji: '🏬', name: 'department store shop outlet mall marketplace branch shop', cat: 'commerce' },
+            { emoji: '🏪', name: 'convenience store mini market kiosk sub shop boutique', cat: 'commerce' },
+            { emoji: '💼', name: 'briefcase work job business executive office manager briefcase', cat: 'commerce' },
+            { emoji: '📁', name: 'file folder document organize data records folder', cat: 'commerce' },
+            { emoji: '📅', name: 'calendar date today day schedule handover month date', cat: 'commerce' },
+            { emoji: '🗓️', name: 'spiral calendar date appointment schedule time calendar', cat: 'commerce' },
+            { emoji: '⏰', name: 'alarm clock time deadline alert reminder urgent clock', cat: 'commerce' },
+            { emoji: '⏳', name: 'hourglass not done pending waiting queue processing delay wait', cat: 'commerce' },
+            { emoji: '⌛', name: 'hourglass done finished time up complete ended done', cat: 'commerce' },
+            { emoji: '🔒', name: 'locked security private safe authorized protected lock', cat: 'commerce' },
+            { emoji: '🔓', name: 'unlocked open access granted permission permitted unlock', cat: 'commerce' },
+            { emoji: '🔍', name: 'magnifying glass left search inquire verify find inspect check', cat: 'commerce' },
+            { emoji: '🔎', name: 'magnifying glass right search inquiry query check verify examine', cat: 'commerce' },
+            { emoji: '💡', name: 'light bulb idea inspiration tip advice solution bright', cat: 'commerce' },
+            { emoji: '📞', name: 'telephone receiver call phone contact customer client dial', cat: 'commerce' },
+            { emoji: '📱', name: 'mobile phone smartphone sms message whatsapp call mobile', cat: 'commerce' },
+            { emoji: '💻', name: 'laptop computer pc ide pos system tech screen laptop', cat: 'commerce' },
+            { emoji: '🖥️', name: 'desktop computer monitor display office screen pc', cat: 'commerce' },
+            { emoji: '🖨️', name: 'printer print receipt document report printout paper print', cat: 'commerce' },
+            { emoji: '🚚', name: 'delivery truck transfer stock transport moving logistics truck', cat: 'commerce' },
+            { emoji: '🚛', name: 'articulated lorry heavy cargo transfer stock truck supply lorry', cat: 'commerce' },
+            { emoji: '🛵', name: 'motor scooter delivery rider dispatch fast bike', cat: 'commerce' },
+
+            // Symbols & Alerts
+            { emoji: '✅', name: 'check mark button verified approved correct yes success ok confirm', cat: 'symbols' },
+            { emoji: '❌', name: 'cross mark cancel rejected no failed error out of stock decline', cat: 'symbols' },
+            { emoji: '⚠️', name: 'warning alert caution attention low stock notice hazard warn', cat: 'symbols' },
+            { emoji: '🚨', name: 'police car light emergency alert siren critical urgent danger', cat: 'symbols' },
+            { emoji: '⛔', name: 'no entry stop forbidden not allowed prohibited stop', cat: 'symbols' },
+            { emoji: '💯', name: 'hundred points score perfect 100 accurate full total hundred', cat: 'symbols' },
+            { emoji: '🔥', name: 'fire hot fast popular best seller burning lit flame hot', cat: 'symbols' },
+            { emoji: '⭐', name: 'star rating favorite top special premium high quality star', cat: 'symbols' },
+            { emoji: '🌟', name: 'glowing star bright shiny excel excellent star glow', cat: 'symbols' },
+            { emoji: '✨', name: 'sparkles new fresh shiny clean magic special bonus sparkle', cat: 'symbols' },
+            { emoji: '⚡', name: 'high voltage quick instant fast electric power flash fast', cat: 'symbols' },
+            { emoji: '🔔', name: 'bell notification alert chime ring sound on notify', cat: 'symbols' },
+            { emoji: '🔕', name: 'bell with slash mute silent notifications off quiet silent', cat: 'symbols' },
+            { emoji: '📢', name: 'loudspeaker announcement broadcast sms public notice alert speak', cat: 'symbols' },
+            { emoji: '📣', name: 'megaphone shouting cheer broadcast announce tell team cheer', cat: 'symbols' },
+            { emoji: '🎯', name: 'bullseye direct target goal achievement quota target hit goal', cat: 'symbols' },
+            { emoji: '🚀', name: 'rocket fast quick launch boost skyrocket speed boost launch', cat: 'symbols' },
+            { emoji: '🏆', name: 'trophy champion win winner #1 award prize best victory', cat: 'symbols' },
+            { emoji: '🥇', name: '1st place medal gold first winner top seller gold', cat: 'symbols' },
+            { emoji: '🥈', name: '2nd place medal silver second runner up silver', cat: 'symbols' },
+            { emoji: '🥉', name: '3rd place medal bronze third bronze medal', cat: 'symbols' },
+            { emoji: '❤️', name: 'red heart love passion like favorite adore heart', cat: 'symbols' },
+            { emoji: '💙', name: 'blue heart brand loyalty peace trust blue', cat: 'symbols' },
+            { emoji: '💚', name: 'green heart money profit success go live green', cat: 'symbols' },
+            { emoji: '💛', name: 'yellow heart friendship warmth bright joy yellow', cat: 'symbols' },
+            { emoji: '💜', name: 'purple heart royal luxury admin owner premium purple', cat: 'symbols' },
+            { emoji: '🖤', name: 'black heart dark sleek style gothic solid black', cat: 'symbols' },
+            { emoji: '🤍', name: 'white heart pure peace clarity light clean white', cat: 'symbols' },
+            { emoji: '💔', name: 'broken heart broken damaged defective defect fault defect break', cat: 'symbols' },
+            { emoji: '💬', name: 'speech balloon chat talk message discuss question comment', cat: 'symbols' },
+            { emoji: '💭', name: 'thought balloon think consider plan ideas memory dream', cat: 'symbols' },
+            { emoji: '💥', name: 'collision explosion bang boom discount offer impact boom', cat: 'symbols' },
+            { emoji: '🎉', name: 'party popper congrats celebration success happy joy celebrate', cat: 'symbols' }
+        ];
+
+        const $emojiPopup       = $('#emojiPickerPopup');
+        const $emojiGrid        = $('#emojiGridContainer');
+        const $emojiSearch      = $('#emojiSearchInput');
+        const $emojiPreview     = $('#emojiPreviewLabel');
+        let currentEmojiCategory = 'quick';
+
+        function renderEmojiGrid(category = 'quick', searchKeyword = '') {
+            let filtered = [];
+            const keyword = $.trim(searchKeyword).toLowerCase();
+
+            if (keyword) {
+                filtered = emojiData.filter(function(item) {
+                    return item.name.toLowerCase().includes(keyword) || item.emoji.includes(keyword);
+                });
+            } else {
+                if (category === 'quick') {
+                    filtered = emojiData.filter(item => item.cat === 'quick');
+                } else {
+                    filtered = emojiData.filter(item => item.cat === category);
+                }
+            }
+
+            if (filtered.length === 0) {
+                $emojiGrid.html(`
+                    <div class="text-center py-4 text-muted small">
+                        <i class="bi bi-emoji-frown fs-3 d-block mb-1 text-secondary"></i>
+                        No matching emojis found
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '<div class="emoji-grid">';
+            filtered.forEach(function(item) {
+                html += `<button type="button" class="emoji-btn" data-emoji="${item.emoji}" title="${item.name.split(' ').slice(0, 3).join(' ')}">${item.emoji}</button>`;
+            });
+            html += '</div>';
+
+            $emojiGrid.html(html);
+        }
+
+        function insertEmojiAtCursor(emoji) {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+
+            const startPos = input.selectionStart || input.value.length;
+            const endPos = input.selectionEnd || input.value.length;
+            const oldVal = input.value;
+
+            input.value = oldVal.substring(0, startPos) + emoji + oldVal.substring(endPos);
+            input.focus();
+            input.setSelectionRange(startPos + emoji.length, startPos + emoji.length);
+
+            $emojiPreview.html(`<span class="text-success fw-700"><i class="bi bi-check2 me-1"></i>Inserted ${emoji}</span>`);
+            setTimeout(function () {
+                $emojiPreview.html('<i class="bi bi-cursor me-1"></i>Click emoji to insert');
+            }, 1800);
+        }
+
+        // Toggle Emoji Picker Popup
+        $('#btnEmojiToggle').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if ($emojiPopup.is(':visible')) {
+                $emojiPopup.hide();
+            } else {
+                $emojiPopup.css('display', 'flex');
+                $emojiSearch.val('');
+                currentEmojiCategory = 'quick';
+                $('.emoji-tab-btn').removeClass('active');
+                $('.emoji-tab-btn[data-category="quick"]').addClass('active');
+                renderEmojiGrid('quick');
+                $emojiSearch.focus();
+            }
+        });
+
+        // Category Tab switching
+        $(document).on('click', '.emoji-tab-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $('.emoji-tab-btn').removeClass('active');
+            $(this).addClass('active');
+            currentEmojiCategory = $(this).data('category');
+            $emojiSearch.val('');
+            renderEmojiGrid(currentEmojiCategory);
+        });
+
+        // Search in Emoji Picker
+        $emojiSearch.on('input', function () {
+            const q = $(this).val();
+            if (q) {
+                $('.emoji-tab-btn').removeClass('active');
+            } else {
+                $(`.emoji-tab-btn[data-category="${currentEmojiCategory}"]`).addClass('active');
+            }
+            renderEmojiGrid(currentEmojiCategory, q);
+        });
+
+        // Click on Emoji
+        $(document).on('click', '.emoji-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const emojiChar = $(this).data('emoji');
+            insertEmojiAtCursor(emojiChar);
+        });
+
+        // Close Emoji Picker button
+        $('#btnCloseEmojiPicker').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $emojiPopup.hide();
+            messageInput.focus();
+        });
+
+        // Close Emoji Picker on clicking outside
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#emojiPickerPopup, #btnEmojiToggle').length) {
+                if ($emojiPopup.is(':visible')) {
+                    $emojiPopup.hide();
+                }
+            }
+        });
+
+        // Cancel on Escape key
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape') {
+                if ($emojiPopup.is(':visible')) $emojiPopup.hide();
+                if ($editId.val()) cancelEdit();
+                if ($replyId.val()) cancelReply();
+            }
         });
 
         // ─── REPLY FEATURE ───────────────────────────────────────────────────────

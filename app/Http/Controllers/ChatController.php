@@ -111,77 +111,206 @@ class ChatController extends Controller
         }
 
         foreach ($messages as $msg) {
-            if ($msg->type === 'product_inquiry') {
-                if (!$msg->receiver_id) {
-                    // Group inquiry: sender shows only if someone else replied, others show always
-                    if ($currentUser->id === $msg->sender_id) {
-                        $hasReply = ChatMessage::where('type', 'group')
-                            ->where('sender_id', '!=', $msg->sender_id)
-                            ->where('id', '>', $msg->id)
-                            ->exists();
-                        $msg->show_stocks = $hasReply;
-                    } else {
-                        $msg->show_stocks = true;
-                    }
-                } else {
-                    // Direct inquiry: receiver shows always
-                    if ($currentUser->id === $msg->receiver_id) {
-                        $msg->show_stocks = true;
-                    } else {
-                        // Sender shows only if the receiver has replied
-                        $hasReply = ChatMessage::where('sender_id', $msg->receiver_id)
-                            ->where('receiver_id', $msg->sender_id)
-                            ->where('id', '>', $msg->id)
-                            ->exists();
-                        $msg->show_stocks = $hasReply;
-                    }
-                }
+            $this->processProductInquiryMessage($msg, $currentUser);
+        }
 
-                // Hide Main Store stock entry from sellers
-                if ($currentUser->isSeller()) {
-                    $metadata = $msg->metadata;
-                    if ($metadata && isset($metadata['stocks'])) {
-                        $metadata['stocks'] = array_values(array_filter($metadata['stocks'], function ($st) {
-                            return $st['shop_name'] !== 'Main Store (Owner)';
-                        }));
-                        $msg->metadata = $metadata;
-                    }
-                }
+        $deletedIds = [];
+        $updatedMessages = [];
 
-                // Hide prices of other shops from sellers and shop admins
-                if ($currentUser->isSeller() || $currentUser->isShopAdmin()) {
-                    $metadata = $msg->metadata;
-                    if ($metadata && isset($metadata['stocks'])) {
-                        $userShopName = $currentUser->shop ? $currentUser->shop->shop_name : null;
-                        foreach ($metadata['stocks'] as &$st) {
-                            if ($st['shop_name'] !== $userShopName) {
-                                $st['price'] = null;
-                            }
-                        }
-                        unset($st);
-                        $msg->metadata = $metadata;
-                    }
-                }
+        if ($lastId > 0) {
+            // Find messages deleted recently
+            $deletedQuery = ChatMessage::onlyTrashed()
+                ->where('deleted_at', '>=', now()->subSeconds(60));
 
-                // Show only own shop stock if show_stocks is false and user is the sender
-                $msg->show_own_stock_only = false;
-                if ($currentUser->id === $msg->sender_id && !$msg->show_stocks) {
-                    $metadata = $msg->metadata;
-                    if ($metadata && isset($metadata['stocks'])) {
-                        $userShopName = $currentUser->shop ? $currentUser->shop->shop_name : null;
-                        $metadata['stocks'] = array_values(array_filter($metadata['stocks'], function ($st) use ($userShopName) {
-                            return $userShopName && $st['shop_name'] === $userShopName;
-                        }));
-                        $msg->show_own_stock_only = true;
-                        $msg->metadata = $metadata;
-                    }
-                }
+            // Find messages edited recently (where id <= lastId)
+            $updatedQuery = ChatMessage::with(['sender.shop', 'product', 'replyTo.sender.shop'])
+                ->where('id', '<=', $lastId)
+                ->where('updated_at', '>=', now()->subSeconds(60))
+                ->whereColumn('updated_at', '>', 'created_at');
+
+            if (!$receiverId || $receiverId === 'group') {
+                $deletedQuery->where(function ($q) {
+                    $q->where('type', 'group')
+                      ->orWhere(function ($sub) {
+                          $sub->where('type', 'product_inquiry')->whereNull('receiver_id');
+                      });
+                });
+                $updatedQuery->where(function ($q) {
+                    $q->where('type', 'group')
+                      ->orWhere(function ($sub) {
+                          $sub->where('type', 'product_inquiry')->whereNull('receiver_id');
+                      });
+                });
+            } else {
+                $deletedQuery->where(function ($q) use ($currentUser, $receiverId) {
+                    $q->where(function ($inner) use ($currentUser, $receiverId) {
+                        $inner->where('sender_id', $currentUser->id)->where('receiver_id', $receiverId);
+                    })->orWhere(function ($inner) use ($currentUser, $receiverId) {
+                        $inner->where('sender_id', $receiverId)->where('receiver_id', $currentUser->id);
+                    });
+                })->whereIn('type', ['individual', 'product_inquiry']);
+
+                $updatedQuery->where(function ($q) use ($currentUser, $receiverId) {
+                    $q->where(function ($inner) use ($currentUser, $receiverId) {
+                        $inner->where('sender_id', $currentUser->id)->where('receiver_id', $receiverId);
+                    })->orWhere(function ($inner) use ($currentUser, $receiverId) {
+                        $inner->where('sender_id', $receiverId)->where('receiver_id', $currentUser->id);
+                    });
+                })->whereIn('type', ['individual', 'product_inquiry']);
+            }
+
+            $deletedIds = $deletedQuery->pluck('id')->toArray();
+            $updatedMessages = $updatedQuery->get();
+            foreach ($updatedMessages as $uMsg) {
+                $this->processProductInquiryMessage($uMsg, $currentUser);
             }
         }
 
         return response()->json([
             'messages' => $messages,
+            'updated_messages' => $updatedMessages,
+            'deleted_ids' => $deletedIds,
             'current_user_id' => $currentUser->id
+        ]);
+    }
+
+    /**
+     * Process stock visibility and metadata filters for product inquiries.
+     */
+    private function processProductInquiryMessage($msg, $currentUser)
+    {
+        if ($msg->type !== 'product_inquiry') {
+            return;
+        }
+
+        if (!$msg->receiver_id) {
+            // Group inquiry: sender shows only if someone else replied, others show always
+            if ($currentUser->id === $msg->sender_id) {
+                $hasReply = ChatMessage::where('type', 'group')
+                    ->where('sender_id', '!=', $msg->sender_id)
+                    ->where('id', '>', $msg->id)
+                    ->exists();
+                $msg->show_stocks = $hasReply;
+            } else {
+                $msg->show_stocks = true;
+            }
+        } else {
+            // Direct inquiry: receiver shows always
+            if ($currentUser->id === $msg->receiver_id) {
+                $msg->show_stocks = true;
+            } else {
+                // Sender shows only if the receiver has replied
+                $hasReply = ChatMessage::where('sender_id', $msg->receiver_id)
+                    ->where('receiver_id', $msg->sender_id)
+                    ->where('id', '>', $msg->id)
+                    ->exists();
+                $msg->show_stocks = $hasReply;
+            }
+        }
+
+        // Hide Main Store stock entry from sellers
+        if ($currentUser->isSeller()) {
+            $metadata = $msg->metadata;
+            if ($metadata && isset($metadata['stocks'])) {
+                $metadata['stocks'] = array_values(array_filter($metadata['stocks'], function ($st) {
+                    return $st['shop_name'] !== 'Main Store (Owner)';
+                }));
+                $msg->metadata = $metadata;
+            }
+        }
+
+        // Hide prices of other shops from sellers and shop admins
+        if ($currentUser->isSeller() || $currentUser->isShopAdmin()) {
+            $metadata = $msg->metadata;
+            if ($metadata && isset($metadata['stocks'])) {
+                $userShopName = $currentUser->shop ? $currentUser->shop->shop_name : null;
+                foreach ($metadata['stocks'] as &$st) {
+                    if ($st['shop_name'] !== $userShopName) {
+                        $st['price'] = null;
+                    }
+                }
+                unset($st);
+                $msg->metadata = $metadata;
+            }
+        }
+
+        // Show only own shop stock if show_stocks is false and user is the sender
+        $msg->show_own_stock_only = false;
+        if ($currentUser->id === $msg->sender_id && !$msg->show_stocks) {
+            $metadata = $msg->metadata;
+            if ($metadata && isset($metadata['stocks'])) {
+                $userShopName = $currentUser->shop ? $currentUser->shop->shop_name : null;
+                $metadata['stocks'] = array_values(array_filter($metadata['stocks'], function ($st) use ($userShopName) {
+                    return $userShopName && $st['shop_name'] === $userShopName;
+                }));
+                $msg->show_own_stock_only = true;
+                $msg->metadata = $metadata;
+            }
+        }
+    }
+
+    /**
+     * Update an existing chat message.
+     */
+    public function updateMessage(Request $request, ChatMessage $chatMessage)
+    {
+        $currentUser = Auth::user();
+
+        if ($chatMessage->sender_id !== $currentUser->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are only allowed to edit your own messages.'
+            ], 403);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:2000',
+        ]);
+
+        $chatMessage->message = $request->input('message');
+
+        if ($chatMessage->type === 'product_inquiry') {
+            $metadata = $chatMessage->metadata ?: [];
+            if ($request->has('note')) {
+                $metadata['note'] = $request->input('note');
+            } else {
+                $metadata['note'] = $request->input('message');
+            }
+            $chatMessage->metadata = $metadata;
+        }
+
+        $chatMessage->touch();
+        $chatMessage->save();
+
+        $this->processProductInquiryMessage($chatMessage, $currentUser);
+
+        return response()->json([
+            'success' => true,
+            'message' => $chatMessage->load(['sender.shop', 'product', 'replyTo.sender.shop']),
+        ]);
+    }
+
+    /**
+     * Delete an existing chat message.
+     */
+    public function deleteMessage(ChatMessage $chatMessage)
+    {
+        $currentUser = Auth::user();
+
+        if ($chatMessage->sender_id !== $currentUser->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are only allowed to delete your own messages.'
+            ], 403);
+        }
+
+        $messageId = $chatMessage->id;
+        $chatMessage->delete();
+
+        return response()->json([
+            'success' => true,
+            'message_id' => $messageId,
+            'message' => 'Message deleted successfully.'
         ]);
     }
 

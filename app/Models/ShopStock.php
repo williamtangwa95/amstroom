@@ -43,7 +43,20 @@ class ShopStock extends Model
 
     public function isLowStock(): bool
     {
-        return $this->remaining_quantity <= $this->low_stock_alert;
+        if (!$this->shop_id || !$this->item_id) {
+            return $this->remaining_quantity > 0 && $this->remaining_quantity <= ($this->low_stock_alert ?? 1);
+        }
+
+        if ($this->item && $this->item->components()->exists()) {
+            $totalRemaining = $this->item->getDynamicStockForShop($this->shop_id, (bool)($this->is_admin_stock ?? false));
+            return $totalRemaining > 0 && $totalRemaining <= ($this->low_stock_alert ?? 1);
+        }
+
+        $totalRemaining = static::where('shop_id', $this->shop_id)
+            ->where('item_id', $this->item_id)
+            ->sum('remaining_quantity');
+
+        return $totalRemaining > 0 && $totalRemaining <= ($this->low_stock_alert ?? 1);
     }
 
     public function getRemainingQuantityAttribute($value)

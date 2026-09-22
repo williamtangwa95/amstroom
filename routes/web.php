@@ -251,6 +251,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [ChatController::class, 'index'])->name('index');
             Route::get('/messages', [ChatController::class, 'fetchMessages'])->name('messages');
             Route::post('/messages', [ChatController::class, 'sendMessage'])->name('send');
+            Route::put('/messages/{chatMessage}', [ChatController::class, 'updateMessage'])->name('update');
+            Route::delete('/messages/{chatMessage}', [ChatController::class, 'deleteMessage'])->name('delete');
             Route::post('/messages/bulk', [ChatController::class, 'sendBulkMessage'])->name('send-bulk');
             Route::get('/items/search', [ChatController::class, 'searchItems'])->name('items.search');
             Route::post('/inquire', [ChatController::class, 'inquireProduct'])->name('inquire');

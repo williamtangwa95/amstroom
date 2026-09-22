@@ -110,7 +110,10 @@ class DashboardController extends Controller
         }
         
         $pendingRequests = StockRequest::where('shop_id', $user->shop_id)->where('status', 'pending')->count();
-        $lowStockCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
+        $lowStockQuery = ShopStock::where('shop_id', $user->shop_id);
+        $lowStockCount = DB::table(DB::raw("({$lowStockQuery->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))->groupBy('shop_id', 'item_id')->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')->toSql()}) as sub"))
+            ->mergeBindings($lowStockQuery->getQuery())
+            ->count();
         $defectsCount = Defect::where('shop_id', $user->shop_id)->count();
         $recentSales = Sale::completed()->with('seller', 'items.item')->where('shop_id', $user->shop_id)->latest()->take(5)->get();
 
@@ -138,7 +141,10 @@ class DashboardController extends Controller
         $mySalesCount = $sellerSalesList->count();
         $todaySales = $sellerSalesList->where('sale_date', today())->sum(fn($s) => $s->report_revenue);
         $availableStock = ShopStock::where('shop_id', $user->shop_id)->where('remaining_quantity', '>', 0)->count();
-        $lowStockCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
+        $sellerLowStockQuery = ShopStock::where('shop_id', $user->shop_id);
+        $lowStockCount = DB::table(DB::raw("({$sellerLowStockQuery->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))->groupBy('shop_id', 'item_id')->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')->toSql()}) as sub"))
+            ->mergeBindings($sellerLowStockQuery->getQuery())
+            ->count();
         $recentSales = Sale::completed()->with('items.item')->where('seller_id', $user->id)->latest()->take(5)->get();
 
         return view('dashboard.index', compact(

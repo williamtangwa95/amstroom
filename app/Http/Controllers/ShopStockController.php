@@ -103,10 +103,18 @@ class ShopStockController extends Controller
             })->orderBy('category_name')->get();
         }
 
-        $lowStockItems = ShopStock::with('item', 'shop')
-            ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
-            ->when(!$user->isOwner(), fn($q) => $q->where('shop_id', $user->shop_id))
-            ->when($user->isOwner(), fn($q) => $q->where('is_admin_stock', false))
+        $lowStockQuery = ShopStock::query();
+        if (!$user->isOwner()) {
+            $lowStockQuery->where('shop_stocks.shop_id', $user->shop_id);
+        } else {
+            if ($shopId) {
+                $lowStockQuery->where('shop_stocks.shop_id', $shopId);
+            }
+            $lowStockQuery->where('shop_stocks.is_admin_stock', false);
+        }
+
+        $lowStockItems = DB::table(DB::raw("({$lowStockQuery->select('shop_stocks.shop_id', 'shop_stocks.item_id', DB::raw('SUM(shop_stocks.remaining_quantity) as total_rem'), DB::raw('MAX(shop_stocks.low_stock_alert) as alert_thresh'))->groupBy('shop_stocks.shop_id', 'shop_stocks.item_id')->havingRaw('SUM(shop_stocks.remaining_quantity) > 0 AND SUM(shop_stocks.remaining_quantity) <= MAX(shop_stocks.low_stock_alert)')->toSql()}) as sub"))
+            ->mergeBindings($lowStockQuery->toBase())
             ->count();
 
         $pendingPriceItemsCount = ShopStock::where('is_price_pending', true)
@@ -222,6 +230,16 @@ class ShopStockController extends Controller
 
         $pageGroupedStocks = $groupedQuery->skip($start)->take($length)->get();
 
+        $itemIds = $pageGroupedStocks->pluck('item_id')->unique()->toArray();
+        $shopIds = $pageGroupedStocks->pluck('shop_id')->unique()->toArray();
+
+        $overallRemainingMap = ShopStock::whereIn('shop_id', $shopIds)
+            ->whereIn('item_id', $itemIds)
+            ->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as overall_remaining'))
+            ->groupBy('shop_id', 'item_id')
+            ->get()
+            ->keyBy(fn($r) => $r->shop_id . '_' . $r->item_id);
+
         $data = [];
         $iterator = $start + 1;
 
@@ -236,7 +254,10 @@ class ShopStockController extends Controller
 
             $totalQty = (int) $groupRow->total_quantity;
             $totalRemainingQty = (int) $groupRow->total_remaining_quantity;
-            $isLowStockGroup = $totalRemainingQty <= $groupRow->low_stock_alert;
+
+            $key = $groupRow->shop_id . '_' . $groupRow->item_id;
+            $overallItemRemaining = isset($overallRemainingMap[$key]) ? (int) $overallRemainingMap[$key]->overall_remaining : $totalRemainingQty;
+            $isLowStockGroup = ($overallItemRemaining > 0 && $overallItemRemaining <= $groupRow->low_stock_alert);
 
             $checkbox = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))
                 ? '<input type="checkbox" class="stock-checkbox-parent" data-ids=\'' . json_encode($allIds) . '\' style="cursor:pointer;">'
@@ -2423,10 +2444,18 @@ class ShopStockController extends Controller
             ->count();
 
         $shops = $user->isOwner() ? Shop::active()->get() : collect();
-        $lowStockItems = ShopStock::with('item', 'shop')
-            ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
-            ->when(!$user->isOwner(), fn($q) => $q->where('shop_id', $user->shop_id))
-            ->when($user->isOwner(), fn($q) => $q->where('is_admin_stock', false))
+        $lowStockQuery = ShopStock::query();
+        if (!$user->isOwner()) {
+            $lowStockQuery->where('shop_stocks.shop_id', $user->shop_id);
+        } else {
+            if ($shopId) {
+                $lowStockQuery->where('shop_stocks.shop_id', $shopId);
+            }
+            $lowStockQuery->where('shop_stocks.is_admin_stock', false);
+        }
+
+        $lowStockItems = DB::table(DB::raw("({$lowStockQuery->select('shop_stocks.shop_id', 'shop_stocks.item_id', DB::raw('SUM(shop_stocks.remaining_quantity) as total_rem'), DB::raw('MAX(shop_stocks.low_stock_alert) as alert_thresh'))->groupBy('shop_stocks.shop_id', 'shop_stocks.item_id')->havingRaw('SUM(shop_stocks.remaining_quantity) > 0 AND SUM(shop_stocks.remaining_quantity) <= MAX(shop_stocks.low_stock_alert)')->toSql()}) as sub"))
+            ->mergeBindings($lowStockQuery->toBase())
             ->count();
 
         return view('shop-stock.finished', compact('shops', 'shopId', 'finishedCount', 'lowStockItems'));
@@ -2446,6 +2475,14 @@ class ShopStockController extends Controller
         if ($user->isOwner()) {
             $query->where('shop_stocks.is_admin_stock', false);
         }
+
+        // Only include items where overall remaining quantity in the shop is 0
+        $query->whereNotIn('shop_stocks.item_id', function ($sub) use ($shopId) {
+            $sub->select('item_id')
+                ->from('shop_stocks')
+                ->where('remaining_quantity', '>', 0)
+                ->when($shopId, fn($q) => $q->where('shop_id', $shopId));
+        });
 
         $searchValue = trim($request->input('search.value', ''));
         if ($searchValue !== '') {

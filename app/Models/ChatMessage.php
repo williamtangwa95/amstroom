@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ChatMessage extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'sender_id',
         'receiver_id',
@@ -22,6 +25,15 @@ class ChatMessage extends Model
         'metadata' => 'array',
         'is_read'  => 'boolean',
     ];
+
+    protected $appends = [
+        'is_edited',
+    ];
+
+    public function getIsEditedAttribute(): bool
+    {
+        return $this->updated_at && $this->created_at && $this->updated_at->diffInSeconds($this->created_at) > 1;
+    }
 
     public function sender(): BelongsTo
     {

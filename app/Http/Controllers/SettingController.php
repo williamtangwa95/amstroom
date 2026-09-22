@@ -383,19 +383,30 @@ class SettingController extends Controller
 
             $stockTotalRemaining = ShopStock::where('is_admin_stock', false)->sum('remaining_quantity') 
                 + MainStock::sum('remaining_quantity');
-            $lowStockAlertsCount = ShopStock::where('is_admin_stock', false)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
             
-            $lowStockItems = ShopStock::where('is_admin_stock', false)
-                ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
-                ->with(['item', 'shop'])
+            $ownerLowStockQuery = ShopStock::where('is_admin_stock', false);
+            $lowStockAlertsCount = DB::table(DB::raw("({$ownerLowStockQuery->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))->groupBy('shop_id', 'item_id')->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')->toSql()}) as sub"))
+                ->mergeBindings($ownerLowStockQuery->getQuery())
+                ->count();
+            
+            $lowStockGroups = ShopStock::where('is_admin_stock', false)
+                ->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))
+                ->groupBy('shop_id', 'item_id')
+                ->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')
                 ->take(5)
-                ->get()
-                ->map(fn($st) => [
-                    'name' => ($st->item?->item_name ?? 'Item') . ' (' . ($st->shop?->shop_name ?? 'Shop') . ')',
-                    'qty'  => $st->remaining_quantity,
-                    'alert' => $st->low_stock_alert
-                ])
-                ->toArray();
+                ->get();
+
+            $lowStockItems = [];
+            foreach ($lowStockGroups as $group) {
+                $st = ShopStock::with(['item', 'shop'])->where('shop_id', $group->shop_id)->where('item_id', $group->item_id)->first();
+                if ($st) {
+                    $lowStockItems[] = [
+                        'name'  => ($st->item?->item_name ?? 'Item') . ' (' . ($st->shop?->shop_name ?? 'Shop') . ')',
+                        'qty'   => (int) $group->total_rem,
+                        'alert' => (int) $group->alert_thresh
+                    ];
+                }
+            }
 
             // Per-shop breakdown for global report
             $shops = Shop::active()->get()->map(function ($shop) {
@@ -407,8 +418,9 @@ class SettingController extends Controller
                 $shopExpenses = \App\Models\Expense::whereDate('activity_date', today())
                     ->whereIn('recorded_by', \App\Models\User::where('shop_id', $shop->id)->pluck('id'))
                     ->sum('amount');
-                $shopLowStock = ShopStock::where('shop_id', $shop->id)
-                    ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
+                $shopLowStockQuery = ShopStock::where('shop_id', $shop->id);
+                $shopLowStock = DB::table(DB::raw("({$shopLowStockQuery->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))->groupBy('shop_id', 'item_id')->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')->toSql()}) as sub"))
+                    ->mergeBindings($shopLowStockQuery->getQuery())
                     ->count();
                 return [
                     'name'          => $shop->shop_name,
@@ -440,19 +452,29 @@ class SettingController extends Controller
                 ->toArray();
 
             $stockTotalRemaining = ShopStock::where('shop_id', $user->shop_id)->sum('remaining_quantity');
-            $lowStockAlertsCount = ShopStock::where('shop_id', $user->shop_id)->whereColumn('remaining_quantity', '<=', 'low_stock_alert')->count();
+            $adminLowStockQuery = ShopStock::where('shop_id', $user->shop_id);
+            $lowStockAlertsCount = DB::table(DB::raw("({$adminLowStockQuery->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))->groupBy('shop_id', 'item_id')->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')->toSql()}) as sub"))
+                ->mergeBindings($adminLowStockQuery->getQuery())
+                ->count();
             
-            $lowStockItems = ShopStock::where('shop_id', $user->shop_id)
-                ->whereColumn('remaining_quantity', '<=', 'low_stock_alert')
-                ->with('item')
+            $lowStockGroups = ShopStock::where('shop_id', $user->shop_id)
+                ->select('shop_id', 'item_id', DB::raw('SUM(remaining_quantity) as total_rem'), DB::raw('MAX(low_stock_alert) as alert_thresh'))
+                ->groupBy('shop_id', 'item_id')
+                ->havingRaw('SUM(remaining_quantity) > 0 AND SUM(remaining_quantity) <= MAX(low_stock_alert)')
                 ->take(5)
-                ->get()
-                ->map(fn($st) => [
-                    'name' => $st->item?->item_name ?? 'Item',
-                    'qty'  => $st->remaining_quantity,
-                    'alert' => $st->low_stock_alert
-                ])
-                ->toArray();
+                ->get();
+
+            $lowStockItems = [];
+            foreach ($lowStockGroups as $group) {
+                $st = ShopStock::with('item')->where('shop_id', $group->shop_id)->where('item_id', $group->item_id)->first();
+                if ($st) {
+                    $lowStockItems[] = [
+                        'name'  => $st->item?->item_name ?? 'Item',
+                        'qty'   => (int) $group->total_rem,
+                        'alert' => (int) $group->alert_thresh
+                    ];
+                }
+            }
         }
 
         return [

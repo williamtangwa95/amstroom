@@ -29,7 +29,10 @@ class MainStockController extends Controller
             'stockBatchesCount'  => MainStock::count(),
         ];
 
-        return view('main-stock.index', compact('stats'));
+        $items = Item::with(['category', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
+        $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
+
+        return view('main-stock.index', compact('stats', 'items', 'categories'));
     }
 
     public function data(Request $request)
@@ -203,23 +206,192 @@ class MainStockController extends Controller
     public function create()
     {
         $items = Item::with(['category', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
-        return view('main-stock.create', compact('items'));
+        $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
+        return view('main-stock.create', compact('items', 'categories'));
     }
 
     public function store(Request $request, MainStoreStockService $stockService)
     {
-        $request->validate([
-            'item_id'          => 'required|exists:items,id',
+        $user = Auth::user();
+        if (!$user || (!$user->isOwner() && !$user->isShopAdmin())) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Multi-product / batch format (products array)
+        if ($request->has('products') && is_array($request->input('products'))) {
+            $products = $request->input('products');
+
+            foreach ($products as $idx => $prod) {
+                $pNum = $idx + 1;
+                $createNew = filter_var($prod['create_new_product'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $createNewCategory = filter_var($prod['create_new_category'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                if ($createNew) {
+                    if (empty(trim($prod['new_item_name'] ?? ''))) {
+                        return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Product Name is required."])->withInput();
+                    }
+                    if ($createNewCategory) {
+                        if (empty(trim($prod['new_category_name'] ?? ''))) {
+                            return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Category Name is required."])->withInput();
+                        }
+                    } else {
+                        if (empty($prod['category_id'])) {
+                            return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Category selection is required."])->withInput();
+                        }
+                    }
+                } else {
+                    if (empty($prod['item_id'])) {
+                        return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Product selection is required."])->withInput();
+                    }
+                }
+
+                $quantity = intval($prod['quantity'] ?? ($prod['stocked_quantity'] ?? 0));
+                if ($quantity < 1) {
+                    return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Quantity must be at least 1."])->withInput();
+                }
+
+                $buyingPrice = floatval(str_replace(',', '', $prod['buying_price'] ?? 0));
+                if ($buyingPrice < 0) {
+                    return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Buying price cannot be negative."])->withInput();
+                }
+
+                $sellingPrice = floatval(str_replace(',', '', $prod['selling_price'] ?? 0));
+                if ($sellingPrice < $buyingPrice) {
+                    return redirect()->back()->withErrors(["products" => "Product #{$pNum}: Selling price must be greater than or equal to buying price."])->withInput();
+                }
+            }
+
+            $dateReceived = $request->input('date_received', date('Y-m-d'));
+
+            DB::transaction(function () use ($products, $user, $dateReceived, $stockService) {
+                foreach ($products as $prod) {
+                    $createNew = filter_var($prod['create_new_product'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $createNewCategory = filter_var($prod['create_new_category'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $buyingPrice = floatval(str_replace(',', '', $prod['buying_price'] ?? 0));
+                    $sellingPrice = floatval(str_replace(',', '', $prod['selling_price'] ?? 0));
+                    $quantity = intval($prod['quantity'] ?? ($prod['stocked_quantity'] ?? 0));
+
+                    if ($createNew) {
+                        if ($createNewCategory) {
+                            $categoryName = trim($prod['new_category_name']);
+                            $category = Category::where('is_admin_category', false)
+                                ->where('category_name', $categoryName)->first();
+
+                            if (!$category) {
+                                $category = Category::create([
+                                    'category_name'     => $categoryName,
+                                    'is_admin_category' => false,
+                                    'shop_id'           => null,
+                                ]);
+                            }
+                            $categoryId = $category->id;
+                        } else {
+                            $categoryId = $prod['category_id'];
+                        }
+
+                        $item = Item::create([
+                            'item_name'     => trim($prod['new_item_name']),
+                            'category_id'   => $categoryId,
+                            'brand'         => $prod['brand'] ?? null,
+                            'model'         => $prod['model'] ?? null,
+                            'specification' => $prod['specification'] ?? null,
+                            'is_admin_item' => false,
+                            'shop_id'       => null,
+                        ]);
+                        $itemId = $item->id;
+                    } else {
+                        $itemId = $prod['item_id'];
+                    }
+
+                    $stockService->processStockAddition(
+                        (int) $itemId,
+                        (int) $quantity,
+                        (float) $buyingPrice,
+                        (float) $sellingPrice,
+                        $dateReceived,
+                        $user->id,
+                        'Manual Main Store addition'
+                    );
+                }
+            });
+
+            $count = count($products);
+            return redirect()->route('main-stock.index')
+                ->with('success', "{$count} stock batch(es) successfully received into Main Warehouse.");
+        }
+
+        // Single product format (traditional form fallback)
+        $createNew = filter_var($request->input('create_new_product', false), FILTER_VALIDATE_BOOLEAN);
+        $createNewCategory = filter_var($request->input('create_new_category', false), FILTER_VALIDATE_BOOLEAN);
+
+        // Clean currency inputs
+        $buyingPrice = floatval(str_replace(',', '', $request->input('buying_price', 0)));
+        $sellingPrice = floatval(str_replace(',', '', $request->input('selling_price', 0)));
+        $stockedQty = intval($request->input('stocked_quantity', $request->input('quantity', 0)));
+
+        $request->merge([
+            'buying_price'     => $buyingPrice,
+            'selling_price'    => $sellingPrice,
+            'stocked_quantity' => $stockedQty,
+        ]);
+
+        $rules = [
             'buying_price'     => 'required|numeric|min:0',
             'selling_price'    => 'required|numeric|min:0|gte:buying_price',
             'stocked_quantity' => 'required|integer|min:1',
             'date_received'    => 'required|date',
-        ], [
+        ];
+
+        if ($createNew) {
+            $rules['new_item_name'] = 'required|string|max:255';
+            if ($createNewCategory) {
+                $rules['new_category_name'] = 'required|string|max:255';
+            } else {
+                $rules['category_id'] = 'required|exists:categories,id';
+            }
+        } else {
+            $rules['item_id'] = 'required|exists:items,id';
+        }
+
+        $request->validate($rules, [
             'selling_price.gte' => 'The selling price must be greater than or equal to the buying price.',
         ]);
 
+        $itemId = null;
+        if ($createNew) {
+            if ($createNewCategory) {
+                $categoryName = trim($request->new_category_name);
+                $category = Category::where('is_admin_category', false)
+                    ->where('category_name', $categoryName)->first();
+
+                if (!$category) {
+                    $category = Category::create([
+                        'category_name'     => $categoryName,
+                        'is_admin_category' => false,
+                        'shop_id'           => null,
+                    ]);
+                }
+                $categoryId = $category->id;
+            } else {
+                $categoryId = $request->category_id;
+            }
+
+            $item = Item::create([
+                'item_name'     => trim($request->new_item_name),
+                'category_id'   => $categoryId,
+                'brand'         => $request->brand,
+                'model'         => $request->model,
+                'specification' => $request->specification,
+                'is_admin_item' => false,
+                'shop_id'       => null,
+            ]);
+            $itemId = $item->id;
+        } else {
+            $itemId = $request->item_id;
+        }
+
         $result = $stockService->processStockAddition(
-            (int) $request->item_id,
+            (int) $itemId,
             (int) $request->stocked_quantity,
             (float) $request->buying_price,
             (float) $request->selling_price,
