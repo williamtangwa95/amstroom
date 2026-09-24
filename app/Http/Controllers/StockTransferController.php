@@ -58,6 +58,12 @@ class StockTransferController extends Controller
                   })
                   ->orWhereHas('approver', function ($sq) use ($searchValue) {
                       $sq->where('name', 'like', "%{$searchValue}%");
+                  })
+                  ->orWhereHas('items.item', function ($iq) use ($searchValue) {
+                      $iq->where('item_name', 'like', "%{$searchValue}%")
+                         ->orWhere('brand', 'like', "%{$searchValue}%")
+                         ->orWhere('model', 'like', "%{$searchValue}%")
+                         ->orWhere('specification', 'like', "%{$searchValue}%");
                   });
             });
         }
@@ -97,7 +103,7 @@ class StockTransferController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $transfers = $query->with('shop', 'approver')
+        $transfers = $query->with(['shop', 'approver', 'items.item'])
             ->withCount(['items', 'pendingItems', 'receivedItems', 'rejectedItems'])
             ->skip($start)
             ->take($length)
@@ -110,12 +116,36 @@ class StockTransferController extends Controller
             $destinationShop = '<i class="bi bi-shop text-primary me-1"></i> ' . e($transfer->shop?->shop_name ?? 'N/A');
             $dispatchedBy = e($transfer->approver?->name ?? 'System');
 
-            $itemsHtml = '<span class="fw-600">' . $transfer->items_count . '</span>';
-            if ($transfer->pending_items_count > 0) {
-                $itemsHtml .= ' <span class="badge bg-warning text-dark ms-1" style="font-size:.68rem;">' . $transfer->pending_items_count . ' pending</span>';
+            $itemRows = [];
+            foreach ($transfer->items as $tItem) {
+                $itemName = $tItem->item?->item_name ?? 'Unknown Item';
+                $qty = (int) $tItem->quantity;
+                $statusTag = '';
+                if ($tItem->status === 'pending') {
+                    $statusTag = ' <span class="badge bg-warning text-dark border ms-1" style="font-size:.65rem; padding:.15rem .35rem;">pending</span>';
+                } elseif ($tItem->status === 'rejected') {
+                    $statusTag = ' <span class="badge bg-danger text-white border ms-1" style="font-size:.65rem; padding:.15rem .35rem;">rejected</span>';
+                }
+
+                $itemRows[] = '<div class="d-flex align-items-center mb-1 flex-wrap">'
+                    . '<i class="bi bi-box-seam text-secondary me-1" style="font-size:.8rem;"></i>'
+                    . '<span class="fw-600 text-dark me-1" title="' . e($itemName) . '">' . e($itemName) . '</span>'
+                    . '<span class="badge bg-secondary-subtle text-secondary border" style="font-size:.68rem; font-weight:600;">Qty: ' . $qty . '</span>'
+                    . $statusTag
+                    . '</div>';
             }
-            if ($transfer->rejected_items_count > 0) {
-                $itemsHtml .= ' <span class="badge bg-danger text-white ms-1" style="font-size:.68rem;">' . $transfer->rejected_items_count . ' rejected</span>';
+
+            if (empty($itemRows)) {
+                $itemsHtml = '<span class="text-muted small">No items</span>';
+            } elseif (count($itemRows) <= 3) {
+                $itemsHtml = '<div class="d-flex flex-column py-1">' . implode('', $itemRows) . '</div>';
+            } else {
+                $visible = array_slice($itemRows, 0, 3);
+                $remaining = count($itemRows) - 3;
+                $itemsHtml = '<div class="d-flex flex-column py-1">'
+                    . implode('', $visible)
+                    . '<span class="text-muted small fw-600" style="font-size:.72rem;">+' . $remaining . ' more item' . ($remaining > 1 ? 's' : '') . '</span>'
+                    . '</div>';
             }
 
             if ($transfer->status === 'received') {

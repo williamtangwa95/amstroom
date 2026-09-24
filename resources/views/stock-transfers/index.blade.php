@@ -106,7 +106,7 @@ $(function() {
             order: [[isOwner ? 2 : 1, 'desc']],
             language: {
                 search: '',
-                searchPlaceholder: 'Search transfers...',
+                searchPlaceholder: 'Search transfers or items...',
                 emptyTable: 'No stock transfers found.'
             }
         });
