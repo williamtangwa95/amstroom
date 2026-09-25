@@ -1,5 +1,8 @@
 <div class="p-3 my-2 rounded text-start" style="background: var(--body-bg); border: 1px solid var(--card-border); color: var(--text-primary);">
-    <h6 class="fw-700 mb-2" style="font-size:.9rem; color:var(--accent);"><i class="bi bi-list-task me-1"></i> Sold Items</h6>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-700 mb-0" style="font-size:.9rem; color:var(--accent);"><i class="bi bi-list-task me-1"></i> Sold Items</h6>
+        <span class="badge" style="background: rgba(88,166,255,.12); color: #58a6ff; font-size:.72rem;">Sale #SL-{{ $sale->id }}</span>
+    </div>
     <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" style="background: var(--card-bg); border-color: var(--card-border);">
             <thead>
@@ -8,6 +11,7 @@
                     <th class="text-center">Qty</th>
                     <th class="text-end">Selling Price</th>
                     <th class="text-end">Subtotal</th>
+                    <th class="text-center" style="width: 70px;">Components</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,12 +26,31 @@
                     @php
                         $displayPrice = ($isOwner && $isIndependent && $sale->shop_id !== null) ? ($item->owner_realized_sp ?? $item->selling_price) : ($item->shop_realized_sp ?? $item->selling_price);
                         $displaySubtotal = $displayPrice * $item->quantity;
+                        $canAddComponents = $item->allowsComponents();
                     @endphp
                     <tr>
-                        <td style="font-weight:600; font-size:.82rem;">{{ $item->display_name }}</td>
+                        <td style="font-weight:600; font-size:.82rem;">
+                            {{ $item->display_name }}
+                            @if($canAddComponents)
+                                <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem; border:1px solid var(--card-border);">Bundle Item</span>
+                            @endif
+                        </td>
                         <td class="text-center" style="font-size:.82rem;">{{ $item->quantity }}</td>
                         <td class="text-end" style="font-size:.82rem;">TZS {{ number_format($displayPrice, 0) }}</td>
                         <td class="text-end" style="font-size:.82rem;"><strong style="color:#3fb950;">TZS {{ number_format($displaySubtotal, 0) }}</strong></td>
+                        <td class="text-center">
+                            @if($canAddComponents)
+                                <button type="button" class="btn btn-xs btn-outline-success open-add-component-modal-btn py-0 px-1"
+                                    data-sale-id="{{ $sale->id }}"
+                                    data-item-id="{{ $item->id }}"
+                                    data-item-name="{{ $item->display_name }}"
+                                    title="Add Component">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                            @else
+                                <span class="text-muted" style="font-size:.72rem;">—</span>
+                            @endif
+                        </td>
                     </tr>
                     @if($item->components->isNotEmpty())
                         @foreach($item->components as $component)
@@ -44,6 +67,17 @@
                                 <td class="text-end" style="font-size:.78rem; color: var(--text-secondary); font-style: italic;">
                                     Included
                                 </td>
+                                <td class="text-center">
+                                    @if($canAddComponents)
+                                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1 remove-component-btn"
+                                            data-sale-id="{{ $sale->id }}"
+                                            data-component-id="{{ $component->id }}"
+                                            data-component-name="{{ $component->display_name }}"
+                                            title="Remove this component">
+                                            <i class="bi bi-trash" style="font-size:.7rem;"></i>
+                                        </button>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     @endif
@@ -53,6 +87,7 @@
                 <tr>
                     <td colspan="3" class="text-end fw-700" style="font-size:.82rem;">{{ $isOwner ? 'Total Revenue Realized:' : 'Total Amount Paid:' }}</td>
                     <td class="text-end" style="font-size:.82rem;"><strong style="color:#3fb950;font-size:1rem;">TZS {{ number_format($sale->report_revenue, 0) }}</strong></td>
+                    <td></td>
                 </tr>
             </tfoot>
         </table>

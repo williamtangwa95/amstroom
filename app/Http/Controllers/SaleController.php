@@ -1015,5 +1015,249 @@ class SaleController extends Controller
 
         return back()->with('success', 'Customer name updated successfully.');
     }
+
+    /**
+     * Get available stock items that can be attached as components to a sale item
+     */
+    public function availableComponents(Sale $sale, SaleItem $saleItem)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($saleItem->sale_id !== $sale->id || $saleItem->parent_id !== null) {
+            abort(404, 'Invalid sale item.');
+        }
+
+        if ($sale->shop_id) {
+            $stocks = ShopStock::with('item.category')
+                ->where('shop_id', $sale->shop_id)
+                ->where('remaining_quantity', '>', 0)
+                ->where('is_admin_stock', (bool) $saleItem->is_admin_stock)
+                ->get();
+
+            $items = $stocks->map(function ($st) {
+                return [
+                    'id'             => $st->item_id,
+                    'item_name'      => $st->item?->item_name ?? 'Unknown',
+                    'brand'          => $st->item?->brand ?: '—',
+                    'category'       => $st->item?->category?->category_name ?: 'General',
+                    'stock'          => (int) $st->remaining_quantity,
+                    'is_admin_stock' => (bool) $st->is_admin_stock,
+                ];
+            })->sortBy('item_name')->values();
+        } else {
+            $stocks = MainStock::with('item.category')
+                ->where('remaining_quantity', '>', 0)
+                ->get()
+                ->groupBy('item_id')
+                ->map(function ($batches) {
+                    $first = $batches->first();
+                    return [
+                        'id'             => $first->item_id,
+                        'item_name'      => $first->item?->item_name ?? 'Unknown',
+                        'brand'          => $first->item?->brand ?: '—',
+                        'category'       => $first->item?->category?->category_name ?: 'General',
+                        'stock'          => (int) $batches->sum('remaining_quantity'),
+                        'is_admin_stock' => false,
+                    ];
+                })
+                ->sortBy('item_name')
+                ->values();
+
+            $items = $stocks;
+        }
+
+        return response()->json([
+            'success' => true,
+            'items'   => $items,
+        ]);
+    }
+
+    /**
+     * Add a component to an existing sale item after the sale has been conducted
+     */
+    public function addComponent(Request $request, Sale $sale, SaleItem $saleItem)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($saleItem->sale_id !== $sale->id || $saleItem->parent_id !== null) {
+            abort(404, 'Invalid sale item.');
+        }
+
+        $request->validate([
+            'component_item_id' => 'required|integer|exists:items,id',
+            'quantity'          => 'required|integer|min:1',
+        ]);
+
+        $componentItem = Item::findOrFail($request->component_item_id);
+        $qty = (int) $request->quantity;
+
+        // Check stock availability if sale is completed
+        if ($sale->status === 'completed') {
+            if ($sale->shop_id) {
+                $availableStock = (int) ShopStock::where('shop_id', $sale->shop_id)
+                    ->where('item_id', $componentItem->id)
+                    ->where('is_admin_stock', (bool) $saleItem->is_admin_stock)
+                    ->sum('remaining_quantity');
+            } else {
+                $availableStock = (int) MainStock::where('item_id', $componentItem->id)
+                    ->sum('remaining_quantity');
+            }
+
+            if ($availableStock < $qty) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient stock for {$componentItem->item_name}. Available: {$availableStock}",
+                    ], 422);
+                }
+                return back()->with('error', "Insufficient stock for {$componentItem->item_name}. Available: {$availableStock}");
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($sale, $saleItem, $componentItem, $qty, $user) {
+                $latestMainStock = MainStock::where('item_id', $componentItem->id)->orderByDesc('date_received')->first();
+                $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
+
+                if ($sale->shop_id) {
+                    $stockRow = ShopStock::where('shop_id', $sale->shop_id)
+                        ->where('item_id', $componentItem->id)
+                        ->where('is_admin_stock', (bool) $saleItem->is_admin_stock)
+                        ->first();
+                    $shopCostPrice = floatval($stockRow?->buying_price ?? $ownerCostPrice);
+                } else {
+                    $shopCostPrice = $ownerCostPrice;
+                }
+
+                $existingComponent = SaleItem::where('sale_id', $sale->id)
+                    ->where('parent_id', $saleItem->id)
+                    ->where('item_id', $componentItem->id)
+                    ->first();
+
+                if ($existingComponent) {
+                    $existingComponent->increment('quantity', $qty);
+                } else {
+                    SaleItem::create([
+                        'sale_id'           => $sale->id,
+                        'parent_id'         => $saleItem->id,
+                        'item_id'           => $componentItem->id,
+                        'quantity'          => $qty,
+                        'selling_price'     => 0.0,
+                        'owner_cost_price'  => 0.0,
+                        'owner_realized_sp' => 0.0,
+                        'shop_cost_price'   => 0.0,
+                        'shop_realized_sp'  => 0.0,
+                        'is_admin_stock'    => (bool) $saleItem->is_admin_stock,
+                    ]);
+                }
+
+                if ($sale->status === 'completed') {
+                    $componentItem->deductStock(
+                        $sale->shop_id,
+                        $qty,
+                        $user->id,
+                        $sale->id,
+                        (bool) $saleItem->is_admin_stock,
+                        $sale->customer_name ?? 'Walk-in Customer',
+                        $saleItem->item
+                    );
+                }
+            });
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Failed to add component: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Failed to add component: ' . $e->getMessage());
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Component '{$componentItem->item_name}' added successfully to {$saleItem->display_name}.",
+            ]);
+        }
+
+        return back()->with('success', "Component '{$componentItem->item_name}' added successfully to {$saleItem->display_name}.");
+    }
+
+    /**
+     * Remove a component from a sale item after sale
+     */
+    public function removeComponent(Request $request, Sale $sale, SaleItem $componentItem)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($componentItem->sale_id !== $sale->id || $componentItem->parent_id === null) {
+            abort(404, 'Invalid component item.');
+        }
+
+        try {
+            DB::transaction(function () use ($sale, $componentItem, $user) {
+                if ($sale->status === 'completed') {
+                    if ($sale->shop_id) {
+                        $shopStock = ShopStock::where('shop_id', $sale->shop_id)
+                            ->where('item_id', $componentItem->item_id)
+                            ->where('is_admin_stock', (bool) $componentItem->is_admin_stock)
+                            ->orderByDesc('date_received')
+                            ->orderByDesc('id')
+                            ->first();
+                        if ($shopStock) {
+                            $shopStock->increment('remaining_quantity', $componentItem->quantity);
+                        }
+                        $locationName = $sale->shop?->shop_name ?? 'Shop';
+                    } else {
+                        $mainStock = MainStock::where('item_id', $componentItem->item_id)
+                            ->orderByDesc('date_received')
+                            ->orderByDesc('id')
+                            ->first();
+                        if ($mainStock) {
+                            $mainStock->increment('remaining_quantity', $componentItem->quantity);
+                        }
+                        $locationName = 'Main Store';
+                    }
+
+
+                    StockLog::create([
+                        'item_id'          => $componentItem->item_id,
+                        'from_location'    => $sale->customer_name ?? 'Customer',
+                        'to_location'      => $locationName,
+                        'quantity'         => $componentItem->quantity,
+                        'transaction_type' => 'ADJUSTMENT',
+                        'performed_by'     => $user->id,
+                        'date'             => now()->toDateString(),
+                        'notes'            => "Component ({$componentItem->display_name}) removed from Sale #{$sale->id}",
+                        'is_admin_stock'   => (bool) $componentItem->is_admin_stock,
+                    ]);
+
+                }
+
+                $componentItem->delete();
+            });
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Failed to remove component: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Failed to remove component: ' . $e->getMessage());
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Component removed and stock restored successfully.',
+            ]);
+        }
+
+        return back()->with('success', 'Component removed and stock restored successfully.');
+    }
 }
+
 

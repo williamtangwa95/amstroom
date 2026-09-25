@@ -112,6 +112,46 @@
         </div>
     </div>
 </div>
+
+<!-- Add Component Modal -->
+<div class="modal fade" id="addComponentModal" tabindex="-1" aria-labelledby="addComponentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="addComponentForm" method="POST" action="">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title fw-700" id="addComponentModalLabel">
+                        <i class="bi bi-plus-circle-dotted me-2" style="color:var(--accent);"></i>Add Component to Item
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-600 mb-1" style="font-size:.82rem;">Parent Product</label>
+                        <input type="text" id="modalTargetItemName" class="form-control form-control-sm" readonly disabled style="background:var(--input-bg);">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalComponentSelect" class="form-label fw-600 mb-1" style="font-size:.82rem;">Select Component Item *</label>
+                        <select name="component_item_id" id="modalComponentSelect" class="form-select form-select-sm" required style="width:100%;">
+                            <option value="" disabled selected>Loading available items...</option>
+                        </select>
+                        <div id="modalStockAlert" class="mt-1" style="font-size:.75rem; color:var(--text-secondary);"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modalComponentQty" class="form-label fw-600 mb-1" style="font-size:.82rem;">Quantity *</label>
+                        <input type="number" name="quantity" id="modalComponentQty" class="form-control form-control-sm" value="1" min="1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-custom btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-accent btn-sm" id="modalSubmitComponentBtn">
+                        <i class="bi bi-check-lg me-1"></i> Add Component
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -159,6 +199,24 @@
         });
 
         var detailsCache = {};
+        var activeSaleIdForComp = null;
+
+        function refreshSaleDetails(saleId) {
+            delete detailsCache[saleId];
+            var btn = $('.toggle-details[data-id="' + saleId + '"]');
+            var tr = btn.closest('tr');
+            var row = table.row(tr);
+            if (row.child.isShown()) {
+                $.ajax({
+                    url: "{{ url('sales') }}/" + saleId + "/details",
+                    method: 'GET',
+                    success: function(html) {
+                        detailsCache[saleId] = html;
+                        row.child(html).show();
+                    }
+                });
+            }
+        }
 
         $('#salesTable tbody').on('click', '.toggle-details', function(e) {
             e.preventDefault();
@@ -210,6 +268,168 @@
             $('#modalCustomerName').val(customerName);
             $('#editCustomerModal').modal('show');
         });
+
+        $(document).on('click', '.open-add-component-modal-btn', function(e) {
+            e.preventDefault();
+            var saleId = $(this).data('sale-id');
+            var itemId = $(this).data('item-id');
+            var itemName = $(this).data('item-name');
+
+            activeSaleIdForComp = saleId;
+            $('#modalTargetItemName').val(itemName);
+            $('#modalComponentQty').val(1);
+            $('#modalStockAlert').html('');
+            $('#modalSubmitComponentBtn').prop('disabled', true);
+
+            var actionUrl = "{{ url('sales') }}/" + saleId + "/items/" + itemId + "/components";
+            $('#addComponentForm').attr('action', actionUrl);
+
+            var select = $('#modalComponentSelect');
+            select.html('<option value="" disabled selected>Loading available items...</option>');
+
+            if (select.hasClass('select2-hidden-accessible')) {
+                select.select2('destroy');
+            }
+
+            $('#addComponentModal').modal('show');
+
+            $.ajax({
+                url: "{{ url('sales') }}/" + saleId + "/items/" + itemId + "/available-components",
+                method: 'GET',
+                success: function(res) {
+                    if (res.success && res.items && res.items.length > 0) {
+                        var options = '<option value="" disabled selected>Search / select item...</option>';
+                        res.items.forEach(function(item) {
+                            var escapedName = $('<div>').text(item.item_name).html();
+                            options += '<option value="' + item.id + '" data-stock="' + item.stock + '">' + escapedName + ' (' + item.brand + ') [Stock: ' + item.stock + ']</option>';
+                        });
+                        select.html(options);
+                        $('#modalSubmitComponentBtn').prop('disabled', false);
+                    } else {
+                        select.html('<option value="" disabled selected>No available items in stock</option>');
+                        $('#modalStockAlert').html('<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>No stock available for components in this store.</span>');
+                    }
+
+                    select.select2({
+                        theme: 'bootstrap-5',
+                        dropdownParent: $('#addComponentModal'),
+                        width: '100%'
+                    });
+                },
+                error: function() {
+                    select.html('<option value="" disabled selected>Error loading items</option>');
+                    $('#modalStockAlert').html('<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Failed to load items.</span>');
+                }
+            });
+        });
+
+        $('#modalComponentSelect').on('change', function() {
+            var opt = $(this).find('option:selected');
+            var stock = opt.data('stock');
+            if (stock !== undefined) {
+                $('#modalStockAlert').html('<span class="text-success"><i class="bi bi-box-seam me-1"></i>Available in stock: <strong>' + stock + '</strong></span>');
+                $('#modalComponentQty').attr('max', stock);
+            }
+        });
+
+        $('#addComponentForm').on('submit', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var submitBtn = $('#modalSubmitComponentBtn');
+            var origHtml = submitBtn.html();
+            submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Adding...');
+
+            $.ajax({
+                url: form.attr('action'),
+                method: 'POST',
+                data: form.serialize(),
+                success: function(res) {
+                    submitBtn.prop('disabled', false).html(origHtml);
+                    $('#addComponentModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Component Added',
+                        text: res.message || 'Component added successfully.',
+                        timer: 2500,
+                        showConfirmButton: false,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                    if (activeSaleIdForComp) {
+                        refreshSaleDetails(activeSaleIdForComp);
+                    }
+                },
+                error: function(xhr) {
+                    submitBtn.prop('disabled', false).html(origHtml);
+                    var msg = 'Failed to add component.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: msg,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.remove-component-btn', function(e) {
+            e.preventDefault();
+            var saleId = $(this).data('sale-id');
+            var compId = $(this).data('component-id');
+            var compName = $(this).data('component-name') || 'this component';
+
+            Swal.fire({
+                title: 'Remove Component?',
+                text: 'Are you sure you want to remove "' + compName + '" from this sale? The quantity will be restored to inventory stock.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e94560',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, remove it',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ url('sales') }}/" + saleId + "/components/" + compId,
+                        method: 'DELETE',
+                        data: {
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Removed',
+                                text: res.message || 'Component removed successfully.',
+                                timer: 2500,
+                                showConfirmButton: false,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            });
+                            refreshSaleDetails(saleId);
+                        },
+                        error: function(xhr) {
+                            var msg = 'Failed to remove component.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: msg,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            });
+                        }
+                    });
+                }
+            });
+        });
     });
 </script>
 @endpush
+

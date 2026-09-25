@@ -196,15 +196,45 @@ class Item extends Model
             $shop = \App\Models\Shop::find($shopId);
             $locationName = $shop ? $shop->shop_name : 'Shop';
 
-            $stock = ShopStock::where('shop_id', $shopId)
+            $remaining = $qty;
+            $batches = ShopStock::where('shop_id', $shopId)
                 ->where('item_id', $this->id)
                 ->where('is_admin_stock', $isAdminStock)
-                ->first();
+                ->where('remaining_quantity', '>', 0)
+                ->orderBy('date_received')
+                ->get();
 
-            if ($stock) {
-                $stock->decrement('remaining_quantity', $qty);
+            if ($batches->isEmpty()) {
+                $batches = ShopStock::where('shop_id', $shopId)
+                    ->where('item_id', $this->id)
+                    ->where('is_admin_stock', $isAdminStock)
+                    ->orderByDesc('id')
+                    ->take(1)
+                    ->get();
+
+                if ($batches->isEmpty()) {
+                    $batches = ShopStock::where('shop_id', $shopId)
+                        ->where('item_id', $this->id)
+                        ->orderByDesc('id')
+                        ->take(1)
+                        ->get();
+                }
+            }
+
+            foreach ($batches as $batch) {
+                if ($remaining <= 0) break;
+                $deduct = min($batch->remaining_quantity, $remaining);
+                if ($deduct > 0) {
+                    $batch->decrement('remaining_quantity', $deduct);
+                    $remaining -= $deduct;
+                }
+            }
+
+            if ($remaining > 0 && $batches->isNotEmpty()) {
+                $batches->last()->decrement('remaining_quantity', $remaining);
             }
         } else {
+
             // FIFO deduction for Main Store
             $remaining = $qty;
             $batches = MainStock::where('item_id', $this->id)

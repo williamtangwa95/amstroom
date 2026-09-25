@@ -56,4 +56,33 @@ class SaleItem extends Model
     {
         return $this->quantity * $this->selling_price;
     }
+
+    /** Checks whether this sale item is allowed to have attached components */
+    public function allowsComponents(): bool
+    {
+        if ($this->parent_id !== null || !$this->item_id) {
+            return false;
+        }
+
+        if ($this->item && $this->item->components()->exists()) {
+            return true;
+        }
+
+        $sale = $this->sale;
+        if (!$sale) {
+            return false;
+        }
+
+        if ($sale->shop_id) {
+            return ShopStock::where('shop_id', $sale->shop_id)
+                ->where('item_id', $this->item_id)
+                ->where('allow_components', true)
+                ->exists();
+        }
+
+        return MainStock::where('item_id', $this->item_id)
+            ->where('allow_components', true)
+            ->exists();
+    }
 }
+

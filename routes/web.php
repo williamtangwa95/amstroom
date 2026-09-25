@@ -209,6 +209,10 @@ Route::middleware('auth')->group(function () {
         Route::get('sales/{sale}/delivery-note', [SaleController::class, 'deliveryNote'])->name('sales.delivery-note');
         Route::post('sales/{sale}/convert', [SaleController::class, 'convertToSale'])->name('sales.convert');
         Route::patch('sales/{sale}/customer', [SaleController::class, 'updateCustomer'])->name('sales.update-customer');
+        Route::get('sales/{sale}/items/{saleItem}/available-components', [SaleController::class, 'availableComponents'])->name('sales.available-components');
+        Route::post('sales/{sale}/items/{saleItem}/components', [SaleController::class, 'addComponent'])->name('sales.add-component');
+        Route::delete('sales/{sale}/components/{componentItem}', [SaleController::class, 'removeComponent'])->name('sales.remove-component');
+
 
 
         // Sale Returns (all roles can view and request returns)
