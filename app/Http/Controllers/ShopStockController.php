@@ -185,8 +185,7 @@ class ShopStockController extends Controller
                 'shop_stocks.selling_price',
                 'shop_stocks.is_admin_stock',
                 'shop_stocks.low_stock_alert'
-            )
-            ->havingRaw('SUM(shop_stocks.remaining_quantity) > 0');
+            );
 
         $recordsTotal = DB::table(DB::raw("({$groupedQuery->toBase()->toSql()}) as sub"))
             ->mergeBindings($groupedQuery->toBase())
@@ -298,9 +297,13 @@ class ShopStockController extends Controller
 
             $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($firstSt->item?->category?->category_name ?? 'General') . '</span>';
 
-            $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
-            if ($isLowStockGroup) {
-                $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
+            if ($totalRemainingQty == 0) {
+                $remainingHtml = '<strong style="color:#e94560;font-size:.9rem;">0</strong> <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Out of Stock</span>';
+            } else {
+                $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
+                if ($isLowStockGroup) {
+                    $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
+                }
             }
 
             $alertHtml = e($firstSt->low_stock_alert) . ' units';
