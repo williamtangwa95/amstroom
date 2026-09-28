@@ -8,6 +8,8 @@ use App\Models\ShopStock;
 use App\Models\MainStock;
 use App\Models\StockLog;
 use App\Models\Item;
+use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1168,6 +1170,20 @@ class SaleController extends Controller
                         $saleItem->item
                     );
                 }
+
+                // Notify Owner(s)
+                $owners = User::where('role', 'owner')->get();
+                $shopName = $sale->shop?->shop_name ?? ($sale->shop_id ? 'Shop' : 'Main Store');
+                $parentName = $saleItem->display_name;
+                $performerName = $user->name;
+
+                foreach ($owners as $owner) {
+                    Notification::create([
+                        'user_id' => $owner->id,
+                        'title'   => "Component Added to Sale #{$sale->id}",
+                        'message' => "{$performerName}" . ($sale->shop_id ? " ({$shopName})" : "") . " added {$qty}x \"{$componentItem->item_name}\" as a component to \"{$parentName}\" on Sale #{$sale->id}.",
+                    ]);
+                }
             });
         } catch (\Exception $e) {
             if ($request->expectsJson() || $request->ajax()) {
@@ -1176,14 +1192,16 @@ class SaleController extends Controller
             return back()->with('error', 'Failed to add component: ' . $e->getMessage());
         }
 
+        $successMsg = "Component '{$componentItem->item_name}' added successfully to {$saleItem->display_name}. The owner has been notified.";
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => "Component '{$componentItem->item_name}' added successfully to {$saleItem->display_name}.",
+                'message' => $successMsg,
             ]);
         }
 
-        return back()->with('success', "Component '{$componentItem->item_name}' added successfully to {$saleItem->display_name}.");
+        return back()->with('success', $successMsg);
     }
 
     /**

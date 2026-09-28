@@ -456,3 +456,107 @@ test('component deduction properly deducts from active batch when older depleted
     expect($activeBatch->remaining_quantity)->toBe(8);
 });
 
+test('adding component to existing sale notifies owner and tells admin owner was notified', function () {
+    $owner = User::create([
+        'name'      => 'Main Owner',
+        'email'     => 'owner_notif@test.com',
+        'password'  => bcrypt('password'),
+        'role'      => 'owner',
+    ]);
+
+    $shop = Shop::create([
+        'shop_name' => 'Downtown Branch',
+        'location'  => 'Downtown',
+    ]);
+
+    $admin = User::create([
+        'name'      => 'Shop Admin John',
+        'email'     => 'admin_john@test.com',
+        'password'  => bcrypt('password'),
+        'role'      => 'shop_admin',
+        'shop_id'   => $shop->id,
+    ]);
+
+    $category = Category::create(['category_name' => 'Laptops']);
+
+    $laptop = Item::create([
+        'item_name'   => 'ThinkPad T14',
+        'category_id' => $category->id,
+    ]);
+
+    $ram = Item::create([
+        'item_name'   => '16GB DDR4 RAM',
+        'category_id' => $category->id,
+    ]);
+
+    ShopStock::create([
+        'shop_id'            => $shop->id,
+        'item_id'            => $laptop->id,
+        'quantity'           => 3,
+        'remaining_quantity' => 2,
+        'buying_price'       => 1000000,
+        'selling_price'      => 1300000,
+        'allow_components'   => true,
+        'is_sellable'        => true,
+        'is_admin_stock'     => false,
+    ]);
+
+    ShopStock::create([
+        'shop_id'            => $shop->id,
+        'item_id'            => $ram->id,
+        'quantity'           => 10,
+        'remaining_quantity' => 10,
+        'buying_price'       => 80000,
+        'selling_price'      => 120000,
+        'is_sellable'        => true,
+        'is_admin_stock'     => false,
+    ]);
+
+    $sale = Sale::create([
+        'shop_id'        => $shop->id,
+        'seller_id'      => $admin->id,
+        'customer_name'  => 'Alice Corporate',
+        'payment_method' => 'cash',
+        'total_amount'   => 1300000,
+        'sale_date'      => today(),
+        'status'         => 'completed',
+        'is_admin_stock' => false,
+    ]);
+
+    $saleItem = SaleItem::create([
+        'sale_id'           => $sale->id,
+        'item_id'           => $laptop->id,
+        'quantity'          => 1,
+        'selling_price'     => 1300000,
+        'owner_cost_price'  => 1000000,
+        'owner_realized_sp' => 1300000,
+        'shop_cost_price'   => 1000000,
+        'shop_realized_sp'  => 1300000,
+        'is_admin_stock'    => false,
+    ]);
+
+    $response = $this->actingAs($admin)->postJson(route('sales.add-component', [
+        'sale'     => $sale->id,
+        'saleItem' => $saleItem->id,
+    ]), [
+        'component_item_id' => $ram->id,
+        'quantity'          => 1,
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+    ]);
+    expect($response->json('message'))->toContain('The owner has been notified');
+
+    // Verify Notification in DB for the owner
+    $notification = \App\Models\Notification::where('user_id', $owner->id)->latest()->first();
+    expect($notification)->not->toBeNull();
+    expect($notification->title)->toContain("Component Added to Sale #{$sale->id}");
+    expect($notification->message)->toContain("Shop Admin John");
+    expect($notification->message)->toContain("Downtown Branch");
+    expect($notification->message)->toContain("16GB DDR4 RAM");
+    expect($notification->message)->toContain("ThinkPad T14");
+    expect($notification->message)->toContain("Sale #{$sale->id}");
+});
+

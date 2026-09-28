@@ -137,7 +137,7 @@ class ShopStockController extends Controller
         $user = Auth::user();
         $shopId = $user->isOwner() ? $request->get('shop_id', null) : $user->shop_id;
 
-        $query = ShopStock::query()->where('shop_stocks.remaining_quantity', '>', 0);
+        $query = ShopStock::query();
 
         if ($shopId) {
             $query->where('shop_stocks.shop_id', $shopId);
@@ -279,14 +279,14 @@ class ShopStockController extends Controller
 
             $hasPendingPrice = ShopStock::whereIn('id', $allIds)->where('is_price_pending', true)->exists();
 
-            $activeStocks = ShopStock::whereIn('id', $allIds)->where('remaining_quantity', '>', 0)->orderByDesc('id')->get();
-            $activeBatchesCount = $activeStocks->count();
+            $allStocks = ShopStock::whereIn('id', $allIds)->orderByDesc('id')->get();
+            $totalBatchesCount = $allStocks->count();
 
             $productHtml = '<div class="d-flex align-items-center gap-2">' . $imageHtml . '<div>';
             $productHtml .= '<div style="font-weight:600;font-size:.83rem;">' . e($firstSt->item->item_name ?? 'N/A') . '</div>';
             $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e($firstSt->item->brand ?? '');
-            if ($activeBatchesCount > 1) {
-                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . $activeBatchesCount . ' Batches</span>';
+            if ($totalBatchesCount > 1) {
+                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . $totalBatchesCount . ' Batches</span>';
             }
             if ($firstSt->is_admin_stock) {
                 $productHtml .= ' <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>';
@@ -325,29 +325,39 @@ class ShopStockController extends Controller
             $buyingPriceHtml = 'TZS ' . number_format($displayBp, 0);
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
-            // Build batch details sub-table HTML inside child template (only showing batches with remaining_quantity > 0)
+            // Build batch details sub-table HTML inside child template (showing all batches including remaining_quantity = 0 for physical verification)
             $childTableHtml = '<div class="child-details-template d-none"><div class="p-3 my-2 rounded border" style="background:var(--body-bg); border-color:var(--card-border) !important;">';
-            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $activeBatchesCount . ' Batch' . ($activeBatchesCount > 1 ? 'es' : '') . ')</h6>';
+            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $totalBatchesCount . ' Batch' . ($totalBatchesCount > 1 ? 'es' : '') . ')</h6>';
             $childTableHtml .= '<table class="table table-sm table-bordered align-middle mb-0" style="font-size:0.75rem; border-color:var(--card-border);">';
             $childTableHtml .= '<thead><tr class="table-dark" style="font-size:0.72rem;">';
-            $childTableHtml .= '<th>Batch #</th><th>Date Received</th><th>Stock Type</th><th>Initial Qty</th><th>Remaining Qty</th>';
+            $childTableHtml .= '<th>Batch #</th><th>Date Received</th><th>Stock Type</th><th>Initial Qty</th><th>Sold Qty</th><th>Remaining Qty</th>';
             if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
                 $childTableHtml .= '<th>Buying Price</th>';
             }
             $childTableHtml .= '<th>Selling Price</th><th class="text-end">Batch Actions</th></tr></thead><tbody>';
 
-            foreach ($activeStocks as $batch) {
+            foreach ($allStocks as $batch) {
                 $canDeleteBatch = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id && $batch->is_admin_stock);
                 $batchTypeTag = $batch->is_admin_stock 
                     ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
                     : '<span class="badge bg-secondary" style="font-size:0.65rem;">Owner Stock</span>';
                 
-                $childTableHtml .= '<tr>';
+                $soldBatchQty = max(0, $batch->quantity - $batch->remaining_quantity);
+                $isZeroRemaining = ($batch->remaining_quantity <= 0);
+
+                $childTableHtml .= '<tr' . ($isZeroRemaining ? ' style="opacity: 0.85;"' : '') . '>';
                 $childTableHtml .= '<td><strong>#' . $batch->id . '</strong></td>';
                 $childTableHtml .= '<td>' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</td>';
                 $childTableHtml .= '<td>' . $batchTypeTag . '</td>';
                 $childTableHtml .= '<td>' . $batch->quantity . '</td>';
-                $childTableHtml .= '<td><strong class="text-success">' . $batch->remaining_quantity . '</strong></td>';
+                $childTableHtml .= '<td><span class="fw-600 text-info">' . $soldBatchQty . '</span></td>';
+
+                if ($isZeroRemaining) {
+                    $childTableHtml .= '<td><span class="badge bg-danger" style="font-size:0.72rem;">0 (Sold Out)</span></td>';
+                } else {
+                    $childTableHtml .= '<td><strong class="text-success">' . $batch->remaining_quantity . '</strong></td>';
+                }
+
                 if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
                     $childTableHtml .= '<td>TZS ' . number_format($batch->buying_price, 0) . '</td>';
                 }

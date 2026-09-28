@@ -145,7 +145,7 @@ class ShopStockPriceSyncAlertTest extends TestCase
         $this->assertTrue($this->shopStock->is_sellable);
     }
 
-    public function test_zero_remaining_quantity_batches_hidden_from_breakdown_and_buying_price_before_selling_price()
+    public function test_zero_remaining_quantity_batches_shown_in_breakdown_with_sold_and_remaining_quantities()
     {
         // Add a zero remaining quantity batch for the same item
         $zeroBatch = ShopStock::create([
@@ -167,15 +167,15 @@ class ShopStockPriceSyncAlertTest extends TestCase
         $data = $dataResponse->json('data');
         $rowActions = $data[0]['actions'];
 
-        // Batch #zeroBatch->id should NOT be present in child table HTML
-        $this->assertStringNotContainsString('#' . $zeroBatch->id, $rowActions);
+        // Batch #zeroBatch->id SHOULD now be present in child table HTML for physical count verification
+        $this->assertStringContainsString('#' . $zeroBatch->id, $rowActions);
         // Active batch #this->shopStock->id SHOULD be present
         $this->assertStringContainsString('#' . $this->shopStock->id, $rowActions);
 
-        // Breakdown header should show 1 Batch (excluding the 0 remaining batch)
-        $this->assertStringContainsString('Stock Batches Breakdown (1 Batch)', $rowActions);
+        // Breakdown header should show 2 Batches (including the 0 remaining batch)
+        $this->assertStringContainsString('Stock Batches Breakdown (2 Batches)', $rowActions);
 
-        // Check header columns order: Remaining Qty before Buying Price, then Selling Price
-        $this->assertStringContainsString('<th>Remaining Qty</th><th>Buying Price</th><th>Selling Price</th>', $rowActions);
+        // Check header columns order: Sold Qty, Remaining Qty before Buying Price, then Selling Price
+        $this->assertStringContainsString('<th>Sold Qty</th><th>Remaining Qty</th><th>Buying Price</th><th>Selling Price</th>', $rowActions);
     }
 }
