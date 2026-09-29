@@ -43,6 +43,11 @@ class SaleItem extends Model
         return $this->hasMany(SaleItem::class, 'parent_id');
     }
 
+    public function batchAllocations()
+    {
+        return $this->hasMany(SaleBatchAllocation::class);
+    }
+
     /** Returns the display name whether it's a catalog item or a custom off-catalog product. */
     public function getDisplayNameAttribute(): string
     {

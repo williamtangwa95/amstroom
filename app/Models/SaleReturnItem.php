@@ -22,4 +22,9 @@ class SaleReturnItem extends Model
     {
         return $this->belongsTo(Item::class);
     }
+
+    public function batchAllocations()
+    {
+        return $this->hasMany(SaleReturnBatchAllocation::class);
+    }
 }

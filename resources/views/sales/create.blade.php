@@ -316,8 +316,19 @@
             const allowComponents = this.dataset.allowComponents === 'true';
 
             if (cart[id]) {
+                if (cart[id].qty >= cart[id].maxStock && !cart[id].isCustom && !cart[id].isMock) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Maximum Stock Reached',
+                        text: `Only ${cart[id].maxStock} units available in stock for ${cart[id].name}.`,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                    return;
+                }
                 cart[id].qty++;
             } else {
+                const isMock = String(id).startsWith('item_');
                 cart[id] = {
                     id,
                     name,
@@ -325,6 +336,8 @@
                     buyingPrice,
                     qty: 1,
                     maxStock,
+                    isMock: isMock,
+                    isCustom: false,
                     negotiatedPrice: price,
                     isAdminStock: isAdminStock,
                     components: components,
@@ -417,7 +430,7 @@
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
-                        <input type="number" name="items[${index}][quantity]" value="${item.qty}" readonly style="width:40px;text-align:center;" class="form-control form-control-sm py-0 px-1">
+                        <input type="number" name="items[${index}][quantity]" value="${item.qty}" min="1" ${(!item.isCustom && !item.isMock) ? `max="${item.maxStock}"` : ''} onchange="updateItemQty('${id}', this.value)" style="width:50px;text-align:center;" class="form-control form-control-sm py-0 px-1">
                         <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
                         
                         <div class="input-group input-group-sm ms-2" style="width:120px;">
@@ -471,11 +484,41 @@
         }
     }
 
+    function updateItemQty(id, val) {
+        if (cart[id]) {
+            let intVal = parseInt(val);
+            if (isNaN(intVal) || intVal <= 0) {
+                delete cart[id];
+            } else if (intVal > cart[id].maxStock && !cart[id].isCustom && !cart[id].isMock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Maximum Stock Reached',
+                    text: `Cannot exceed available stock. Only ${cart[id].maxStock} units available for ${cart[id].name}.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                cart[id].qty = cart[id].maxStock;
+            } else {
+                cart[id].qty = intVal;
+            }
+            renderCart();
+        }
+    }
+
     function changeQty(id, delta) {
         if (cart[id]) {
             const newQty = cart[id].qty + delta;
             if (newQty <= 0) {
                 delete cart[id];
+            } else if (delta > 0 && newQty > cart[id].maxStock && !cart[id].isCustom && !cart[id].isMock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Maximum Stock Reached',
+                    text: `Cannot add more. Only ${cart[id].maxStock} units available in stock for ${cart[id].name}.`,
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
             } else {
                 cart[id].qty = newQty;
             }

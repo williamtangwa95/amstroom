@@ -10,6 +10,8 @@ use App\Models\StockLog;
 use App\Models\Item;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\StockAllocationService;
+use App\Exceptions\InsufficientStockException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -342,10 +344,23 @@ class SaleController extends Controller
             $itemStocks = $activeStocks->get($item->id);
 
             if ($itemStocks && $itemStocks->isNotEmpty()) {
-                // If stock records exist for this item, push them (allows 0 remaining quantity)
-                foreach ($itemStocks as $stock) {
-                    $stock->setRelation('item', $item);
-                    $shopStocks->push($stock);
+                // Group batches by identical selling_price, buying_price, is_admin_stock, and sellable/pending status
+                $subGroups = $itemStocks->groupBy(function ($stock) {
+                    $sp = (string) floatval($stock->selling_price);
+                    $bp = (string) floatval($stock->buying_price);
+                    $admin = (int) (bool) ($stock->is_admin_stock ?? false);
+                    $sellable = (int) (bool) ($stock->is_sellable ?? true);
+                    $pending = (int) (bool) ($stock->is_price_pending ?? false);
+                    $pendingSp = (string) floatval($stock->pending_selling_price ?? 0);
+                    return "{$sp}_{$bp}_{$admin}_{$sellable}_{$pending}_{$pendingSp}";
+                });
+
+                foreach ($subGroups as $group) {
+                    // Representative model instance for this group
+                    $representative = clone $group->first();
+                    $representative->remaining_quantity = (int) $group->sum('remaining_quantity');
+                    $representative->setRelation('item', $item);
+                    $shopStocks->push($representative);
                 }
             } else {
                 // Item has never been stocked. Create a temporary mock stock object.
@@ -531,8 +546,19 @@ class SaleController extends Controller
                     }
                 }
 
-                if (!$isDraftProforma && $cartItem['quantity'] > $stock->remaining_quantity) {
-                    throw new \Exception("Insufficient stock for: {$stock->item->item_name}. Available: {$stock->remaining_quantity}");
+                if (!str_starts_with($stockId, 'item_') && !$isDraftProforma) {
+                    if ($isOwner) {
+                        $availableStock = (int) \App\Models\MainStock::where('item_id', $stock->item_id)->sum('remaining_quantity');
+                    } else {
+                        $availableStock = (int) ShopStock::where('shop_id', $user->shop_id)
+                            ->where('item_id', $stock->item_id)
+                            ->where('is_admin_stock', (bool) ($stock->is_admin_stock ?? false))
+                            ->sum('remaining_quantity');
+                    }
+
+                    if ($cartItem['quantity'] > $availableStock) {
+                        throw new \Exception("Insufficient stock for: {$stock->item->item_name}. Requested: {$cartItem['quantity']}, Available: {$availableStock}");
+                    }
                 }
 
                 $submittedPrice = floatval($cartItem['price']);
@@ -638,7 +664,9 @@ class SaleController extends Controller
                             $user->id,
                             $sale->id,
                             (bool) $data['is_admin_stock'],
-                            $request->customer_name ?? 'Walk-in Customer'
+                            $request->customer_name ?? 'Walk-in Customer',
+                            null,
+                            $parentSaleItem->id
                         );
                     }
 
@@ -670,7 +698,7 @@ class SaleController extends Controller
                             }
 
                             // Save as a child sale item
-                            SaleItem::create([
+                            $childSaleItem = SaleItem::create([
                                 'sale_id'           => $sale->id,
                                 'parent_id'         => $parentSaleItem->id,
                                 'item_id'           => $childItem->id,
@@ -692,7 +720,8 @@ class SaleController extends Controller
                                     $sale->id,
                                     (bool) $data['is_admin_stock'],
                                     $request->customer_name ?? 'Walk-in Customer',
-                                    $parentSaleItem->item
+                                    $parentSaleItem->item,
+                                    $childSaleItem->id
                                 );
                             }
                         }
@@ -726,7 +755,7 @@ class SaleController extends Controller
                                     $ownerCostPrice = floatval($latestMainStock?->buying_price ?? 0);
                                 }
 
-                                SaleItem::create([
+                                $defaultChildSaleItem = SaleItem::create([
                                     'sale_id'           => $sale->id,
                                     'parent_id'         => $parentSaleItem->id,
                                     'item_id'           => $childItem->id,
@@ -747,7 +776,8 @@ class SaleController extends Controller
                                         $sale->id,
                                         (bool) $data['is_admin_stock'],
                                         $request->customer_name ?? 'Walk-in Customer',
-                                        $parentSaleItem->item
+                                        $parentSaleItem->item,
+                                        $defaultChildSaleItem->id
                                     );
                                 }
                             }
@@ -986,7 +1016,9 @@ class SaleController extends Controller
                             $user->id,
                             $sale->id,
                             (bool) ($saleItem->is_admin_stock ?? false),
-                            $sale->customer_name ?? 'Walk-in Customer'
+                            $sale->customer_name ?? 'Walk-in Customer',
+                            null,
+                            $saleItem->id
                         );
                     }
                 }
@@ -1144,8 +1176,9 @@ class SaleController extends Controller
 
                 if ($existingComponent) {
                     $existingComponent->increment('quantity', $qty);
+                    $targetSaleItem = $existingComponent;
                 } else {
-                    SaleItem::create([
+                    $targetSaleItem = SaleItem::create([
                         'sale_id'           => $sale->id,
                         'parent_id'         => $saleItem->id,
                         'item_id'           => $componentItem->id,
@@ -1167,7 +1200,8 @@ class SaleController extends Controller
                         $sale->id,
                         (bool) $saleItem->is_admin_stock,
                         $sale->customer_name ?? 'Walk-in Customer',
-                        $saleItem->item
+                        $saleItem->item,
+                        $targetSaleItem->id
                     );
                 }
 
@@ -1221,41 +1255,7 @@ class SaleController extends Controller
         try {
             DB::transaction(function () use ($sale, $componentItem, $user) {
                 if ($sale->status === 'completed') {
-                    if ($sale->shop_id) {
-                        $shopStock = ShopStock::where('shop_id', $sale->shop_id)
-                            ->where('item_id', $componentItem->item_id)
-                            ->where('is_admin_stock', (bool) $componentItem->is_admin_stock)
-                            ->orderByDesc('date_received')
-                            ->orderByDesc('id')
-                            ->first();
-                        if ($shopStock) {
-                            $shopStock->increment('remaining_quantity', $componentItem->quantity);
-                        }
-                        $locationName = $sale->shop?->shop_name ?? 'Shop';
-                    } else {
-                        $mainStock = MainStock::where('item_id', $componentItem->item_id)
-                            ->orderByDesc('date_received')
-                            ->orderByDesc('id')
-                            ->first();
-                        if ($mainStock) {
-                            $mainStock->increment('remaining_quantity', $componentItem->quantity);
-                        }
-                        $locationName = 'Main Store';
-                    }
-
-
-                    StockLog::create([
-                        'item_id'          => $componentItem->item_id,
-                        'from_location'    => $sale->customer_name ?? 'Customer',
-                        'to_location'      => $locationName,
-                        'quantity'         => $componentItem->quantity,
-                        'transaction_type' => 'ADJUSTMENT',
-                        'performed_by'     => $user->id,
-                        'date'             => now()->toDateString(),
-                        'notes'            => "Component ({$componentItem->display_name}) removed from Sale #{$sale->id}",
-                        'is_admin_stock'   => (bool) $componentItem->is_admin_stock,
-                    ]);
-
+                    StockAllocationService::restoreComponentAllocations($sale, $componentItem, $user->id);
                 }
 
                 $componentItem->delete();

@@ -37,6 +37,11 @@ class SaleReturn extends Model
         return $this->hasMany(SaleReturnItem::class);
     }
 
+    public function batchAllocations()
+    {
+        return $this->hasMany(SaleReturnBatchAllocation::class);
+    }
+
     public function isAdminStock(): bool
     {
         if ($this->sale) {

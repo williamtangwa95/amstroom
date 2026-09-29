@@ -6,8 +6,11 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
+use App\Models\SaleBatchAllocation;
+use App\Models\SaleReturnBatchAllocation;
 use App\Models\ShopStock;
 use App\Models\StockLog;
+use App\Services\StockAllocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -182,14 +185,32 @@ class SaleReturnController extends Controller
             'items.*.qty'        => 'required|integer|min:1',
         ]);
 
-        // Validate returned quantities against sale quantities
+        // Validate returned quantities against sale quantities & returnable allocations
         foreach ($request->items as $entry) {
             $saleItem = SaleItem::findOrFail($entry['sale_item_id']);
-            
-            // Check that they aren't returning more than was purchased
-            if ($entry['qty'] > $saleItem->quantity) {
+            if ($saleItem->sale_id !== $sale->id) {
                 return back()->withInput()->withErrors([
-                    'items' => "You cannot return more than the sold quantity for {$saleItem->item->item_name}."
+                    'items' => "Invalid item for Sale #{$sale->id}."
+                ]);
+            }
+
+            // Calculate returnable quantity based on allocations
+            $allocations = SaleBatchAllocation::where('sale_item_id', $saleItem->id)->get();
+            if ($allocations->isNotEmpty()) {
+                $totalAllocated = (int) $allocations->sum('quantity');
+                $totalReturned = (int) SaleReturnBatchAllocation::whereIn('sale_batch_allocation_id', $allocations->pluck('id'))->sum('quantity');
+                $returnable = max(0, $totalAllocated - $totalReturned);
+            } else {
+                $previouslyReturned = (int) SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
+                    $q->where('sale_id', $sale->id)->whereIn('status', ['approved', 'pending']);
+                })->where('item_id', $saleItem->item_id)->sum('quantity');
+                $returnable = max(0, $saleItem->quantity - $previouslyReturned);
+            }
+
+            if ($entry['qty'] > $returnable) {
+                $itemName = $saleItem->item->item_name ?? $saleItem->custom_name ?? 'Product';
+                return back()->withInput()->withErrors([
+                    'items' => "Unable to process return for \"{$itemName}\". Returnable quantity: {$returnable}, Requested return: {$entry['qty']}. No stock was restored."
                 ]);
             }
         }
@@ -198,50 +219,59 @@ class SaleReturnController extends Controller
         $isAdminOrOwner = $user->isOwner() || $user->isShopAdmin();
         $status = $isAdminOrOwner ? 'approved' : 'pending';
 
-        $saleReturn = DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner) {
-            $saleReturn = SaleReturn::create([
-                'sale_id'      => $sale->id,
-                'requested_by' => $user->id,
-                'approved_by'  => $isAdminOrOwner ? $user->id : null,
-                'status'       => $status,
-                'reason'       => $request->reason,
-                'return_date'  => now()->toDateString(),
-            ]);
-
-            foreach ($request->items as $entry) {
-                $saleItem = SaleItem::findOrFail($entry['sale_item_id']);
-
-                SaleReturnItem::create([
-                    'sale_return_id' => $saleReturn->id,
-                    'item_id'        => $saleItem->item_id,
-                    'quantity'       => $entry['qty'],
+        try {
+            $saleReturn = DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner) {
+                $saleReturn = SaleReturn::create([
+                    'sale_id'      => $sale->id,
+                    'requested_by' => $user->id,
+                    'approved_by'  => $isAdminOrOwner ? $user->id : null,
+                    'status'       => $status,
+                    'reason'       => $request->reason,
+                    'return_date'  => now()->toDateString(),
                 ]);
 
-                if ($isAdminOrOwner) {
-                    // Update shop stock immediately
-                    $this->stabilizeStock($sale->shop_id, $saleItem->item_id, $entry['qty'], $sale);
+                foreach ($request->items as $entry) {
+                    $saleItem = SaleItem::findOrFail($entry['sale_item_id']);
 
-                    // Update or remove SaleItem from sale
-                    if ($saleItem->quantity > $entry['qty']) {
-                        $saleItem->decrement('quantity', $entry['qty']);
-                    } else {
-                        $saleItem->delete();
+                    $returnItem = SaleReturnItem::create([
+                        'sale_return_id' => $saleReturn->id,
+                        'item_id'        => $saleItem->item_id,
+                        'quantity'       => $entry['qty'],
+                    ]);
+
+                    if ($isAdminOrOwner) {
+                        // Restore exact batch allocations
+                        StockAllocationService::restoreReturnAllocations(
+                            $saleReturn,
+                            $returnItem,
+                            $saleItem,
+                            $entry['qty'],
+                            $user->id
+                        );
+
+                        if ($saleItem->quantity > $entry['qty']) {
+                            $saleItem->decrement('quantity', $entry['qty']);
+                        } else {
+                            $saleItem->delete();
+                        }
                     }
                 }
-            }
 
-            if ($isAdminOrOwner) {
-                $remainingCount = $sale->items()->count();
-                if ($remainingCount === 0) {
-                    $sale->delete();
-                } else {
-                    $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
-                    $sale->update(['total_amount' => $newTotal]);
+                if ($isAdminOrOwner) {
+                    $remainingCount = $sale->items()->count();
+                    if ($remainingCount === 0) {
+                        $sale->delete();
+                    } else {
+                        $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
+                        $sale->update(['total_amount' => $newTotal]);
+                    }
                 }
-            }
 
-            return $saleReturn;
-        });
+                return $saleReturn;
+            });
+        } catch (\Exception $e) {
+            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
+        }
 
         if (!$isAdminOrOwner) {
             $admins = \App\Models\User::where('shop_id', $sale->shop_id)
@@ -279,39 +309,49 @@ class SaleReturnController extends Controller
             return back()->with('error', 'This return request has already been processed.');
         }
 
-        DB::transaction(function () use ($saleReturn, $user) {
-            $saleReturn->update([
-                'status'      => 'approved',
-                'approved_by' => $user->id,
-            ]);
+        try {
+            DB::transaction(function () use ($saleReturn, $user) {
+                $saleReturn->update([
+                    'status'      => 'approved',
+                    'approved_by' => $user->id,
+                ]);
 
-            $sale = $saleReturn->sale;
+                $sale = $saleReturn->sale;
 
-            // Stabilize stock for each item in the return & adjust sale items
-            foreach ($saleReturn->items as $returnItem) {
-                $this->stabilizeStock($sale->shop_id, $returnItem->item_id, $returnItem->quantity, $sale);
+                // Restore exact batch allocations for each item in the return
+                foreach ($saleReturn->items as $returnItem) {
+                    $saleItem = SaleItem::where('sale_id', $sale->id)
+                        ->where('item_id', $returnItem->item_id)
+                        ->first();
 
-                $saleItem = SaleItem::where('sale_id', $sale->id)
-                    ->where('item_id', $returnItem->item_id)
-                    ->first();
+                    if ($saleItem) {
+                        StockAllocationService::restoreReturnAllocations(
+                            $saleReturn,
+                            $returnItem,
+                            $saleItem,
+                            $returnItem->quantity,
+                            $user->id
+                        );
 
-                if ($saleItem) {
-                    if ($saleItem->quantity > $returnItem->quantity) {
-                        $saleItem->decrement('quantity', $returnItem->quantity);
-                    } else {
-                        $saleItem->delete();
+                        if ($saleItem->quantity > $returnItem->quantity) {
+                            $saleItem->decrement('quantity', $returnItem->quantity);
+                        } else {
+                            $saleItem->delete();
+                        }
                     }
                 }
-            }
 
-            $remainingCount = $sale->items()->count();
-            if ($remainingCount === 0) {
-                $sale->delete();
-            } else {
-                $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
-                $sale->update(['total_amount' => $newTotal]);
-            }
-        });
+                $remainingCount = $sale->items()->count();
+                if ($remainingCount === 0) {
+                    $sale->delete();
+                } else {
+                    $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
+                    $sale->update(['total_amount' => $newTotal]);
+                }
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to approve return: ' . $e->getMessage());
+        }
 
         return redirect()->route('sales-returns.index')
             ->with('success', 'Sale return approved and shop stock updated successfully.');

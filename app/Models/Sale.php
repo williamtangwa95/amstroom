@@ -50,6 +50,11 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function batchAllocations()
+    {
+        return $this->hasMany(SaleBatchAllocation::class);
+    }
+
     public function handoverReport()
     {
         return $this->belongsTo(HandoverReport::class);

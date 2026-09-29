@@ -178,96 +178,36 @@ class Item extends Model
         return $total;
     }
 
-    public function deductStock($shopId, $qty, $userId, $saleId, $isAdminStock = false, $customerName = 'Walk-in Customer', $parentItem = null)
+    public function deductStock($shopId, $qty, $userId, $saleId, $isAdminStock = false, $customerName = 'Walk-in Customer', $parentItem = null, $saleItemId = null)
     {
-        if ($this->components()->exists()) {
-            foreach ($this->components as $component) {
-                $childItem = $component->childItem;
-                if (!$childItem) continue;
-
-                $childQty = $qty * $component->quantity;
-                $childItem->deductStock($shopId, $childQty, $userId, $saleId, $isAdminStock, $customerName, $this);
-            }
-            return;
+        if ($saleItemId === null && $saleId) {
+            $saleItem = \App\Models\SaleItem::where('sale_id', $saleId)->where('item_id', $this->id)->first();
+            $saleItemId = $saleItem?->id ?? 0;
         }
 
-        $locationName = 'Main Store';
         if ($shopId) {
-            $shop = \App\Models\Shop::find($shopId);
-            $locationName = $shop ? $shop->shop_name : 'Shop';
-
-            $remaining = $qty;
-            $batches = ShopStock::where('shop_id', $shopId)
-                ->where('item_id', $this->id)
-                ->where('is_admin_stock', $isAdminStock)
-                ->where('remaining_quantity', '>', 0)
-                ->orderBy('date_received')
-                ->get();
-
-            if ($batches->isEmpty()) {
-                $batches = ShopStock::where('shop_id', $shopId)
-                    ->where('item_id', $this->id)
-                    ->where('is_admin_stock', $isAdminStock)
-                    ->orderByDesc('id')
-                    ->take(1)
-                    ->get();
-
-                if ($batches->isEmpty()) {
-                    $batches = ShopStock::where('shop_id', $shopId)
-                        ->where('item_id', $this->id)
-                        ->orderByDesc('id')
-                        ->take(1)
-                        ->get();
-                }
-            }
-
-            foreach ($batches as $batch) {
-                if ($remaining <= 0) break;
-                $deduct = min($batch->remaining_quantity, $remaining);
-                if ($deduct > 0) {
-                    $batch->decrement('remaining_quantity', $deduct);
-                    $remaining -= $deduct;
-                }
-            }
-
-            if ($remaining > 0 && $batches->isNotEmpty()) {
-                $batches->last()->decrement('remaining_quantity', $remaining);
-            }
+            \App\Services\StockAllocationService::allocateAndDeductShopStock(
+                $shopId,
+                $this->id,
+                $qty,
+                $saleId ?? 0,
+                $saleItemId ?? 0,
+                $userId,
+                $isAdminStock,
+                $customerName,
+                $parentItem
+            );
         } else {
-
-            // FIFO deduction for Main Store
-            $remaining = $qty;
-            $batches = MainStock::where('item_id', $this->id)
-                ->where('remaining_quantity', '>', 0)
-                ->orderBy('date_received')
-                ->get();
-
-            foreach ($batches as $batch) {
-                if ($remaining <= 0) break;
-                $deduct = min($batch->remaining_quantity, $remaining);
-                $batch->decrement('remaining_quantity', $deduct);
-                $remaining -= $deduct;
-            }
+            \App\Services\StockAllocationService::allocateAndDeductMainStock(
+                $this->id,
+                $qty,
+                $saleId ?? 0,
+                $saleItemId ?? 0,
+                $userId,
+                $customerName,
+                $parentItem
+            );
         }
-
-        $notes = "Sale #{$saleId}";
-        if ($parentItem) {
-            $notes .= " (Component of {$parentItem->item_name})";
-        } elseif (!$shopId) {
-            $notes .= " (Direct Sale from Main Store)";
-        }
-
-        StockLog::create([
-            'item_id'          => $this->id,
-            'from_location'    => $locationName,
-            'to_location'      => $customerName,
-            'quantity'         => $qty,
-            'transaction_type' => 'SALE',
-            'performed_by'     => $userId,
-            'date'             => now()->toDateString(),
-            'notes'            => $notes,
-            'is_admin_stock'   => $isAdminStock,
-        ]);
     }
 
     public function getTotalMainStock(): int
