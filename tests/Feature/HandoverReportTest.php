@@ -529,10 +529,11 @@ class HandoverReportTest extends TestCase
 
         $response->assertRedirect();
 
-        // Check Mail sent to shop admin with attachment
+        // Check Mail sent to shop admin and owner with attachment
         \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\HandoverCompletedMail::class, function ($mail) {
             $mail->build();
             return $mail->hasTo($this->admin->email) &&
+                   $mail->hasTo($this->owner->email) &&
                    count($mail->rawAttachments) > 0;
         });
     }

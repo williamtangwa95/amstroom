@@ -694,7 +694,7 @@ class HandoverReportController extends Controller
             $handover
         );
 
-        // Notify Shop Admin by in-app notification and email
+        // Notify Shop Admin by in-app notification
         $handover->loadMissing(['shop', 'shopAdmin', 'receiver']);
         if ($handover->shopAdmin) {
             Notification::create([
@@ -702,15 +702,24 @@ class HandoverReportController extends Controller
                 'title'   => 'Handover Report Completed',
                 'message' => "Cash receipt has been confirmed for Handover Report {$handover->handover_no}. Assigned Commission: TZS " . number_format($handover->commission_amount ?? 0) . ".",
             ]);
+        }
 
-            if (!empty($handover->shopAdmin->email)) {
-                try {
-                    $excelBinary = $this->generateExcelBinary($handover);
-                    Mail::to($handover->shopAdmin->email)->send(new HandoverCompletedMail($handover, $excelBinary));
-                } catch (\Throwable $e) {
-                    Log::error('Failed to send handover completion email to shop admin: ' . $e->getMessage());
-                }
+        // Send completion email with Excel attachment to both Shop Admin and Shop Owner(s)
+        try {
+            $excelBinary = $this->generateExcelBinary($handover);
+            
+            $recipientEmails = [];
+            if ($handover->shopAdmin && !empty($handover->shopAdmin->email)) {
+                $recipientEmails[] = $handover->shopAdmin->email;
             }
+            $ownerEmails = User::where('role', 'owner')->pluck('email')->filter()->toArray();
+            $recipientEmails = array_values(array_unique(array_merge($recipientEmails, $ownerEmails)));
+
+            if (!empty($recipientEmails)) {
+                Mail::to($recipientEmails)->send(new HandoverCompletedMail($handover, $excelBinary));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send handover completion email: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Cash receipt confirmed and handover marked COMPLETED.');
