@@ -574,6 +574,10 @@ class HandoverReportController extends Controller
             abort(403, 'Only owners can return handover reports for modification.');
         }
 
+        if ($handover->status !== 'submitted' && $handover->status !== 'approved') {
+            return back()->with('error', 'Only submitted or approved reports can be returned for modification.');
+        }
+
         $request->validate(['remarks' => 'required|string']);
 
         $handover->update([
@@ -618,11 +622,45 @@ class HandoverReportController extends Controller
         return back()->with('success', 'Handover report approved.');
     }
 
+    public function disapprove(HandoverReport $handover)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner()) {
+            abort(403, 'Only owners can disapprove handover reports.');
+        }
+
+        if ($handover->status !== 'approved') {
+            return back()->with('error', 'Only approved handover reports can be disapproved.');
+        }
+
+        $handover->update([
+            'status'      => 'submitted',
+            'approved_by' => null,
+            'approved_at' => null,
+        ]);
+
+        ActivityLog::log('DISAPPROVED', "Reverted approval for Handover Report: {$handover->handover_no}", $handover);
+
+        if ($handover->shop_admin_id) {
+            Notification::create([
+                'user_id' => $handover->shop_admin_id,
+                'title'   => 'Handover Report Status Reverted',
+                'message' => "The owner reverted approval for Handover Report {$handover->handover_no} back to Submitted for re-review.",
+            ]);
+        }
+
+        return back()->with('success', 'Handover report approval has been reverted back to Submitted.');
+    }
+
     public function reject(HandoverReport $handover, Request $request)
     {
         $user = auth()->user();
         if (!$user->isOwner()) {
             abort(403, 'Only owners can reject handover reports.');
+        }
+
+        if ($handover->status !== 'submitted' && $handover->status !== 'approved') {
+            return back()->with('error', 'Only submitted or approved reports can be rejected.');
         }
 
         $request->validate(['remarks' => 'required|string']);

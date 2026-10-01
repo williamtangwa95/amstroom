@@ -180,6 +180,7 @@ Route::middleware('auth')->group(function () {
         Route::put('handovers/{handover}', [HandoverReportController::class, 'update'])->name('handovers.update');
         Route::post('handovers/{handover}/submit', [HandoverReportController::class, 'submit'])->name('handovers.submit');
         Route::post('handovers/{handover}/approve', [HandoverReportController::class, 'approve'])->name('handovers.approve');
+        Route::post('handovers/{handover}/disapprove', [HandoverReportController::class, 'disapprove'])->name('handovers.disapprove');
         Route::post('handovers/{handover}/reject', [HandoverReportController::class, 'reject'])->name('handovers.reject');
         Route::post('handovers/{handover}/return', [HandoverReportController::class, 'returnForModification'])->name('handovers.return');
         Route::post('handovers/{handover}/confirm-receipt', [HandoverReportController::class, 'confirmReceipt'])->name('handovers.confirm-receipt');

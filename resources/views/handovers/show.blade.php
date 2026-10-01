@@ -83,15 +83,22 @@
                     <i class="bi bi-check-lg me-1"></i> Approve
                 </button>
             </form>
+            @elseif($handover->status === 'approved')
+            <form method="POST" action="{{ route('handovers.disapprove', $handover) }}" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to disapprove / revert approval for this handover report?')">
+                    <i class="bi bi-x-lg me-1"></i> Disapprove
+                </button>
+            </form>
+            @endif
+
+            @if($handover->status === 'submitted' || $handover->status === 'approved')
             <button type="button" class="btn btn-sm btn-warning text-dark" data-bs-toggle="modal" data-bs-target="#returnModal">
                 <i class="bi bi-arrow-left-right me-1"></i> Return for Modification
             </button>
             <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
                 <i class="bi bi-x-circle me-1"></i> Reject
             </button>
-            @endif
-
-            @if($handover->status === 'submitted' || $handover->status === 'approved')
             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#confirmReceiptModal">
                 <i class="bi bi-cash-stack me-1"></i> Confirm Cash Received
             </button>
@@ -335,7 +342,7 @@
 </div>
 
 <!-- Reject Modal (Owner) -->
-@if(auth()->user()->isOwner() && $handover->status === 'submitted')
+@if(auth()->user()->isOwner() && ($handover->status === 'submitted' || $handover->status === 'approved'))
 <div class="modal fade no-print" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
