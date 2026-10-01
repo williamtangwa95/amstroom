@@ -50,10 +50,12 @@
                             <span class="small">Total Approved Expenses:</span>
                             <span class="fw-bold text-danger">- TZS {{ number_format($totalExpenses, 0) }}</span>
                         </div>
+                        @if(!auth()->user()->isOwner())
                         <div class="d-flex justify-content-between border-top pt-2">
                             <span class="fw-bold">Admin Profit:</span>
                             <span class="fw-bold text-success">TZS {{ number_format($netProfit, 0) }}</span>
                         </div>
+                        @endif
                     </div>
 
                     <!-- Expected Amount -->

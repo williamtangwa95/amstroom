@@ -148,10 +148,12 @@
                         <span class="small">Assigned Commission:</span>
                         <span class="fw-bold text-info">TZS {{ number_format($handover->commission_amount ?? 0, 0) }}</span>
                     </div>
+                    @if(!auth()->user()->isOwner())
                     <div class="d-flex justify-content-between border-top pt-2">
                         <span class="fw-bold">Admin Net Profit:</span>
                         <span class="fw-bold text-success">TZS {{ number_format($handover->net_profit, 0) }}</span>
                     </div>
+                    @endif
                 </div>
 
                 <div class="row g-2 mb-3">
