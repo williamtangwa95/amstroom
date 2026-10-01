@@ -422,4 +422,118 @@ class HandoverReportTest extends TestCase
         $this->assertEquals(200, $fresh->commission_amount);
         $this->assertEquals(-50, $fresh->difference);
     }
+
+    public function test_submitting_handover_sends_email_with_excel_attachment_and_in_app_notification_to_owner()
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('handovers.store'), [
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'actual_amount'     => 1000,
+            'commission_amount' => 100,
+            'submit_action'     => 'submit',
+        ]);
+
+        $response->assertRedirect(route('handovers.index'));
+
+        // Check in-app notification for owner
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->owner->id,
+            'title'   => 'New Handover Submitted',
+        ]);
+
+        // Check Mail sent to owner with attachment
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\HandoverReportSubmittedMail::class, function ($mail) {
+            $mail->build();
+            return $mail->hasTo($this->owner->email) &&
+                   count($mail->rawAttachments) > 0;
+        });
+    }
+
+    public function test_owner_can_assign_commission_to_shop_admin()
+    {
+        $handover = HandoverReport::create([
+            'handover_no'       => 'HO-TEST-ASSIGN-COMMISSION',
+            'shop_id'           => $this->shop->id,
+            'shop_admin_id'     => $this->admin->id,
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'total_owner_sales' => 1000,
+            'total_admin_sales' => 0,
+            'admin_stock_cost'  => 0,
+            'total_expenses'    => 0,
+            'net_profit'        => 1000,
+            'expected_amount'   => 1000,
+            'actual_amount'     => 1000,
+            'commission_amount' => 0,
+            'difference'        => 0,
+            'difference_status' => 'exact',
+            'status'            => 'submitted',
+            'created_by'        => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->owner);
+
+        $response = $this->post(route('handovers.assign-commission', $handover), [
+            'commission_amount' => 350,
+            'shop_admin_id'     => $this->admin->id,
+        ]);
+
+        $response->assertRedirect();
+
+        $fresh = $handover->fresh();
+        $this->assertEquals(350, $fresh->commission_amount);
+        $this->assertEquals($this->admin->id, $fresh->shop_admin_id);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->admin->id,
+            'title'   => 'Commission Assigned',
+        ]);
+    }
+
+    public function test_confirming_cash_receipt_sends_email_with_excel_attachment_to_shop_admin()
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $handover = HandoverReport::create([
+            'handover_no'       => 'HO-TEST-CONFIRM-MAIL',
+            'shop_id'           => $this->shop->id,
+            'shop_admin_id'     => $this->admin->id,
+            'start_date'        => now()->toDateString(),
+            'end_date'          => now()->toDateString(),
+            'total_owner_sales' => 1000,
+            'total_admin_sales' => 0,
+            'admin_stock_cost'  => 0,
+            'total_expenses'    => 0,
+            'net_profit'        => 1000,
+            'expected_amount'   => 1000,
+            'actual_amount'     => 1000,
+            'commission_amount' => 250,
+            'difference'        => 0,
+            'difference_status' => 'exact',
+            'status'            => 'submitted',
+            'created_by'        => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->owner);
+
+        $response = $this->post(route('handovers.confirm-receipt', $handover), [
+            'amount_received'   => 1000,
+            'commission_amount' => 250,
+            'shop_admin_id'     => $this->admin->id,
+            'received_remarks'  => 'Bank transfer verified',
+        ]);
+
+        $response->assertRedirect();
+
+        // Check Mail sent to shop admin with attachment
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\HandoverCompletedMail::class, function ($mail) {
+            $mail->build();
+            return $mail->hasTo($this->admin->email) &&
+                   count($mail->rawAttachments) > 0;
+        });
+    }
 }

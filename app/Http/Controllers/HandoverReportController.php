@@ -8,10 +8,15 @@ use App\Models\Expense;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\Notification;
+use App\Mail\HandoverReportSubmittedMail;
+use App\Mail\HandoverCompletedMail;
 use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -330,14 +335,7 @@ class HandoverReportController extends Controller
 
             // Notify Owners if status is submitted
             if ($status === 'submitted') {
-                $owners = \App\Models\User::where('role', 'owner')->get();
-                foreach ($owners as $owner) {
-                    \App\Models\Notification::create([
-                        'user_id' => $owner->id,
-                        'title' => 'New Handover Submitted',
-                        'message' => "Shop Admin {$user->name} submitted a new Handover Report: {$handover->handover_no} for shop {$handover->shop->shop_name}.",
-                    ]);
-                }
+                $this->sendSubmissionNotifications($handover, $user);
             }
 
             // Log activity
@@ -369,7 +367,13 @@ class HandoverReportController extends Controller
             ->where('handover_report_id', $handover->id)
             ->get();
 
-        return view('handovers.show', compact('handover', 'sales', 'expenses'));
+        $shopAdmins = $user->isOwner()
+            ? User::where(function ($q) use ($handover) {
+                $q->where('shop_id', $handover->shop_id)->orWhere('role', 'shop_admin');
+              })->where('role', 'shop_admin')->get()
+            : collect();
+
+        return view('handovers.show', compact('handover', 'sales', 'expenses', 'shopAdmins'));
     }
 
     public function submit(HandoverReport $handover)
@@ -386,15 +390,8 @@ class HandoverReportController extends Controller
 
         ActivityLog::log('SUBMITTED', "Submitted Handover Report: {$handover->handover_no}", $handover);
 
-        // Notify Owners
-        $owners = \App\Models\User::where('role', 'owner')->get();
-        foreach ($owners as $owner) {
-            \App\Models\Notification::create([
-                'user_id' => $owner->id,
-                'title' => 'New Handover Submitted',
-                'message' => "Shop Admin {$handover->shopAdmin->name} submitted Handover Report: {$handover->handover_no} for shop {$handover->shop->shop_name}.",
-            ]);
-        }
+        // Notify Owners with email & in-app notification
+        $this->sendSubmissionNotifications($handover, $user);
 
         return back()->with('success', 'Handover report submitted successfully.');
     }
@@ -518,14 +515,7 @@ class HandoverReportController extends Controller
 
         // Notify Owners if status is submitted
         if ($status === 'submitted') {
-            $owners = \App\Models\User::where('role', 'owner')->get();
-            foreach ($owners as $owner) {
-                \App\Models\Notification::create([
-                    'user_id' => $owner->id,
-                    'title' => 'Resubmitted Handover Report',
-                    'message' => "Shop Admin {$user->name} resubmitted Handover Report: {$handover->handover_no} for shop {$handover->shop->shop_name}.",
-                ]);
-            }
+            $this->sendSubmissionNotifications($handover, $user);
         }
 
         // Log activity
@@ -536,6 +526,45 @@ class HandoverReportController extends Controller
         );
 
         return redirect()->route('handovers.show', $handover)->with('success', 'Handover report updated successfully.');
+    }
+
+    public function assignCommission(HandoverReport $handover, Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner()) {
+            abort(403, 'Only owners can assign commission.');
+        }
+
+        $request->validate([
+            'commission_amount' => 'required|numeric|min:0',
+            'shop_admin_id'     => 'nullable|exists:users,id',
+        ]);
+
+        $updateData = [
+            'commission_amount' => (float)$request->commission_amount,
+        ];
+        if ($request->filled('shop_admin_id')) {
+            $updateData['shop_admin_id'] = $request->shop_admin_id;
+        }
+
+        $handover->update($updateData);
+
+        ActivityLog::log(
+            'COMMISSION_ASSIGNED',
+            "Assigned commission TZS " . number_format($request->commission_amount) . " for Handover Report: {$handover->handover_no}",
+            $handover
+        );
+
+        // Notify Shop Admin
+        if ($handover->shop_admin_id) {
+            Notification::create([
+                'user_id' => $handover->shop_admin_id,
+                'title'   => 'Commission Assigned',
+                'message' => "The shop owner assigned a commission of TZS " . number_format($request->commission_amount) . " for Handover Report {$handover->handover_no}.",
+            ]);
+        }
+
+        return back()->with('success', 'Commission successfully assigned to shop admin.');
     }
 
     public function returnForModification(HandoverReport $handover, Request $request)
@@ -555,7 +584,7 @@ class HandoverReportController extends Controller
         ActivityLog::log('RETURNED', "Returned Handover Report for modification: {$handover->handover_no}. Reason: {$request->remarks}", $handover);
 
         // Notify Shop Admin
-        \App\Models\Notification::create([
+        Notification::create([
             'user_id' => $handover->shop_admin_id,
             'title' => 'Handover Report Returned for Modification',
             'message' => "Your Handover Report {$handover->handover_no} was returned by the Owner for modification with remarks: \"{$request->remarks}\".",
@@ -580,7 +609,7 @@ class HandoverReportController extends Controller
         ActivityLog::log('APPROVED', "Approved Handover Report: {$handover->handover_no}", $handover);
 
         // Notify Shop Admin
-        \App\Models\Notification::create([
+        Notification::create([
             'user_id' => $handover->shop_admin_id,
             'title' => 'Handover Report Approved',
             'message' => "Your Handover Report {$handover->handover_no} has been approved by the Owner.",
@@ -614,7 +643,7 @@ class HandoverReportController extends Controller
             ActivityLog::log('REJECTED', "Rejected Handover Report: {$handover->handover_no}. Reason: {$request->remarks}", $handover);
 
             // Notify Shop Admin
-            \App\Models\Notification::create([
+            Notification::create([
                 'user_id' => $handover->shop_admin_id,
                 'title' => 'Handover Report Rejected',
                 'message' => "Your Handover Report {$handover->handover_no} was rejected by the Owner with remarks: \"{$request->remarks}\".",
@@ -635,17 +664,29 @@ class HandoverReportController extends Controller
         }
 
         $request->validate([
-            'amount_received' => 'required|numeric|min:0',
-            'received_remarks' => 'nullable|string',
+            'amount_received'   => 'required|numeric|min:0',
+            'commission_amount' => 'nullable|numeric|min:0',
+            'shop_admin_id'     => 'nullable|exists:users,id',
+            'received_remarks'  => 'nullable|string',
         ]);
 
-        $handover->update([
-            'status' => 'completed',
-            'received_by' => $user->id,
-            'received_at' => now(),
-            'amount_received' => $request->amount_received,
+        $updateData = [
+            'status'           => 'completed',
+            'received_by'      => $user->id,
+            'received_at'      => now(),
+            'amount_received'  => $request->amount_received,
             'received_remarks' => $request->received_remarks,
-        ]);
+        ];
+
+        if ($request->has('commission_amount') && $request->commission_amount !== null && $request->commission_amount !== '') {
+            $updateData['commission_amount'] = (float)$request->commission_amount;
+        }
+
+        if ($request->filled('shop_admin_id')) {
+            $updateData['shop_admin_id'] = $request->shop_admin_id;
+        }
+
+        $handover->update($updateData);
 
         ActivityLog::log(
             'COMPLETED',
@@ -653,12 +694,24 @@ class HandoverReportController extends Controller
             $handover
         );
 
-        // Notify Shop Admin
-        \App\Models\Notification::create([
-            'user_id' => $handover->shop_admin_id,
-            'title' => 'Handover Report Completed',
-            'message' => "Cash receipt has been confirmed for Handover Report {$handover->handover_no}.",
-        ]);
+        // Notify Shop Admin by in-app notification and email
+        $handover->loadMissing(['shop', 'shopAdmin', 'receiver']);
+        if ($handover->shopAdmin) {
+            Notification::create([
+                'user_id' => $handover->shopAdmin->id,
+                'title'   => 'Handover Report Completed',
+                'message' => "Cash receipt has been confirmed for Handover Report {$handover->handover_no}. Assigned Commission: TZS " . number_format($handover->commission_amount ?? 0) . ".",
+            ]);
+
+            if (!empty($handover->shopAdmin->email)) {
+                try {
+                    $excelBinary = $this->generateExcelBinary($handover);
+                    Mail::to($handover->shopAdmin->email)->send(new HandoverCompletedMail($handover, $excelBinary));
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send handover completion email to shop admin: ' . $e->getMessage());
+                }
+            }
+        }
 
         return back()->with('success', 'Cash receipt confirmed and handover marked COMPLETED.');
     }
@@ -693,13 +746,8 @@ class HandoverReportController extends Controller
         }
     }
 
-    public function exportExcel(HandoverReport $handover)
+    public function buildExcelSpreadsheet(HandoverReport $handover): Spreadsheet
     {
-        $user = auth()->user();
-        if (!$user->isOwner() && $handover->shop_id !== $user->shop_id) {
-            abort(403, 'Unauthorized.');
-        }
-
         $sales = Sale::with('items.item')
             ->where('handover_report_id', $handover->id)
             ->get();
@@ -722,11 +770,11 @@ class HandoverReportController extends Controller
         $sheet->setCellValue('A4', 'Handover ID:');
         $sheet->setCellValue('B4', $handover->handover_no);
         $sheet->setCellValue('A5', 'Shop:');
-        $sheet->setCellValue('B5', $handover->shop->shop_name);
+        $sheet->setCellValue('B5', $handover->shop->shop_name ?? 'N/A');
         $sheet->setCellValue('A6', 'Shop Admin:');
-        $sheet->setCellValue('B6', $handover->shopAdmin->name);
+        $sheet->setCellValue('B6', $handover->shopAdmin->name ?? 'N/A');
         $sheet->setCellValue('A7', 'Period:');
-        $sheet->setCellValue('B7', $handover->start_date->format('Y-m-d') . ' to ' . $handover->end_date->format('Y-m-d'));
+        $sheet->setCellValue('B7', ($handover->start_date ? $handover->start_date->format('Y-m-d') : '') . ' to ' . ($handover->end_date ? $handover->end_date->format('Y-m-d') : ''));
         $sheet->setCellValue('A8', 'Report Date:');
         $sheet->setCellValue('B8', date('Y-m-d H:i:s'));
 
@@ -737,7 +785,7 @@ class HandoverReportController extends Controller
         $sheet->setCellValue('B11', (float)$handover->total_owner_sales);
         $sheet->setCellValue('A12', 'Total Expenses:');
         $sheet->setCellValue('B12', (float)$handover->total_expenses);
-        $sheet->setCellValue('A13', 'Requested Commission:');
+        $sheet->setCellValue('A13', 'Requested/Assigned Commission:');
         $sheet->setCellValue('B13', (float)$handover->commission_amount);
 
         $rowNum = 14;
@@ -757,7 +805,7 @@ class HandoverReportController extends Controller
         $rowNum++;
 
         $sheet->setCellValue('A' . $rowNum, 'Difference Status:');
-        $sheet->setCellValue('B' . $rowNum, strtoupper($handover->difference_status));
+        $sheet->setCellValue('B' . $rowNum, strtoupper((string)$handover->difference_status));
         $rowNum++;
 
         $sheet->setCellValue('A' . $rowNum, 'Difference Reason:');
@@ -781,7 +829,7 @@ class HandoverReportController extends Controller
         // Format Financial Summary numbers with thousands separator (B11 to B15)
         $sheet->getStyle('B11:B' . ($rowNum - 3))->getNumberFormat()->setFormatCode('#,##0');
 
-        // Transactions details table (Removed: Ownership, Purchase Cost, Attributable Amount)
+        // Transactions details table
         $tableHeaderRow = $rowNum + 2;
         $sheet->getStyle('A' . $tableHeaderRow . ':F' . $tableHeaderRow)->getFont()->setBold(true);
         $sheet->setCellValue('A' . $tableHeaderRow, 'Date');
@@ -797,7 +845,7 @@ class HandoverReportController extends Controller
                 if ($item->is_admin_stock) {
                     continue; // Exclude admin stock entirely
                 }
-                $sheet->setCellValue('A' . $rowNum, $sale->sale_date->format('Y-m-d'));
+                $sheet->setCellValue('A' . $rowNum, $sale->sale_date ? $sale->sale_date->format('Y-m-d') : '');
                 $sheet->setCellValue('B' . $rowNum, 'Sale #' . $sale->id);
                 $sheet->setCellValue('C' . $rowNum, $item->display_name);
                 $sheet->setCellValue('D' . $rowNum, $item->quantity);
@@ -827,8 +875,8 @@ class HandoverReportController extends Controller
         $expenseHeaderRow = $rowNum;
         $rowNum++;
         foreach ($expenses as $exp) {
-            $sheet->setCellValue('A' . $rowNum, $exp->activity_date->format('Y-m-d'));
-            $sheet->setCellValue('B' . $rowNum, $exp->category->name);
+            $sheet->setCellValue('A' . $rowNum, $exp->activity_date ? $exp->activity_date->format('Y-m-d') : '');
+            $sheet->setCellValue('B' . $rowNum, $exp->category->name ?? 'N/A');
             $sheet->setCellValue('C' . $rowNum, $exp->description);
             $sheet->setCellValue('D' . $rowNum, (float)$exp->amount);
             $rowNum++;
@@ -859,14 +907,59 @@ class HandoverReportController extends Controller
         $sheet->getPageSetup()->setFitToWidth(1);
         $sheet->getPageSetup()->setFitToHeight(0);
 
+        return $spreadsheet;
+    }
+
+    public function generateExcelBinary(HandoverReport $handover): string
+    {
+        $spreadsheet = $this->buildExcelSpreadsheet($handover);
         $writer = new Xlsx($spreadsheet);
+        
+        ob_start();
+        $writer->save('php://output');
+        return (string)ob_get_clean();
+    }
+
+    public function exportExcel(HandoverReport $handover)
+    {
+        $user = auth()->user();
+        if (!$user->isOwner() && $handover->shop_id !== $user->shop_id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $excelData = $this->generateExcelBinary($handover);
         
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="Handover_Report_' . $handover->handover_no . '.xlsx"');
         header('Cache-Control: max-age=0');
         
-        $writer->save('php://output');
+        echo $excelData;
         exit;
+    }
+
+    private function sendSubmissionNotifications(HandoverReport $handover, User $submitter)
+    {
+        $handover->loadMissing(['shop', 'shopAdmin']);
+        $owners = User::where('role', 'owner')->get();
+
+        foreach ($owners as $owner) {
+            Notification::create([
+                'user_id' => $owner->id,
+                'title'   => 'New Handover Submitted',
+                'message' => "Shop Admin {$submitter->name} submitted Handover Report: {$handover->handover_no} for shop " . ($handover->shop->shop_name ?? 'Shop') . ".",
+            ]);
+        }
+
+        try {
+            $excelBinary = $this->generateExcelBinary($handover);
+            $ownerEmails = $owners->pluck('email')->filter()->unique()->toArray();
+            if (!empty($ownerEmails)) {
+                Mail::to($ownerEmails)->send(new HandoverReportSubmittedMail($handover, $excelBinary));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send handover submission email to shop owners: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            throw $e;
+        }
     }
 
     public function exportPdf(HandoverReport $handover)

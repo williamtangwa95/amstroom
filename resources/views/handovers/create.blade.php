@@ -95,15 +95,17 @@
                         </div>
                     </div>
 
-                    <!-- Requested Commission -->
+                    @if(auth()->user()->isOwner())
+                    <!-- Commission Amount (Owner only) -->
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Requested Commission to be Paid</label>
+                        <label class="form-label small fw-bold">Commission Amount to Assign</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">TZS</span>
-                            <input type="text" id="commission_amount_display" class="form-control" placeholder="Enter requested commission (optional)" value="{{ old('commission_amount') ? number_format((float)old('commission_amount'), 0, '.', ',') : '' }}">
+                            <input type="text" id="commission_amount_display" class="form-control" placeholder="Enter commission amount (optional)" value="{{ old('commission_amount') ? number_format((float)old('commission_amount'), 0, '.', ',') : '' }}">
                             <input type="hidden" name="commission_amount" id="commission_amount" value="{{ old('commission_amount') }}">
                         </div>
                     </div>
+                    @endif
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">

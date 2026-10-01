@@ -73,6 +73,9 @@
 
         <!-- Owner Actions -->
         @if(auth()->user()->isOwner())
+            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#assignCommissionModal">
+                <i class="bi bi-award me-1"></i> Assign Commission
+            </button>
             @if($handover->status === 'submitted')
             <form method="POST" action="{{ route('handovers.approve', $handover) }}" class="d-inline">
                 @csrf
@@ -142,7 +145,7 @@
                         <span class="fw-bold text-danger">- TZS {{ number_format($handover->total_expenses, 0) }}</span>
                     </div>
                     <div class="d-flex justify-content-between text-muted mb-2">
-                        <span class="small">Requested Commission:</span>
+                        <span class="small">Assigned Commission:</span>
                         <span class="fw-bold text-info">TZS {{ number_format($handover->commission_amount ?? 0, 0) }}</span>
                     </div>
                     <div class="d-flex justify-content-between border-top pt-2">
@@ -381,6 +384,49 @@
 </div>
 @endif
 
+<!-- Assign Commission Modal (Owner) -->
+@if(auth()->user()->isOwner())
+<div class="modal fade no-print" id="assignCommissionModal" tabindex="-1" aria-labelledby="assignCommissionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('handovers.assign-commission', $handover) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignCommissionModalLabel"><i class="bi bi-award me-2 text-info"></i>Assign Commission to Shop Admin</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Select Shop Admin <span class="text-danger">*</span></label>
+                        <select name="shop_admin_id" class="form-select form-select-sm" required>
+                            @foreach($shopAdmins as $adminUser)
+                            <option value="{{ $adminUser->id }}" {{ $handover->shop_admin_id == $adminUser->id ? 'selected' : '' }}>
+                                {{ $adminUser->name }} ({{ $adminUser->email }})
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Commission Amount Assigned <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">TZS</span>
+                            <input type="text" id="owner_commission_display" class="form-control" placeholder="Enter commission amount" value="{{ number_format((float)($handover->commission_amount ?? 0), 0, '.', ',') }}" required>
+                            <input type="hidden" name="commission_amount" id="owner_commission_amount" value="{{ $handover->commission_amount ?? 0 }}">
+                        </div>
+                        <div class="form-text small" style="font-size: 0.65rem;">Commission amount to be awarded to the selected shop admin for this handover.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-sm btn-info text-white">Save Commission</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Confirm Receipt Modal (Owner) -->
 @if(auth()->user()->isOwner() && ($handover->status === 'submitted' || $handover->status === 'approved'))
 <div class="modal fade no-print" id="confirmReceiptModal" tabindex="-1" aria-labelledby="confirmReceiptModalLabel" aria-hidden="true">
@@ -389,10 +435,30 @@
             <form method="POST" action="{{ route('handovers.confirm-receipt', $handover) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmReceiptModalLabel">Confirm Cash Received</h5>
+                    <h5 class="modal-title" id="confirmReceiptModalLabel">Confirm Cash Received & Finalize Commission</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Select Shop Admin Receiving Commission</label>
+                        <select name="shop_admin_id" class="form-select form-select-sm">
+                            @foreach($shopAdmins as $adminUser)
+                            <option value="{{ $adminUser->id }}" {{ $handover->shop_admin_id == $adminUser->id ? 'selected' : '' }}>
+                                {{ $adminUser->name }} ({{ $adminUser->email }})
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Assigned Commission Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">TZS</span>
+                            <input type="text" id="receipt_commission_display" class="form-control" placeholder="Enter commission amount" value="{{ number_format((float)($handover->commission_amount ?? 0), 0, '.', ',') }}">
+                            <input type="hidden" name="commission_amount" id="receipt_commission_amount" value="{{ $handover->commission_amount ?? 0 }}">
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Amount Actually Received <span class="text-danger">*</span></label>
                         <div class="input-group">
@@ -402,6 +468,7 @@
                         </div>
                         <div class="form-text small" style="font-size: 0.65rem;">Defaults to the actual amount submitted by the Shop Admin.</div>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Remarks</label>
                         <textarea name="received_remarks" class="form-control" rows="3" placeholder="Add confirmation comments or bank references"></textarea>
@@ -419,9 +486,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var displayInput = document.getElementById('amount_received_display');
-        var hiddenInput = document.getElementById('amount_received');
-        
         function formatNumber(val) {
             var clean = val.replace(/[^\d.]/g, '');
             if (!clean) return '';
@@ -430,21 +494,30 @@
             return parts.join('.');
         }
 
-        if (displayInput && hiddenInput) {
-            displayInput.addEventListener('input', function(e) {
-                var selectionStart = this.selectionStart;
-                var originalLen = this.value.length;
+        function setupFormattedInput(displayId, hiddenId) {
+            var displayInput = document.getElementById(displayId);
+            var hiddenInput = document.getElementById(hiddenId);
 
-                var rawVal = this.value.replace(/,/g, '');
-                hiddenInput.value = rawVal;
+            if (displayInput && hiddenInput) {
+                displayInput.addEventListener('input', function(e) {
+                    var selectionStart = this.selectionStart;
+                    var originalLen = this.value.length;
 
-                this.value = formatNumber(this.value);
+                    var rawVal = this.value.replace(/,/g, '');
+                    hiddenInput.value = rawVal;
 
-                var newLen = this.value.length;
-                this.selectionStart = selectionStart + (newLen - originalLen);
-                this.selectionEnd = selectionStart + (newLen - originalLen);
-            });
+                    this.value = formatNumber(this.value);
+
+                    var newLen = this.value.length;
+                    this.selectionStart = selectionStart + (newLen - originalLen);
+                    this.selectionEnd = selectionStart + (newLen - originalLen);
+                });
+            }
         }
+
+        setupFormattedInput('amount_received_display', 'amount_received');
+        setupFormattedInput('owner_commission_display', 'owner_commission_amount');
+        setupFormattedInput('receipt_commission_display', 'receipt_commission_amount');
     });
 </script>
 

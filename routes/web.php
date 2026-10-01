@@ -183,6 +183,7 @@ Route::middleware('auth')->group(function () {
         Route::post('handovers/{handover}/reject', [HandoverReportController::class, 'reject'])->name('handovers.reject');
         Route::post('handovers/{handover}/return', [HandoverReportController::class, 'returnForModification'])->name('handovers.return');
         Route::post('handovers/{handover}/confirm-receipt', [HandoverReportController::class, 'confirmReceipt'])->name('handovers.confirm-receipt');
+        Route::post('handovers/{handover}/assign-commission', [HandoverReportController::class, 'assignCommission'])->name('handovers.assign-commission');
         Route::delete('handovers/{handover}', [HandoverReportController::class, 'destroy'])->name('handovers.destroy');
         Route::get('handovers/{handover}/export-excel', [HandoverReportController::class, 'exportExcel'])->name('handovers.export-excel');
         Route::get('handovers/{handover}/export-pdf', [HandoverReportController::class, 'exportPdf'])->name('handovers.export-pdf');
