@@ -26,11 +26,11 @@
         <form id="filterForm" method="GET" action="{{ route('sales.index') }}" class="row g-2 align-items-end">
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">From Date</label>
-                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', now()->startOfMonth()->toDateString()) }}">
             </div>
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
-                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', now()->endOfMonth()->toDateString()) }}">
             </div>
             @if(auth()->user()->isOwner())
             <div class="col-md-3">
