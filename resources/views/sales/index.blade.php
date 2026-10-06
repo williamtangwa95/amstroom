@@ -21,16 +21,71 @@
     <a href="{{ route('sales.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i> New Sale</a>
 </div>
 
+{{-- Payment Method Summary Cards --}}
+<div class="row g-2 g-md-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Cash</span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(63,185,80,0.15); color:#3fb950;">
+                    <i class="bi bi-cash-stack fs-6"></i>
+                </div>
+            </div>
+            <div class="fw-800 fs-5 mb-0" id="cardCashAmount" style="color:#3fb950;">TZS {{ number_format($paymentSummary['cash'] ?? 0, 0) }}</div>
+            <div class="small text-muted" style="font-size:0.68rem;">Physical Cash</div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Mobile Money</span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(57,178,255,0.15); color:#39b2ff;">
+                    <i class="bi bi-phone fs-6"></i>
+                </div>
+            </div>
+            <div class="fw-800 fs-5 mb-0" id="cardMobileAmount" style="color:#39b2ff;">TZS {{ number_format($paymentSummary['mobile_money'] ?? 0, 0) }}</div>
+            <div class="small text-muted" style="font-size:0.68rem;">M-Pesa / Tigo Pesa</div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Card Sales</span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(188,140,255,0.15); color:#bc8cff;">
+                    <i class="bi bi-credit-card fs-6"></i>
+                </div>
+            </div>
+            <div class="fw-800 fs-5 mb-0" id="cardCardAmount" style="color:#bc8cff;">TZS {{ number_format($paymentSummary['card'] ?? 0, 0) }}</div>
+            <div class="small text-muted" style="font-size:0.68rem;">POS / Credit Card</div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Bank Transfer</span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(227,179,65,0.15); color:#e3b341;">
+                    <i class="bi bi-bank fs-6"></i>
+                </div>
+            </div>
+            <div class="fw-800 fs-5 mb-0" id="cardBankAmount" style="color:#e3b341;">TZS {{ number_format($paymentSummary['bank_transfer'] ?? 0, 0) }}</div>
+            <div class="small text-muted" style="font-size:0.68rem;">Direct Bank</div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-body py-2">
         <form id="filterForm" method="GET" action="{{ route('sales.index') }}" class="row g-2 align-items-end">
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">From Date</label>
-                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', now()->startOfMonth()->toDateString()) }}">
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', '') }}">
             </div>
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
-                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', now()->endOfMonth()->toDateString()) }}">
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', '') }}">
             </div>
             @if(auth()->user()->isOwner())
             <div class="col-md-3">
@@ -189,6 +244,12 @@
             drawCallback: function(settings) {
                 if (settings.json && settings.json.formattedTotalRevenue) {
                     $('#totalRevenueText').text(settings.json.formattedTotalRevenue);
+                }
+                if (settings.json && settings.json.paymentSummary) {
+                    if (settings.json.paymentSummary.cash) $('#cardCashAmount').text(settings.json.paymentSummary.cash);
+                    if (settings.json.paymentSummary.mobile_money) $('#cardMobileAmount').text(settings.json.paymentSummary.mobile_money);
+                    if (settings.json.paymentSummary.card) $('#cardCardAmount').text(settings.json.paymentSummary.card);
+                    if (settings.json.paymentSummary.bank_transfer) $('#cardBankAmount').text(settings.json.paymentSummary.bank_transfer);
                 }
             }
         });

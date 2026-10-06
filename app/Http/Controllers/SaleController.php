@@ -54,7 +54,7 @@ class SaleController extends Controller
             $revenueQuery->where('sales.status', $request->status);
         }
 
-        $totalRevenue = (float) ($revenueQuery->selectRaw("
+        $totalRevenue = (float) ((clone $revenueQuery)->selectRaw("
             SUM(
                 CASE
                     WHEN ? = 1 AND sale_items.is_admin_stock = 1 THEN 0
@@ -64,9 +64,57 @@ class SaleController extends Controller
             ) as total_rev
         ", [$isOwner ? 1 : 0, $isOwner ? 1 : 0, $isIndependent ? 1 : 0])->value('total_rev') ?? 0);
 
+        $paymentSummary = $this->computePaymentSummary(clone $revenueQuery, $isOwner, $isIndependent);
+
         $statusFilter = $request->input('status', '');
 
-        return view('sales.index', compact('totalRevenue', 'statusFilter', 'shops', 'shopId'));
+        return view('sales.index', compact('totalRevenue', 'paymentSummary', 'statusFilter', 'shops', 'shopId'));
+    }
+
+    private function computePaymentSummary($revenueQuery, bool $isOwner, bool $isIndependent): array
+    {
+        $paymentBreakdownRaw = (clone $revenueQuery)
+            ->selectRaw("
+                sales.payment_method,
+                SUM(
+                    CASE
+                        WHEN ? = 1 AND sale_items.is_admin_stock = 1 THEN 0
+                        WHEN ? = 1 AND ? = 1 AND sales.shop_id IS NOT NULL THEN COALESCE(sale_items.owner_realized_sp, sale_items.selling_price) * sale_items.quantity
+                        ELSE COALESCE(sale_items.shop_realized_sp, sale_items.selling_price) * sale_items.quantity
+                    END
+                ) as rev_sum
+            ", [$isOwner ? 1 : 0, $isOwner ? 1 : 0, $isIndependent ? 1 : 0])
+            ->groupBy('sales.payment_method')
+            ->get();
+
+        $paymentSummary = [
+            'cash' => 0.0,
+            'card' => 0.0,
+            'mobile_money' => 0.0,
+            'bank_transfer' => 0.0,
+        ];
+
+        foreach ($paymentBreakdownRaw as $row) {
+            $val = (float) ($row->rev_sum ?? 0);
+            if ($val <= 0) continue;
+
+            $rawPm = trim($row->payment_method ?? '');
+            $pm = strtolower(str_replace(['-', ' '], '_', $rawPm));
+
+            if (in_array($pm, ['cash', 'physical_cash', 'money_cash', ''])) {
+                $paymentSummary['cash'] += $val;
+            } elseif (in_array($pm, ['card', 'pos', 'credit_card', 'debit_card', 'card_payment'])) {
+                $paymentSummary['card'] += $val;
+            } elseif (in_array($pm, ['mobile_money', 'mobile', 'mobilemoney', 'mpesa', 'm_pesa', 'tigopesa', 'tigo_pesa', 'airtel_money', 'halo_pesa'])) {
+                $paymentSummary['mobile_money'] += $val;
+            } elseif (in_array($pm, ['bank_transfer', 'bank', 'transfer', 'cheque', 'bank_deposit'])) {
+                $paymentSummary['bank_transfer'] += $val;
+            } else {
+                $paymentSummary['cash'] += $val;
+            }
+        }
+
+        return $paymentSummary;
     }
 
     public function data(Request $request)
@@ -166,7 +214,7 @@ class SaleController extends Controller
             });
         }
 
-        $totalRevenue = (float) ($revenueQuery->selectRaw("
+        $totalRevenue = (float) ((clone $revenueQuery)->selectRaw("
             SUM(
                 CASE
                     WHEN ? = 1 AND sale_items.is_admin_stock = 1 THEN 0
@@ -175,6 +223,8 @@ class SaleController extends Controller
                 END
             ) as total_rev
         ", [$isOwner ? 1 : 0, $isOwner ? 1 : 0, $isIndependent ? 1 : 0])->value('total_rev') ?? 0);
+
+        $paymentSummary = $this->computePaymentSummary(clone $revenueQuery, $isOwner, $isIndependent);
 
         $orderColumnIndex = $request->input('order.0.column', 9);
         $orderDirection = strtolower($request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -289,6 +339,12 @@ class SaleController extends Controller
             'data' => $data,
             'totalRevenue' => $totalRevenue,
             'formattedTotalRevenue' => 'TZS ' . number_format($totalRevenue, 0),
+            'paymentSummary' => [
+                'cash' => 'TZS ' . number_format($paymentSummary['cash'], 0),
+                'card' => 'TZS ' . number_format($paymentSummary['card'], 0),
+                'mobile_money' => 'TZS ' . number_format($paymentSummary['mobile_money'], 0),
+                'bank_transfer' => 'TZS ' . number_format($paymentSummary['bank_transfer'], 0),
+            ],
         ]);
     }
 

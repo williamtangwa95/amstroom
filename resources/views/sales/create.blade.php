@@ -6,24 +6,153 @@
 <li class="breadcrumb-item active">New Sale</li>
 @endsection
 @section('content')
-<div class="row g-3">
+<style>
+    .pos-product-card {
+        background: var(--card-bg, #161b22);
+        border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08)) !important;
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .pos-product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        border-color: rgba(63, 185, 80, 0.35) !important;
+    }
+    .pos-product-img {
+        width: 55px;
+        height: 55px;
+        object-fit: cover;
+        border-radius: 10px;
+        flex-shrink: 0;
+        border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+        transition: transform 0.2s ease;
+    }
+    .pos-product-img:hover {
+        transform: scale(1.05);
+    }
+    .cart-item-row {
+        background: var(--input-bg, rgba(255, 255, 255, 0.02));
+        border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08)) !important;
+        border-radius: 10px;
+        padding: 0.75rem;
+        transition: background 0.2s ease;
+    }
+    .cart-item-row:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .cart-qty-btn {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .cart-qty-input {
+        width: 44px;
+        height: 30px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.82rem;
+        border-radius: 6px;
+        padding: 0;
+    }
+    .pos-item-card {
+        margin-bottom: 0.75rem;
+    }
+    .category-badge-pill {
+        background: linear-gradient(135deg, #0088cc, #006699) !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.68rem !important;
+        padding: 2.5px 8px !important;
+        border-radius: 12px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        box-shadow: 0 2px 5px rgba(0, 136, 204, 0.3) !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
+        letter-spacing: 0.3px !important;
+    }
+    .category-filter-btn {
+        font-size: 0.74rem !important;
+        font-weight: 600 !important;
+        padding: 3.5px 12px !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--card-border) !important;
+        background: var(--input-bg, rgba(255, 255, 255, 0.05)) !important;
+        color: var(--text-secondary) !important;
+        white-space: nowrap !important;
+        transition: all 0.2s ease !important;
+    }
+    .category-filter-btn:hover {
+        color: #0088cc !important;
+        border-color: #0088cc !important;
+        background: rgba(0, 136, 204, 0.1) !important;
+    }
+    .category-filter-btn.active {
+        background: #0088cc !important;
+        color: #ffffff !important;
+        border-color: #0088cc !important;
+        box-shadow: 0 2px 6px rgba(0, 136, 204, 0.35) !important;
+    }
+    @media (max-width: 575.98px) {
+        .pos-header-actions {
+            width: 100%;
+        }
+        .pos-search-input {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+        .cart-item-controls {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.5rem !important;
+        }
+        .cart-item-price-group {
+            width: 100% !important;
+            justify-content: space-between;
+        }
+    }
+</style>
+<div class="row g-3 mb-5 pb-5">
     {{-- Left: Available Shop Products --}}
     <div class="col-lg-7">
-        <div class="card h-100">
-            <div class="card-header py-2" style="border-bottom: 1px solid var(--card-border);">
+        <div class="card h-100 shadow-sm border-0" style="background:var(--card-bg); border: 1px solid var(--card-border) !important;">
+            <div class="card-header py-2.5 px-3" style="border-bottom: 1px solid var(--card-border); background: rgba(255,255,255,0.01);">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <span class="fw-700" style="font-size:.9rem;"><i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory</span>
-                    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end" style="min-width:0;">
+                    <span class="fw-700 text-uppercase tracking-wider" style="font-size:.85rem; color:var(--text-primary);">
+                        <i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory
+                    </span>
+                    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end pos-header-actions" style="min-width:0;">
                         <div class="form-check form-switch mb-0 flex-shrink-0">
-                            <input class="form-check-input" type="checkbox" id="showAllProductsToggle">
+                            <input class="form-check-input" type="checkbox" id="showAllProductsToggle" style="cursor:pointer;">
                             <label class="form-check-label small fw-600 text-nowrap" for="showAllProductsToggle" style="color:var(--text-secondary);cursor:pointer;user-select:none;">Show Out of Stock</label>
                         </div>
-                        <input type="text" id="posSearch" class="form-control form-control-sm" placeholder="Search name/brand..." style="min-width:120px; max-width:200px; flex:1 1 120px;">
+                        <div class="position-relative flex-grow-1 pos-search-input" style="max-width:220px;">
+                            <input type="text" id="posSearch" class="form-control form-control-sm ps-4" placeholder="Search name/brand..." style="border-radius: 8px;">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-muted" style="font-size: 0.75rem;"></i>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {{-- Category Quick Filter Pills Bar --}}
+            <div class="px-3 py-2 border-bottom d-flex align-items-center gap-1.5 overflow-x-auto pos-category-bar" style="border-color:var(--card-border)!important; background:rgba(0,0,0,0.03); scrollbar-width:thin;">
+                <button type="button" class="btn btn-xs category-filter-btn active" data-category="all"><i class="bi bi-grid-fill me-1"></i>All</button>
+                @php
+                    $uniqueCategories = $shopStocks->map(fn($s) => $s->item?->category?->category_name)->filter()->unique()->values();
+                @endphp
+                @foreach($uniqueCategories as $catName)
+                    <button type="button" class="btn btn-xs category-filter-btn" data-category="{{ strtolower($catName) }}">{{ $catName }}</button>
+                @endforeach
+            </div>
+
             <div class="card-body p-0" style="max-height:600px;overflow-y:auto;">
-                <div class="row g-2 p-3" id="posProductGrid">
+                <div class="row g-3 p-3 pb-5" id="posProductGrid">
                     @forelse($shopStocks as $stock)
                     @php
                     $pendingPrice = $stock->is_price_pending ? $stock->pending_selling_price : null;
@@ -31,42 +160,45 @@
                     $isLocked = !auth()->user()->isOwner() && $isIndependent && !$stock->is_sellable;
                     $hasStock = $stock->remaining_quantity > 0;
                     $isMock = str_starts_with($stock->id, 'item_');
+                    $categoryName = $stock->item?->category?->category_name ?? 'General';
                     @endphp
-                    <div class="col-md-6 pos-item-card"
+                    <div class="col-12 col-sm-6 pos-item-card"
                         data-name="{{ strtolower($stock->item->item_name) }}"
                         data-brand="{{ strtolower($stock->item->brand) }}"
+                        data-category="{{ strtolower($categoryName) }}"
                         data-available="{{ ($hasStock && !$isLocked && !$isMock) ? 'true' : 'false' }}">
-                        <div class="p-3 rounded border h-100 d-flex flex-column justify-content-between" style="background:var(--input-bg);border-color:var(--input-border) !important; opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
-                            <div class="d-flex gap-2">
+                        <div class="pos-product-card p-3 h-100 d-flex flex-column justify-content-between" style="opacity: {{ ($hasStock && !$isLocked && !$isMock) ? '1' : '.65' }};">
+                            <div class="d-flex align-items-start gap-2.5">
                                 @if($stock->item->image_path)
                                 <img src="{{ asset('media/' . $stock->item->image_path) }}"
                                     alt="{{ $stock->item->item_name }}"
-                                    class="rounded border img-lightbox"
-                                    style="width: 55px; height: 55px; object-fit: cover; flex-shrink: 0;"
+                                    class="pos-product-img img-lightbox"
                                     onclick="openLightbox(this.src, '{{ addslashes($stock->item->item_name) }}')"
                                     title="Click to enlarge">
                                 @else
-                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted border" style="width: 55px; height: 55px; flex-shrink: 0;">
+                                <div class="rounded d-flex align-items-center justify-content-center bg-light text-muted border pos-product-img">
                                     <i class="bi bi-image" style="font-size: 1.2rem;"></i>
                                 </div>
                                 @endif
-                                <div style="min-width:0;">
-                                    <div class="badge badge-approved mb-1" style="font-size:.65rem;">{{ $stock->item->category->category_name }}</div>
-                                    @if(isset($stock->is_admin_stock) && $stock->is_admin_stock)
-                                    <div class="badge bg-info text-dark mb-1" style="font-size:.65rem;font-weight:600;"><i class="bi bi-person-fill-lock"></i> Admin Stock</div>
-                                    @endif
-                                    @if($isLocked)
-                                    <div class="badge bg-danger mb-1" style="font-size:.65rem;"><i class="bi bi-lock-fill"></i> Locked</div>
-                                    @elseif($isMock)
-                                    <div class="badge bg-secondary mb-1" style="font-size:.65rem;">Catalog Only</div>
-                                    @elseif(!$hasStock)
-                                    <div class="badge bg-warning text-dark mb-1" style="font-size:.65rem;">Out of Stock</div>
-                                    @endif
+                                <div style="min-width:0;" class="flex-grow-1">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                        <span class="category-badge-pill"><i class="bi bi-tag-fill me-1" style="font-size:0.6rem;"></i>{{ $categoryName }}</span>
+                                        @if(isset($stock->is_admin_stock) && $stock->is_admin_stock)
+                                        <span class="badge bg-info text-dark" style="font-size:.62rem;font-weight:600;"><i class="bi bi-person-fill-lock"></i> Admin</span>
+                                        @endif
+                                        @if($isLocked)
+                                        <span class="badge bg-danger" style="font-size:.62rem;"><i class="bi bi-lock-fill"></i> Locked</span>
+                                        @elseif($isMock)
+                                        <span class="badge bg-secondary" style="font-size:.62rem;">Catalog</span>
+                                        @elseif(!$hasStock)
+                                        <span class="badge bg-warning text-dark" style="font-size:.62rem;">Out of Stock</span>
+                                        @endif
+                                    </div>
                                     <div class="fw-700 text-truncate" style="font-size:.88rem;color:var(--text-primary);" title="{{ $stock->item->item_name }}">{{ $stock->item->item_name }}</div>
-                                    <div class="text-truncate" style="font-size:.75rem;color:var(--text-secondary);" title="{{ $stock->item->specification }}">{{ $stock->item->specification }}</div>
+                                    <div class="text-truncate" style="font-size:.74rem;color:var(--text-secondary);" title="{{ $stock->item->specification }}">{{ $stock->item->specification ?: 'No specification' }}</div>
                                 </div>
                             </div>
-                            <div class="mt-3 d-flex align-items-center justify-content-between">
+                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between" style="border-color:var(--card-border) !important;">
                                 <div>
                                     <div class="fw-800" style="color:#3fb950;font-size:.95rem;">TZS {{ number_format($stock->selling_price, 0) }}</div>
                                     <div style="font-size:.7rem;color:{{ ($stock->isLowStock() && !$isMock) ? '#e94560' : 'var(--text-secondary)' }};">
@@ -74,12 +206,11 @@
                                     </div>
                                 </div>
                                 @if($isLocked)
-                                <button type="button" class="btn btn-sm btn-secondary add-to-cart-btn" disabled
-                                    data-is-sellable="false">
+                                <button type="button" class="btn btn-sm btn-secondary add-to-cart-btn px-2.5 py-1" disabled data-is-sellable="false" style="font-size:.78rem;">
                                     <i class="bi bi-lock-fill"></i> Locked
                                 </button>
                                 @else
-                                <button type="button" class="btn btn-sm {{ ($hasStock && !$isMock) ? 'btn-accent' : 'btn-outline-secondary' }} add-to-cart-btn"
+                                <button type="button" class="btn btn-sm {{ ($hasStock && !$isMock) ? 'btn-accent' : 'btn-outline-secondary' }} add-to-cart-btn px-2.5 py-1"
                                     data-id="{{ $stock->id }}"
                                     data-name="{{ $stock->item->item_name }}"
                                     data-price="{{ $stock->selling_price }}"
@@ -90,7 +221,7 @@
                                     data-is-sellable="true"
                                     data-is-admin-stock="{{ (isset($stock->is_admin_stock) && $stock->is_admin_stock) ? 'true' : 'false' }}"
                                     data-allow-components="{{ $stock->allow_components ? 'true' : 'false' }}"
-                                    data-components="{{ json_encode($stock->item->components->map(fn($c) => ['item_id' => $c->component_item_id, 'item_name' => $c->childItem->item_name, 'quantity' => $c->quantity])) }}">
+                                    data-components="{{ json_encode($stock->item->components->map(fn($c) => ['item_id' => $c->component_item_id, 'item_name' => $c->childItem->item_name, 'quantity' => $c->quantity])) }}" style="font-size:.78rem; border-radius: 6px;">
                                     <i class="bi bi-cart-plus me-1"></i> Add
                                 </button>
                                 @endif
@@ -110,57 +241,64 @@
 
     {{-- Right: Cart & Checkout --}}
     <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart</span>
-                <input type="date" name="sale_date" class="form-control form-control-sm" style="width:auto;" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" form="checkoutForm">
+        <div class="card h-100 shadow-sm border-0" style="background:var(--card-bg); border: 1px solid var(--card-border) !important;">
+            <div class="card-header py-2.5 px-3 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid var(--card-border); background: rgba(255,255,255,0.01);">
+                <span class="fw-700 text-uppercase tracking-wider" style="font-size:.85rem; color:var(--text-primary);"><i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart</span>
+                <input type="date" name="sale_date" class="form-control form-control-sm" style="width:auto; border-radius: 6px;" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" form="checkoutForm">
             </div>
-            <div class="card-body d-flex flex-column">
+            <div class="card-body p-3 d-flex flex-column">
                 <form method="POST" action="{{ route('sales.store') }}" id="checkoutForm" class="flex-grow-1 d-flex flex-column">
                     @csrf
                     <input type="hidden" name="idempotency_key" id="idempotencyKeyInput" value="{{ \Illuminate\Support\Str::uuid() }}">
 
-                    <div id="cartItemsList" class="flex-grow-1 mb-3" style="max-height:350px;overflow-y:auto;">
+                    <div id="cartItemsList" class="flex-grow-1 mb-3" style="max-height:360px;overflow-y:auto;">
                         <div class="text-center py-5 text-muted" id="emptyCartMsg">
-                            <i class="bi bi-cart-x fs-2 d-block mb-1"></i>
+                            <i class="bi bi-cart-x fs-2 d-block mb-1" style="opacity:.6;"></i>
                             Cart is empty. Select products from the left.
                         </div>
                     </div>
 
                     <div class="border-top pt-3 mt-auto" style="border-color:var(--card-border) !important;">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="fw-700" style="font-size:1.1rem;">Total Amount:</span>
-                            <span class="fw-800" style="font-size:1.4rem;color:#3fb950;" id="cartTotalDisplay">TZS 0</span>
+                        {{-- Total Amount Summary Card --}}
+                        <div class="p-3 rounded mb-3" style="background: linear-gradient(135deg, rgba(63,185,80,0.12), rgba(46,160,67,0.04)); border: 1px solid rgba(63,185,80,0.25);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-700 text-uppercase tracking-wide" style="font-size:.82rem; color:var(--text-secondary);">Total Amount:</span>
+                                    <div class="small text-muted" style="font-size:.7rem;" id="cartItemCountDisplay">0 items</div>
+                                </div>
+                                <span class="fw-800" style="font-size:1.4rem;color:#3fb950;" id="cartTotalDisplay">TZS 0</span>
+                            </div>
                         </div>
 
-                        <div class="mb-2">
-                            <label class="form-label">Customer Name (Optional)</label>
-                            <input type="text" name="customer_name" class="form-control form-control-sm" placeholder="Walk-in Customer">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Payment Method *</label>
-                            <select name="payment_method" class="form-select form-select-sm" required>
-                                <option value="cash">Cash</option>
-                                <option value="card">Card</option>
-                                <option value="mobile_money">Mobile Money (M-Pesa / Tigo Pesa)</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                            </select>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label mb-1 small fw-600" style="font-size:.78rem;">Customer Name (Optional)</label>
+                                <input type="text" name="customer_name" class="form-control form-control-sm" placeholder="Walk-in Customer" style="border-radius:6px;">
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label mb-1 small fw-600" style="font-size:.78rem;">Payment Method *</label>
+                                <select name="payment_method" class="form-select form-select-sm" required style="border-radius:6px;">
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Card</option>
+                                    <option value="mobile_money">Mobile Money (M-Pesa / Tigo Pesa)</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                </select>
+                            </div>
                         </div>
 
                         {{-- Billing & Delivery Details Collapsible --}}
-                        <div class="mb-3">
-                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600" style="font-size:.82rem;color:var(--accent);" data-bs-toggle="collapse" href="#billingDetailsPanel" role="button">
+                        <div class="mb-2">
+                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600 py-1.5 px-2 rounded" style="font-size:.8rem;color:var(--accent); background: rgba(57,178,255,0.06); border: 1px solid rgba(57,178,255,0.15);" data-bs-toggle="collapse" href="#billingDetailsPanel" role="button">
                                 <i class="bi bi-file-earmark-text"></i> + Add Billing & Delivery Details (for Invoice/Proforma)
                             </a>
                             <div class="collapse mt-2" id="billingDetailsPanel">
                                 <div class="rounded p-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
                                     <div class="row g-2">
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Customer ID</label>
                                             <input type="text" name="customer_id" class="form-control form-control-sm" placeholder="e.g. AD-0025">
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Customer P.O. Box</label>
                                             <input type="text" name="customer_po_box" class="form-control form-control-sm" placeholder="e.g. 6858 Morogoro">
                                         </div>
@@ -168,19 +306,19 @@
                                             <label class="form-label mb-0" style="font-size:.75rem;">Deliver To</label>
                                             <input type="text" name="deliver_to" class="form-control form-control-sm" placeholder="e.g. CHAMWINO STUDENT CENTER">
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Delivery Date</label>
                                             <input type="date" name="delivery_date" class="form-control form-control-sm">
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Delivery Time</label>
                                             <input type="time" name="delivery_time" class="form-control form-control-sm">
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Validity Date</label>
                                             <input type="date" name="validity_date" class="form-control form-control-sm">
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Terms of Payment</label>
                                             <input type="text" name="terms_of_payment" class="form-control form-control-sm" placeholder="e.g. 30 Days Net">
                                         </div>
@@ -191,7 +329,7 @@
 
                         {{-- Custom Off-Catalog Item Entry --}}
                         <div class="mb-3">
-                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600" style="font-size:.82rem;color:#e3b341;" data-bs-toggle="collapse" href="#customItemPanel" role="button">
+                            <a class="d-flex align-items-center gap-2 text-decoration-none fw-600 py-1.5 px-2 rounded" style="font-size:.8rem;color:#e3b341; background: rgba(227,179,65,0.06); border: 1px solid rgba(227,179,65,0.2);" data-bs-toggle="collapse" href="#customItemPanel" role="button">
                                 <i class="bi bi-plus-circle-dotted"></i> + Add Custom Item (Proforma Only)
                             </a>
                             <div class="collapse mt-2" id="customItemPanel">
@@ -201,11 +339,11 @@
                                             <label class="form-label mb-0" style="font-size:.75rem;">Product / Service Name *</label>
                                             <input type="text" id="customItemName" class="form-control form-control-sm" placeholder="e.g. Laptop HP Elitebook 840">
                                         </div>
-                                        <div class="col-5">
+                                        <div class="col-12 col-sm-5">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Qty *</label>
                                             <input type="number" id="customItemQty" class="form-control form-control-sm" value="1" min="1">
                                         </div>
-                                        <div class="col-7">
+                                        <div class="col-12 col-sm-7">
                                             <label class="form-label mb-0" style="font-size:.75rem;">Unit Price (TZS) *</label>
                                             <input type="number" id="customItemPrice" class="form-control form-control-sm" placeholder="0" min="0">
                                         </div>
@@ -222,12 +360,12 @@
                         <input type="hidden" name="sale_status" id="saleStatusInput" value="completed">
 
                         <div class="d-flex flex-column gap-2">
-                            <button type="submit" class="btn btn-accent w-100 py-2 fw-700" id="checkoutBtn" disabled
-                                onclick="document.getElementById('saleStatusInput').value='completed'">
+                            <button type="submit" class="btn btn-accent w-100 py-2.5 fw-700 shadow-sm" id="checkoutBtn" disabled
+                                onclick="document.getElementById('saleStatusInput').value='completed'" style="border-radius: 8px; font-size: 0.92rem;">
                                 <i class="bi bi-check2-circle me-1"></i> Complete Sale
                             </button>
                             <button type="submit" class="btn btn-outline-custom w-100 py-2 fw-600" id="proformaBtn" disabled
-                                onclick="document.getElementById('saleStatusInput').value='draft_proforma'">
+                                onclick="document.getElementById('saleStatusInput').value='draft_proforma'" style="border-radius: 8px; font-size: 0.85rem;">
                                 <i class="bi bi-file-earmark-text me-1"></i> Save as Proforma Quote
                             </button>
                         </div>
@@ -243,7 +381,18 @@
 <script>
     const cart = {};
 
-    // Product Filter (Combined search & toggle)
+    let selectedCategory = 'all';
+
+    document.querySelectorAll('.category-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.category-filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            selectedCategory = this.dataset.category || 'all';
+            filterProducts();
+        });
+    });
+
+    // Product Filter (Combined search, category & toggle)
     function filterProducts() {
         const term = document.getElementById('posSearch').value.toLowerCase();
         const showAll = document.getElementById('showAllProductsToggle').checked;
@@ -251,12 +400,14 @@
         document.querySelectorAll('.pos-item-card').forEach(card => {
             const name = card.dataset.name || '';
             const brand = card.dataset.brand || '';
+            const category = card.dataset.category || '';
             const available = card.dataset.available === 'true';
 
-            const matchesSearch = name.includes(term) || brand.includes(term);
+            const matchesSearch = name.includes(term) || brand.includes(term) || category.includes(term);
             const matchesAvailability = showAll || available;
+            const matchesCategory = (selectedCategory === 'all' || category === selectedCategory);
 
-            if (matchesSearch && matchesAvailability) {
+            if (matchesSearch && matchesAvailability && matchesCategory) {
                 card.style.display = 'block';
             } else {
                 card.style.display = 'none';
@@ -354,10 +505,12 @@
         const list = document.getElementById('cartItemsList');
         const keys = Object.keys(cart);
         const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
+        const countDisplay = document.getElementById('cartItemCountDisplay');
 
         if (keys.length === 0) {
-            list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1"></i>Cart is empty. Select products from the left.</div>`;
+            list.innerHTML = `<div class="text-center py-5 text-muted" id="emptyCartMsg"><i class="bi bi-cart-x fs-2 d-block mb-1" style="opacity:.6;"></i>Cart is empty. Select products from the left.</div>`;
             document.getElementById('cartTotalDisplay').textContent = 'TZS 0';
+            if (countDisplay) countDisplay.textContent = '0 items';
             document.getElementById('checkoutBtn').disabled = true;
             document.getElementById('proformaBtn').disabled = true;
             return;
@@ -365,12 +518,14 @@
 
         let html = '';
         let total = 0;
+        let totalItemsCount = 0;
         let index = 0;
 
         keys.forEach(id => {
             const item = cart[id];
             const subtotal = item.qty * item.negotiatedPrice;
             total += subtotal;
+            totalItemsCount += item.qty;
 
             let compHtml = '';
             if (item.components && item.components.length > 0) {
@@ -422,26 +577,34 @@
             const displayMinPrice = isOwnerOrAdmin ? (item.buyingPrice || 0) : (item.price || 0);
 
             html += `
-            <div class="cart-item-row d-flex flex-column pb-2 mb-2 border-bottom" style="border-color:var(--card-border) !important;">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
-                    ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
-                    <div style="flex:1;min-width:0;" class="pe-2">
-                        <div class="fw-600 text-truncate" style="font-size:.83rem;">${item.name} ${item.isCustom ? '<span style="font-size:.6rem;background:#e3b341;color:#000;padding:1px 5px;border-radius:3px;margin-left:3px;">CUSTOM</span>' : ''}</div>
-                        <div style="font-size:.7rem;color:var(--text-secondary);">Min Price: TZS ${displayMinPrice.toLocaleString()}</div>
+            <div class="cart-item-row mb-2">
+                <input type="hidden" name="items[${index}][shop_stock_id]" value="${item.id}">
+                ${item.isCustom ? `<input type="hidden" name="items[${index}][custom_name]" value="${item.name}">` : ''}
+                
+                <div class="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                    <div style="flex:1;min-width:0;">
+                        <div class="fw-700 text-truncate" style="font-size:.84rem; color:var(--text-primary);">${item.name} ${item.isCustom ? '<span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">CUSTOM</span>' : ''}</div>
+                        <div style="font-size:.68rem;color:var(--text-secondary);">Min Price: <span class="fw-600 text-muted">TZS ${displayMinPrice.toLocaleString()}</span></div>
                     </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', -1)">-</button>
-                        <input type="number" name="items[${index}][quantity]" value="${item.qty}" min="1" ${(!item.isCustom && !item.isMock) ? `max="${item.maxStock}"` : ''} onchange="updateItemQty('${id}', this.value)" style="width:50px;text-align:center;" class="form-control form-control-sm py-0 px-1">
-                        <button type="button" class="btn btn-xs btn-outline-custom px-2" onclick="changeQty('${id}', 1)">+</button>
-                        
-                        <div class="input-group input-group-sm ms-2" style="width:120px;">
-                            <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
-                                   class="form-control form-control-sm py-0 px-1 currency-input" min="0" 
-                                   onchange="updateItemPrice('${id}', this.value)" required>
-                        </div>
+                    <button type="button" class="btn btn-xs text-danger p-0 ms-1 flex-shrink-0" onclick="removeItem('${id}')" title="Remove item" style="font-size:.85rem; background:transparent; border:none;">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                </div>
 
-                        <button type="button" class="btn btn-xs text-danger ms-1" onclick="removeItem('${id}')"><i class="bi bi-x-lg"></i></button>
+                <div class="d-flex align-items-center justify-content-between gap-2 pt-1 border-top cart-item-controls" style="border-color:var(--card-border) !important;">
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-secondary cart-qty-btn" onclick="changeQty('${id}', -1)">-</button>
+                        <input type="number" name="items[${index}][quantity]" value="${item.qty}" min="1" ${(!item.isCustom && !item.isMock) ? `max="${item.maxStock}"` : ''} onchange="updateItemQty('${id}', this.value)" class="form-control form-control-sm cart-qty-input">
+                        <button type="button" class="btn btn-xs btn-outline-secondary cart-qty-btn" onclick="changeQty('${id}', 1)">+</button>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-1 cart-item-price-group">
+                        <span style="font-size:.7rem; color:var(--text-secondary);" class="fw-600">Price:</span>
+                        <div class="input-group input-group-sm" style="width:115px;">
+                            <input type="text" name="items[${index}][price]" value="${window.formatCurrencyValue ? window.formatCurrencyValue(String(item.negotiatedPrice)) : item.negotiatedPrice}" 
+                                   class="form-control form-control-sm py-0 px-1 currency-input fw-600" min="0" 
+                                   onchange="updateItemPrice('${id}', this.value)" required style="text-align:right; border-radius: 6px;">
+                        </div>
                     </div>
                 </div>
                 ${compHtml}
@@ -452,6 +615,7 @@
 
         list.innerHTML = html;
         document.getElementById('cartTotalDisplay').textContent = 'TZS ' + total.toLocaleString();
+        if (countDisplay) countDisplay.textContent = totalItemsCount + ' item' + (totalItemsCount === 1 ? '' : 's');
         
         const isOffline = !navigator.onLine;
         const checkoutBtn = document.getElementById('checkoutBtn');
