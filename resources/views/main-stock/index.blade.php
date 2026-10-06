@@ -5,15 +5,45 @@
 <li class="breadcrumb-item active">Main Store Stock</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+    @media (max-width: 767.98px) {
+        .main-stock-header-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.45rem !important;
+            width: 100% !important;
+        }
+        .main-stock-header-actions .btn {
+            width: 100% !important;
+            justify-content: center !important;
+            font-size: 0.76rem !important;
+            padding: 0.4rem 0.5rem !important;
+        }
+        .stat-card.premium-stat-card .stat-value {
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .stat-card.premium-stat-card .stat-label {
+            font-size: 0.62rem !important;
+        }
+        .stat-card.premium-stat-card .stat-icon {
+            width: 26px !important;
+            height: 26px !important;
+            font-size: 0.8rem !important;
+        }
+    }
+</style>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
     <div>
         <h5 class="mb-0 fw-700">Main Store Inventory</h5>
         <small style="color:var(--text-secondary);">Central warehouse stock management</small>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 main-stock-header-actions">
         <a href="{{ route('main-stock.history') }}" class="btn btn-outline-custom"><i class="bi bi-clock-history me-1"></i>History</a>
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadMainStockModal">
-            <i class="bi bi-file-earmark-excel me-1"></i>Upload Stock
+            <i class="bi bi-file-earmark-excel me-1"></i>Upload
         </button>
         <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#addMainStockModal">
             <i class="bi bi-plus-circle me-1"></i>Add Stock
@@ -36,16 +66,16 @@
 </div>
 @endif
 
-<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 mb-4">
+<div class="row row-cols-2 row-cols-sm-3 row-cols-lg-5 g-2 mb-4">
     <!-- Total Cost Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Cost Value ({{ number_format($stats['totalInitialQty']) }} units)">Total Cost <span class="small">({{ number_format($stats['totalInitialQty']) }})</span></div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Cost Value ({{ number_format($stats['totalInitialQty']) }} units)">Total Cost <span class="small">({{ number_format($stats['totalInitialQty']) }})</span></div>
             </div>
         </div>
     </div>
@@ -56,9 +86,9 @@
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0 text-success" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-success" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
             </div>
         </div>
     </div>
@@ -69,9 +99,9 @@
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-box-seam"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($stats['totalRemainingQty']) }} units)">Remain Value <span class="small">({{ number_format($stats['totalRemainingQty']) }})</span></div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($stats['totalRemainingQty']) }} units)">Remain Value <span class="small">({{ number_format($stats['totalRemainingQty']) }})</span></div>
             </div>
         </div>
     </div>
@@ -82,9 +112,9 @@
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-piggy-bank"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
             </div>
         </div>
     </div>
@@ -95,9 +125,9 @@
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-layers"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">{{ number_format($stats['stockBatchesCount']) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">{{ number_format($stats['stockBatchesCount']) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
             </div>
         </div>
     </div>
@@ -115,21 +145,21 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="mainStockTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="mainStockTable">
             <thead>
                 <tr>
-                    <th style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
-                    <th>No</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Buy Price</th>
-                    <th>Sell Price</th>
-                    <th>Stocked</th>
-                    <th>Remaining</th>
-                    <th>Date</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="1000" class="no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Product Details</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="3">Buy Price</th>
+                    <th data-priority="3">Sell Price</th>
+                    <th data-priority="3">Stocked Qty</th>
+                    <th data-priority="3">Remaining Qty</th>
+                    <th data-priority="4">Date</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

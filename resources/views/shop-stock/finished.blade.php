@@ -73,23 +73,23 @@
 </div>
 @endif
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="finishedStockTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="finishedStockTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Shop</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Initial Qty</th>
-                    <th>Remaining Qty</th>
-                    <th>Average Sales</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Shop</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="4">Initial Qty</th>
+                    <th data-priority="2">Remaining Qty</th>
+                    <th data-priority="3">Average Sales</th>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th>Buying Price</th>
+                    <th data-priority="4">Buying Price</th>
                     @endif
-                    <th>Selling Price</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="2">Selling Price</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

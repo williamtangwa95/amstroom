@@ -443,13 +443,24 @@
 </div>
 
 {{-- FULL PRODUCT TABLE --}}
-<div class="an-card mb-4">
-    <div class="an-section-title">
-        <i class="bi bi-table" style="color:var(--text-secondary);"></i> All Products — Velocity & Margin Detail
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center">
+        <i class="bi bi-table text-accent me-2"></i><strong class="fw-700">All Products — Velocity &amp; Margin Detail</strong>
     </div>
-    <div style="overflow-x:auto;">
-        <table class="table table-sm" id="allProductsTable">
-            <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Units Sold</th><th>Revenue (TZS)</th><th>Profit (TZS)</th><th>Margin</th><th>Velocity</th></tr></thead>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="allProductsTable">
+            <thead>
+                <tr>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="2">Units Sold</th>
+                    <th data-priority="1">Revenue (TZS)</th>
+                    <th data-priority="2">Profit (TZS)</th>
+                    <th data-priority="3">Margin</th>
+                    <th data-priority="2">Velocity</th>
+                </tr>
+            </thead>
             <tbody>
             @php
             $fastIds = $fastItems->pluck('item_id')->toArray();
@@ -458,12 +469,12 @@
             @forelse($marginItems as $idx => $item)
             @php $vel = in_array($item->item_id,$fastIds)?'fast':(in_array($item->item_id,$slowIds)?'slow':'moderate'); @endphp
             <tr>
-                <td class="text-muted">{{ $idx+1 }}</td>
-                <td style="font-weight:600;">{{ $item->item_name }}</td>
-                <td style="color:var(--text-secondary);">{{ $item->category }}</td>
+                <td class="text-center">{{ $idx+1 }}</td>
+                <td class="fw-600">{{ $item->item_name }}</td>
+                <td class="text-secondary">{{ $item->category }}</td>
                 <td>{{ number_format($item->qty_sold) }}</td>
-                <td>{{ number_format($item->revenue,0) }}</td>
-                <td>{{ number_format($item->profit,0) }}</td>
+                <td><strong>TZS {{ number_format($item->revenue,0) }}</strong></td>
+                <td><strong class="text-success">TZS {{ number_format($item->profit,0) }}</strong></td>
                 <td><span class="margin-pill margin-{{ $item->margin_tier }}">{{ number_format($item->margin_pct,1) }}%</span></td>
                 <td>
                     @if($vel==='fast')
@@ -669,5 +680,13 @@ function shareEmailSuggestions() {
     let url = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
     window.location.href = url;
 }
+
+$(document).ready(function() {
+    if ($.fn.DataTable && $('#allProductsTable tbody tr').length > 0 && !$('#allProductsTable tbody tr td[colspan]').length) {
+        $('#allProductsTable').DataTable({
+            order: [[3, 'desc']]
+        });
+    }
+});
 </script>
 @endpush

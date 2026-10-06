@@ -24,14 +24,14 @@
         </div>
     </div>
 
-    <div class="card-body p-0">
+    <div class="card-body p-3 p-md-4">
         @if(session('success'))
-            <div class="alert alert-success m-3 border-0 rounded-3" style="font-size:.83rem;">
+            <div class="alert alert-success mb-3 border-0 rounded-3" style="font-size:.83rem;">
                 <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}
             </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger m-3 border-0 rounded-3" style="font-size:.83rem;">
+            <div class="alert alert-danger mb-3 border-0 rounded-3" style="font-size:.83rem;">
                 <i class="bi bi-exclamation-circle-fill me-1"></i> {{ session('error') }}
             </div>
         @endif
@@ -43,7 +43,7 @@
                     ->whereIn('status', ['pending_receipt', 'partially_received'])->count();
             @endphp
             @if($pendingCount > 0)
-                <div class="alert alert-warning m-3 border-0 rounded-3 d-flex align-items-center" style="font-size:.84rem;">
+                <div class="alert alert-warning mb-3 border-0 rounded-3 d-flex align-items-center" style="font-size:.84rem;">
                     <i class="bi bi-bell-fill text-warning me-2" style="font-size:1.2rem;"></i>
                     <div>
                         <strong>{{ $pendingCount }} dispatch{{ $pendingCount > 1 ? 'es' : '' }}</strong> from Main Warehouse awaiting your receipt confirmation.
@@ -53,21 +53,21 @@
             @endif
         @endif
 
-        <table class="table table-hover mb-0" id="transfersTable">
+        <table class="table table-hover align-middle w-100" id="transfersTable">
             <thead>
                 <tr>
                     @if(auth()->user()->isOwner())
-                        <th style="width: 40px;" class="no-sort">
+                        <th data-priority="1000" style="width: 40px;" class="no-sort">
                             <input type="checkbox" id="selectAllTransfers" style="cursor:pointer;">
                         </th>
                     @endif
-                    <th>No</th>
-                    <th>Transfer Date</th>
-                    <th>Destination Shop</th>
-                    <th>Items</th>
-                    <th>Dispatched By</th>
-                    <th>Status</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Transfer Date</th>
+                    <th data-priority="1">Destination Shop</th>
+                    <th data-priority="2">Items</th>
+                    <th data-priority="4">Dispatched By</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

@@ -54,7 +54,7 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
     <div>
         @if(auth()->user()->isOwner())
         <!-- Owner Filtering -->
@@ -81,7 +81,7 @@
         @endif
     </div>
     @if(auth()->user()->isShopAdmin())
-    <a href="{{ route('handovers.create') }}" class="btn btn-sm btn-accent">
+    <a href="{{ route('handovers.create') }}" class="btn btn-sm btn-accent align-self-start">
         <i class="bi bi-plus-circle me-1"></i> New Handover Report
     </a>
     @endif
@@ -90,25 +90,24 @@
 <div class="card border-0 shadow-sm">
     <div class="card-header"><i class="bi bi-clock-history me-2" style="color:var(--accent);"></i>Handover History</div>
     <div class="card-body p-3">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0" id="handoversTable">
-                <thead>
-                    <tr>
-                        <th>Handover ID</th>
-                        <th>Shop</th>
-                        <th>Shop Admin</th>
-                        <th>Period</th>
-                        <th>Owner Sales</th>
-                        <th>Admin Sales (Info)</th>
-                        <th>Expenses</th>
-                        <th>Expected</th>
-                        <th>Actual Submitted</th>
-                        <th>Difference</th>
-                        <th>Status</th>
-                        <th>Submitted At</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
+        <table class="table table-hover align-middle w-100" id="handoversTable">
+            <thead>
+                <tr>
+                    <th data-priority="1">Handover ID</th>
+                    <th data-priority="3">Shop</th>
+                    <th data-priority="4">Shop Admin</th>
+                    <th data-priority="3">Period</th>
+                    <th data-priority="4">Owner Sales</th>
+                    <th data-priority="5">Admin Sales</th>
+                    <th data-priority="4">Expenses</th>
+                    <th data-priority="2">Expected</th>
+                    <th data-priority="2">Actual Submitted</th>
+                    <th data-priority="2">Difference</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="4">Submitted At</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                </tr>
+            </thead>
                 <tbody>
                     @foreach($handovers as $ho)
                     <tr>
@@ -176,7 +175,6 @@
                     @endforeach
                 </tbody>
             </table>
-        </div>
     </div>
 </div>
 @endsection

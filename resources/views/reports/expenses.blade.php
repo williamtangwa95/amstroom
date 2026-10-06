@@ -93,23 +93,23 @@
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-tags-fill me-2" style="color:#d29922;"></i>Expenses by Category</div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-tags-fill me-2 text-warning"></i><strong class="fw-700">Expenses by Category</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="expensesByCategoryTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Category Name</th>
-                    <th>Transactions</th>
-                    <th>Total Expenses</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Category Name</th>
+                    <th data-priority="2">Transactions</th>
+                    <th data-priority="1">Total Expenses</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($expensesByCategory as $ebc)
                 <tr>
-                    <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                    <td style="font-weight:600;">{{ $ebc->category->name ?? 'Deleted Category' }}</td>
+                    <td class="text-center">{{ $loop->iteration }}</td>
+                    <td class="fw-600">{{ $ebc->category->name ?? 'Deleted Category' }}</td>
                     <td>{{ number_format($ebc->count) }}</td>
                     <td><strong class="text-danger">TZS {{ number_format($ebc->total_amount, 0) }}</strong></td>
                 </tr>
@@ -123,19 +123,19 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header"><i class="bi bi-list-check me-2" style="color:#58a6ff;"></i>Expenses Log</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="reportsExpensesTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-list-check me-2 text-accent"></i><strong class="fw-700">Expenses Log</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="reportsExpensesTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Activity</th>
-                    <th>Recorded By</th>
-                    <th>Approved By</th>
-                    <th>Amount</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Date</th>
+                    <th data-priority="2">Category</th>
+                    <th data-priority="3">Activity</th>
+                    <th data-priority="4">Recorded By</th>
+                    <th data-priority="4">Approved By</th>
+                    <th data-priority="1">Amount</th>
                 </tr>
             </thead>
             <tbody>

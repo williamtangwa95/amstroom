@@ -57,17 +57,17 @@
             <span>Send via Email</span>
         </button>
     </div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="reportsTransferTable">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="reportsTransferTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Request ID</th>
-                    <th>Shop</th>
-                    <th>Requester</th>
-                    <th>Request Date</th>
-                    <th>Status</th>
-                    <th>Items</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Request ID</th>
+                    <th data-priority="2">Shop</th>
+                    <th data-priority="3">Requester</th>
+                    <th data-priority="3">Request Date</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="2">Items</th>
                 </tr>
             </thead>
             <tbody>

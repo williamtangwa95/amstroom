@@ -122,46 +122,101 @@
         box-shadow: 0 6px 18px rgba(2, 132, 199, 0.38) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
+    @media (max-width: 767.98px) {
+        .shop-stock-header-container {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.85rem !important;
+        }
+        .shop-stock-header-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.45rem !important;
+            width: 100% !important;
+        }
+        .btn-action-custom {
+            width: 100% !important;
+            justify-content: center !important;
+            font-size: 0.76rem !important;
+            padding: 0.42rem 0.5rem !important;
+            border-radius: 8px !important;
+            text-align: center !important;
+        }
+        .btn-action-custom i {
+            font-size: 0.85rem !important;
+        }
+        .shop-stock-badges {
+            grid-column: span 2 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.35rem !important;
+            width: 100% !important;
+        }
+        .shop-stock-badge-item {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+        .stat-card.premium-stat-card {
+            padding: 0.5rem 0.6rem !important;
+        }
+        .stat-card.premium-stat-card .stat-icon {
+            width: 26px !important;
+            height: 26px !important;
+            font-size: 0.8rem !important;
+            border-radius: 6px !important;
+        }
+        .stat-card.premium-stat-card .stat-value {
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .stat-card.premium-stat-card .stat-label {
+            font-size: 0.62rem !important;
+        }
+    }
 </style>
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 shop-stock-header-container">
     <div>
         <h5 class="mb-0 fw-700" style="color: var(--text-primary); font-size: 1.25rem;">Shop Inventory</h5>
         <small style="color: var(--text-secondary); font-size: 0.82rem;">Available products in retail shops</small>
     </div>
-    <div class="d-flex flex-wrap align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2 shop-stock-header-actions">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
         <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn-action-custom btn-action-success shadow-xs">
-            <i class="bi bi-file-earmark-arrow-down-fill"></i> Download Available Stock
+            <i class="bi bi-file-earmark-arrow-down-fill"></i> Download Stock
         </a>
         <button type="button" class="btn-action-custom btn-action-secondary shadow-xs" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
             <i class="bi bi-file-earmark-excel-fill text-success"></i> Upload Stock
         </button>
         <button type="button" class="btn-action-custom btn-action-purple shadow-xs" data-bs-toggle="modal" data-bs-target="#categoryComponentsModal">
-            <i class="bi bi-sliders"></i> Category Components
+            <i class="bi bi-sliders"></i> Components
         </button>
         @endif
 
         @if(auth()->user()->isShopAdmin())
             @if(auth()->user()->allow_stock_addition)
             <button type="button" class="btn-action-custom btn-action-emerald shadow-xs" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
-                <i class="bi bi-plus-lg"></i> Add Owner Stock
+                <i class="bi bi-plus-lg"></i> Owner Stock
             </button>
             @endif
             <button type="button" class="btn-action-custom btn-action-blue shadow-xs" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
-                <i class="bi bi-plus-circle-fill"></i> Add Admin Stock
+                <i class="bi bi-plus-circle-fill"></i> Admin Stock
             </button>
         @endif
 
-        @if($lowStockItems > 0)
-        <div class="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-600 shadow-xs" style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
-            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ $lowStockItems }} item(s) low in stock!
+        <div class="shop-stock-badges">
+            @if($lowStockItems > 0)
+            <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-2 fw-600 shadow-xs shop-stock-badge-item" style="font-size: 0.75rem; background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ $lowStockItems }} item(s) low in stock!
+            </div>
+            @endif
+            @if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
+            <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-2 fw-600 shadow-xs shop-stock-badge-item" style="font-size: 0.75rem; background: rgba(245, 158, 11, 0.18); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);" title="Main Store selling price changed affecting shop stock buying price">
+                <i class="bi bi-exclamation-circle-fill text-warning me-1"></i> {{ $pendingPriceItemsCount }} price update(s) required!
+            </div>
+            @endif
         </div>
-        @endif
-        @if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
-        <div class="d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-600 shadow-xs" style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.18); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);" title="Main Store selling price changed affecting shop stock buying price">
-            <i class="bi bi-exclamation-circle-fill text-warning me-1"></i> {{ $pendingPriceItemsCount }} price update(s) required!
-        </div>
-        @endif
     </div>
 </div>
 
@@ -210,81 +265,81 @@
     $totalSoldQty = $totalSoldQty ?? 0;
 @endphp
 
-<div class="row g-2 mb-4">
+<div class="row row-cols-2 row-cols-sm-3 row-cols-lg-6 g-2 mb-4">
     <!-- Stock Value Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Stock Value ({{ number_format($totalQuantity) }} units)">Stock Value <span class="small">({{ number_format($totalQuantity) }})</span></div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalStockValue, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Value ({{ number_format($totalQuantity) }} units)">Stock Value <span class="small">({{ number_format($totalQuantity) }})</span></div>
             </div>
         </div>
     </div>
 
     <!-- Remaining Stock Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-box-seam"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Remaining Stock ({{ number_format($totalRemainingQty) }} units)">Remaining <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingStockValue, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remaining Stock ({{ number_format($totalRemainingQty) }} units)">Remaining <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
             </div>
         </div>
     </div>
 
     <!-- Sold Stock Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cart-check"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0 text-danger" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Sold Stock Value ({{ number_format($totalSoldQty) }} units)">Sold Value <span class="small">({{ number_format($totalSoldQty) }})</span></div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-danger" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldStockValue, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Sold Stock Value ({{ number_format($totalSoldQty) }} units)">Sold Value <span class="small">({{ number_format($totalSoldQty) }})</span></div>
             </div>
         </div>
     </div>
 
     <!-- Expected Profit from Stock Value Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0 text-success" style="font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Expected Profit (Stock Value)">Exp. Profit (Stock)</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-success" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Stock Value)">Exp. Profit (Stock)</div>
             </div>
         </div>
     </div>
 
     <!-- Expected Profit from Remaining Stock Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-piggy-bank"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Expected Profit (Remaining Stock)">Exp. Profit (Rem.)</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Remaining Stock)">Exp. Profit (Rem.)</div>
             </div>
         </div>
     </div>
 
     <!-- Profit for Sold Stock Card -->
-    <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2">
+    <div class="col">
+        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
             <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(255, 183, 0, 0.15); color: var(--accent-gold); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-coin"></i>
             </div>
-            <div class="overflow-hidden">
-                <div class="stat-value mb-0" style="color: #ff9f00 !important; font-size: 1.02rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.68rem; font-weight: 600;" title="Profit for Sold Stock">Profit (Sold)</div>
+            <div class="overflow-hidden flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: #ff9f00 !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
+                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Profit for Sold Stock">Profit (Sold)</div>
             </div>
         </div>
     </div>
@@ -325,24 +380,24 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="shopStockTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="shopStockTable">
             <thead>
                 <tr>
-                    <th style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
-                    <th>No</th>
-                    <th>Shop</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Initial Qty</th>
-                    <th>Remaining Qty</th>
-                    <th>Alert Threshold</th>
+                    <th data-priority="1000" class="no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Shop</th>
+                    <th data-priority="1">Product Details</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="4">Initial Qty</th>
+                    <th data-priority="3">Remaining Qty</th>
+                    <th data-priority="4">Alert Threshold</th>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th>Buying Price</th>
+                    <th data-priority="3">Buying Price</th>
                     @endif
-                    <th>Selling Price</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="3">Selling Price</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

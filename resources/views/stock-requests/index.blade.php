@@ -5,7 +5,7 @@
 <li class="breadcrumb-item active">Stock Requests</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">Stock Requests</h5>
         <small style="color:var(--text-secondary);">Request inventory from central warehouse</small>
@@ -15,18 +15,18 @@
     @endif
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="requestsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="requestsTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Shop</th>
-                    <th>Requester</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Items</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Shop</th>
+                    <th data-priority="3">Requester</th>
+                    <th data-priority="3">Date</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="1">Items</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

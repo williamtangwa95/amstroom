@@ -62,17 +62,17 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header"><i class="bi bi-activity me-2" style="color:var(--accent-color);"></i>System Activity Timeline (Last 1000 logs)</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="activityLogsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-activity me-2 text-accent"></i><strong class="fw-700">System Activity Timeline</strong> <span class="badge badge-soft-secondary ms-2 small">Last 1000 logs</span></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="activityLogsTable">
             <thead>
                 <tr>
-                    <th style="width: 150px;">Time</th>
-                    <th style="width: 180px;">User</th>
-                    <th style="width: 120px;">Action</th>
-                    <th>Activity Details</th>
-                    <th style="width: 250px;">Origin Info</th>
+                    <th data-priority="2" style="width: 150px;">Time</th>
+                    <th data-priority="1" style="width: 180px;">User</th>
+                    <th data-priority="2" style="width: 120px;">Action</th>
+                    <th data-priority="1">Activity Details</th>
+                    <th data-priority="3" style="width: 250px;">Origin Info</th>
                 </tr>
             </thead>
             <tbody>

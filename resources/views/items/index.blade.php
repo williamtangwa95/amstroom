@@ -5,23 +5,31 @@
 <li class="breadcrumb-item active">Products</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">All Products</h5>
         <small style="color:var(--text-secondary);">Manage your product catalog</small>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadProductsModal">
             <i class="bi bi-file-earmark-excel me-1"></i> Upload Products
         </button>
         <a href="{{ route('items.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i> Add Product</a>
     </div>
 </div>
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="itemsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="itemsTable">
             <thead>
-                <tr><th>No</th><th>Product</th><th>Category</th><th>Brand/Model</th><th>Warranty</th><th>Main Stock</th><th class="no-sort">Actions</th></tr>
+                <tr>
+                    <th data-priority="1" class="text-center" style="width: 50px;">#</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="2">Category</th>
+                    <th data-priority="3">Brand / Model</th>
+                    <th data-priority="4">Warranty</th>
+                    <th data-priority="2">Main Stock</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                </tr>
             </thead>
             <tbody></tbody>
         </table>

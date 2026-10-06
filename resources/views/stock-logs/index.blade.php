@@ -32,21 +32,21 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header"><i class="bi bi-clock-history me-2" style="color:#58a6ff;"></i>Complete Audit Trail</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="logsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-clock-history me-2 text-accent"></i><strong class="fw-700">Complete Audit Trail</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="logsTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Date</th>
-                    <th>Product</th>
-                    <th>Transaction Type</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Qty</th>
-                    <th>Performed By</th>
-                    <th>Notes</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Date</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="2">Transaction Type</th>
+                    <th data-priority="3">From</th>
+                    <th data-priority="3">To</th>
+                    <th data-priority="2">Qty</th>
+                    <th data-priority="4">Performed By</th>
+                    <th data-priority="4">Notes</th>
                 </tr>
             </thead>
             <tbody>

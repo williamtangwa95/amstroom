@@ -38,18 +38,18 @@
             <span>Send via Email</span>
         </button>
     </div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="reportsDefectTable">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="reportsDefectTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Date</th>
-                    <th>Shop / Warehouse</th>
-                    <th>Product</th>
-                    <th>Qty Defective</th>
-                    <th>Reason</th>
-                    <th>Reported By</th>
-                    <th>Status</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Date</th>
+                    <th data-priority="2">Shop / Warehouse</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="2">Qty Defective</th>
+                    <th data-priority="4">Reason</th>
+                    <th data-priority="4">Reported By</th>
+                    <th data-priority="2">Status</th>
                 </tr>
             </thead>
             <tbody>

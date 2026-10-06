@@ -10,14 +10,16 @@
     {{-- Left: Available Shop Products --}}
     <div class="col-lg-7">
         <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
-                <span class="fw-700" style="font-size:.9rem;"><i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory</span>
-                <div class="d-flex align-items-center gap-3">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" id="showAllProductsToggle">
-                        <label class="form-check-label small fw-600 text-nowrap" for="showAllProductsToggle" style="color:var(--text-secondary);cursor:pointer;user-select:none;">Show Out of Stock</label>
+            <div class="card-header py-2" style="border-bottom: 1px solid var(--card-border);">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <span class="fw-700" style="font-size:.9rem;"><i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory</span>
+                    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end" style="min-width:0;">
+                        <div class="form-check form-switch mb-0 flex-shrink-0">
+                            <input class="form-check-input" type="checkbox" id="showAllProductsToggle">
+                            <label class="form-check-label small fw-600 text-nowrap" for="showAllProductsToggle" style="color:var(--text-secondary);cursor:pointer;user-select:none;">Show Out of Stock</label>
+                        </div>
+                        <input type="text" id="posSearch" class="form-control form-control-sm" placeholder="Search name/brand..." style="min-width:120px; max-width:200px; flex:1 1 120px;">
                     </div>
-                    <input type="text" id="posSearch" class="form-control form-control-sm" placeholder="Search name/brand..." style="width:160px;">
                 </div>
             </div>
             <div class="card-body p-0" style="max-height:600px;overflow-y:auto;">

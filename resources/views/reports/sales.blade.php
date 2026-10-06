@@ -176,19 +176,27 @@
 </div>
 @endif
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-shop me-2" style="color:#bc8cff;"></i>Revenue &amp; Profit Breakdown by Shop</div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
-            <thead><tr><th>No</th><th>Shop Name</th><th>Total Transactions</th><th>Revenue Generated</th><th>Profit Generated</th></tr></thead>
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-shop me-2 text-accent"></i><strong class="fw-700">Revenue &amp; Profit Breakdown by Shop</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="salesByShopTable">
+            <thead>
+                <tr>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Shop Name</th>
+                    <th data-priority="2">Total Transactions</th>
+                    <th data-priority="1">Revenue Generated</th>
+                    <th data-priority="2">Profit Generated</th>
+                </tr>
+            </thead>
             <tbody>
             @foreach($salesByShop as $sbs)
             <tr>
-                <td style="font-size:.82rem;">{{ $loop->iteration }}</td>
-                <td style="font-weight:600;">{{ $sbs->shop ? $sbs->shop->shop_name : ($sbs->shop_id === null ? 'Main Store (Owner)' : 'Deleted Shop') }}</td>
+                <td class="text-center">{{ $loop->iteration }}</td>
+                <td class="fw-600">{{ $sbs->shop ? $sbs->shop->shop_name : ($sbs->shop_id === null ? 'Main Store (Owner)' : 'Deleted Shop') }}</td>
                 <td>{{ number_format($sbs->count) }}</td>
-                <td><strong style="color:#3fb950;">TZS {{ number_format($sbs->revenue, 0) }}</strong></td>
-                <td><strong style="color:#ffc107;">TZS {{ number_format($sbs->profit, 0) }}</strong></td>
+                <td><strong class="text-success">TZS {{ number_format($sbs->revenue, 0) }}</strong></td>
+                <td><strong class="text-warning">TZS {{ number_format($sbs->profit, 0) }}</strong></td>
             </tr>
             @endforeach
             </tbody>
@@ -196,11 +204,23 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header"><i class="bi bi-list-check me-2" style="color:#58a6ff;"></i>Sales Log</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="salesReportLogTable">
-            <thead><tr><th>No</th><th>Date</th><th>Shop</th><th>Seller</th><th>Customer</th><th>Items Sold</th><th>Method</th><th>Revenue</th><th>Profit</th></tr></thead>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-list-check me-2 text-accent"></i><strong class="fw-700">Sales Log</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="salesReportLogTable">
+            <thead>
+                <tr>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Date</th>
+                    <th data-priority="3">Shop</th>
+                    <th data-priority="4">Seller</th>
+                    <th data-priority="3">Customer</th>
+                    <th data-priority="2">Items Sold</th>
+                    <th data-priority="4">Method</th>
+                    <th data-priority="1">Revenue</th>
+                    <th data-priority="2">Profit</th>
+                </tr>
+            </thead>
             <tbody>
             </tbody>
         </table>

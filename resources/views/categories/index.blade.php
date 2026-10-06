@@ -5,23 +5,30 @@
 <li class="breadcrumb-item active">Categories</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">Categories</h5>
         <small style="color:var(--text-secondary);">Manage product categories and subcategories</small>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadCategoriesModal">
             <i class="bi bi-file-earmark-excel me-1"></i> Upload Categories
         </button>
         <a href="{{ route('categories.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i> Add Category</a>
     </div>
 </div>
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="catTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="catTable">
             <thead>
-                <tr><th>No</th><th>Category Name</th><th>Description</th><th>Products</th><th>Created</th><th class="no-sort">Actions</th></tr>
+                <tr>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Category Name</th>
+                    <th data-priority="3">Description</th>
+                    <th data-priority="2">Products</th>
+                    <th data-priority="4">Created</th>
+                    <th data-priority="1" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                </tr>
             </thead>
             <tbody></tbody>
         </table>

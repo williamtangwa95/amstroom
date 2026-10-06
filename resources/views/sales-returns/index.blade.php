@@ -25,14 +25,14 @@
         @endif
     </div>
 
-    <div class="card-body p-0">
+    <div class="card-body p-3 p-md-4">
         @if(session('success'))
-            <div class="alert alert-success m-3 border-0 rounded-3" style="font-size:.83rem;">
+            <div class="alert alert-success mb-3 border-0 rounded-3" style="font-size:.83rem;">
                 <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}
             </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger m-3 border-0 rounded-3" style="font-size:.83rem;">
+            <div class="alert alert-danger mb-3 border-0 rounded-3" style="font-size:.83rem;">
                 <i class="bi bi-exclamation-circle-fill me-1"></i> {{ session('error') }}
             </div>
         @endif
@@ -45,7 +45,7 @@
                 })->where('status', 'pending')->count();
             @endphp
             @if($pendingReturns > 0)
-                <div class="alert alert-warning m-3 border-0 rounded-3 d-flex align-items-center" style="font-size:.84rem;">
+                <div class="alert alert-warning mb-3 border-0 rounded-3 d-flex align-items-center" style="font-size:.84rem;">
                     <i class="bi bi-bell-fill text-warning me-2" style="font-size:1.2rem;"></i>
                     <div>
                         <strong>{{ $pendingReturns }} return request{{ $pendingReturns > 1 ? 's' : '' }}</strong> awaiting your approval to restock.
@@ -54,23 +54,23 @@
             @endif
         @endif
 
-        <table class="table table-hover mb-0" id="returnsTable">
+        <table class="table table-hover align-middle w-100" id="returnsTable">
             <thead>
                 <tr>
                     @if($canManage)
-                        <th style="width: 40px;" class="text-center">
+                        <th data-priority="1000" style="width: 40px;" class="text-center no-sort">
                             <input type="checkbox" class="form-check-input" id="selectAllCb">
                         </th>
                     @endif
-                    <th>No</th>
-                    <th>Return Date</th>
-                    <th>Sale ID</th>
-                    <th>Shop Branch</th>
-                    <th>Returned Items</th>
-                    <th>Reason</th>
-                    <th>Requested By</th>
-                    <th>Status</th>
-                    <th class="text-center">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Return Date</th>
+                    <th data-priority="2">Sale ID</th>
+                    <th data-priority="3">Shop Branch</th>
+                    <th data-priority="1">Returned Items</th>
+                    <th data-priority="4">Reason</th>
+                    <th data-priority="4">Requested By</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

@@ -28,18 +28,18 @@
 @endif
 
 @if($type === 'main')
-<div class="card">
-    <div class="card-header"><i class="bi bi-building-fill me-2" style="color:#d29922;"></i>Main Warehouse Stock Summary</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="reportsMainStockTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-building-fill me-2 text-warning"></i><strong class="fw-700">Main Warehouse Stock Summary</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="reportsMainStockTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Total Remaining Qty</th>
-                    <th>Stock Value (Cost)</th>
-                    <th>Expected Sales Value</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="2">Total Remaining Qty</th>
+                    <th data-priority="2">Stock Value (Cost)</th>
+                    <th data-priority="2">Expected Sales Value</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,19 +48,19 @@
     </div>
 </div>
 @else
-<div class="card">
-    <div class="card-header"><i class="bi bi-shop me-2" style="color:#3fb950;"></i>Shop Stocks Inventory</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="reportsShopStockTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-shop me-2 text-success"></i><strong class="fw-700">Shop Stocks Inventory</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="reportsShopStockTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Shop</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Remaining Qty</th>
-                    <th>Selling Price</th>
-                    <th>Total Valuation</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="2">Shop</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="3">Category</th>
+                    <th data-priority="2">Remaining Qty</th>
+                    <th data-priority="2">Selling Price</th>
+                    <th data-priority="2">Total Valuation</th>
                 </tr>
             </thead>
             <tbody>

@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">@if(auth()->user()->isOwner()) All Shops @else My Shop Profile @endif</h5>
         <small style="color:var(--text-secondary);">@if(auth()->user()->isOwner()) Manage your retail branches @else View and manage your shop profile details @endif</small>
@@ -18,19 +18,19 @@
     @endif
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="shopsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="shopsTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Shop Name</th>
-                    <th>Location</th>
-                    <th>Phone</th>
-                    <th>Employees</th>
-                    <th>Sales</th>
-                    <th>Status</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Shop Name</th>
+                    <th data-priority="3">Location</th>
+                    <th data-priority="3">Phone</th>
+                    <th data-priority="2">Employees</th>
+                    <th data-priority="2">Sales</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

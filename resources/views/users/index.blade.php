@@ -5,7 +5,7 @@
 <li class="breadcrumb-item active">Employees</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">
             @if(auth()->user()->isShopAdmin() && $shopName)
@@ -39,21 +39,21 @@
 </div>
 @endif
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="usersTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="usersTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Role</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="1">Name</th>
+                    <th data-priority="3">Email</th>
+                    <th data-priority="3">Phone</th>
+                    <th data-priority="2">Role</th>
                     @if(auth()->user()->isOwner())
-                    <th>Assigned Shop</th>
+                    <th data-priority="2">Assigned Shop</th>
                     @endif
-                    <th>Status</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

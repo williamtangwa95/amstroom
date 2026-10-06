@@ -5,12 +5,12 @@
 <li class="breadcrumb-item active">Defects</li>
 @endsection
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h5 class="mb-0 fw-700">Defective Items</h5>
         <small style="color:var(--text-secondary);">Track damaged, broken, or returned items</small>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         @if(auth()->user()->isOwner())
         <a href="{{ route('defects.create') }}?main_store=1" class="btn btn-outline-custom"><i class="bi bi-building-fill me-1"></i> Main Store Defect</a>
         @endif
@@ -18,21 +18,21 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="defectsTable">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="defectsTable">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Date</th>
-                    <th>Location</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Qty</th>
-                    <th>Reason</th>
-                    <th>Reported By</th>
-                    <th>Status</th>
-                    <th class="no-sort">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Date</th>
+                    <th data-priority="3">Location</th>
+                    <th data-priority="1">Product</th>
+                    <th data-priority="4">Category</th>
+                    <th data-priority="2">Qty</th>
+                    <th data-priority="4">Reason</th>
+                    <th data-priority="4">Reported By</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody>

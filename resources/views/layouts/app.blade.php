@@ -24,8 +24,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- DataTables -->
+    <!-- DataTables & Responsive -->
     <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
     <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
@@ -74,6 +75,213 @@
         .premium-stat-card:hover {
             transform: translateY(-4px) !important;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* ═════════════════════════════════════════════════════════
+           MODERN RESPONSIVE TABLES & ACCORDION DRAWER (Reference 1)
+           ═════════════════════════════════════════════════════════ */
+        .card, .table-card {
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            background: var(--card-bg);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .table {
+            margin-bottom: 0;
+            color: var(--text-primary);
+            vertical-align: middle;
+            border-color: #f1f5f9;
+            width: 100% !important;
+        }
+
+        .table > :not(caption) > * > * {
+            padding: 0.85rem 1rem;
+            border-bottom-width: 1px;
+            border-color: #f1f5f9;
+        }
+
+        .table thead th {
+            font-size: 0.73rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: #64748b !important;
+            background: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .table tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        /* Parent row highlight when expanded (Reference Picture 1) */
+        table.dataTable > tbody > tr.parent,
+        table.dataTable.table-hover > tbody > tr.parent {
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Soft Badges */
+        .badge-soft-primary { background: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(2,132,199,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-success { background: #d1fae5 !important; color: #059669 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(16,185,129,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-danger  { background: #fee2e2 !important; color: #dc2626 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(239,68,68,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-warning { background: #fef3c7 !important; color: #d97706 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(245,158,11,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-info    { background: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(2,132,199,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-secondary { background: #f1f5f9 !important; color: #475569 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(100,116,139,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-purple  { background: #ede9fe !important; color: #7c3aed !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(139,92,246,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-dark    { background: #334155 !important; color: #f8fafc !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(51,65,85,.15); display: inline-flex; align-items: center; gap: 4px; }
+
+        /* DataTables Responsive Caret Indicators (Reference Picture 1: ▶ / ▼) */
+        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+        table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+            display: none !important;
+        }
+
+        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+        table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+            position: relative;
+            padding-left: 2rem !important;
+            cursor: pointer;
+        }
+
+        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control::after {
+            content: '▶';
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 700;
+            transition: color 0.15s ease;
+        }
+
+        table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td.dtr-control::after {
+            content: '▼';
+            color: #0f172a;
+        }
+
+        /* Expanded Child Drawer Styling (Reference Picture 1) */
+        table.dataTable > tbody > tr.child {
+            background: #ffffff !important;
+        }
+
+        table.dataTable > tbody > tr.child td.child {
+            padding: 0.6rem 1.25rem 1.25rem 1.25rem !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        table.dataTable > tbody > tr.child ul.dtr-details {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0 !important;
+            width: 100% !important;
+            max-width: 520px;
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        table.dataTable > tbody > tr.child ul.dtr-details > li {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            padding: 0.65rem 0 !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            font-size: 0.88rem !important;
+        }
+
+        table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
+            border-bottom: none !important;
+            padding-top: 0.85rem !important;
+        }
+
+        table.dataTable > tbody > tr.child span.dtr-title {
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            font-size: 0.88rem !important;
+            min-width: 135px !important;
+            width: 135px !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
+            flex-shrink: 0;
+        }
+
+        table.dataTable > tbody > tr.child span.dtr-data {
+            color: #334155 !important;
+            font-size: 0.88rem !important;
+            font-weight: 500 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            flex-wrap: wrap !important;
+            gap: 0.45rem !important;
+        }
+
+        /* Action Buttons Inside Tables & Drawer */
+        .action-btn-group, .dtr-data .btn-group {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.35rem !important;
+        }
+
+        .action-btn-square,
+        table.dataTable td .btn-xs,
+        table.dataTable td .btn-sm {
+            border-radius: 8px !important;
+        }
+
+        .dataTables_wrapper {
+            width: 100%;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .dataTables_wrapper .dataTables_filter input:focus {
+            border-color: #0088cc;
+            box-shadow: 0 0 0 3px rgba(0,136,204,0.15);
+        }
+
+        .dataTables_wrapper .dataTables_length select {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0.4rem 2rem 0.4rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .pagination {
+            margin-bottom: 0;
+            gap: 4px;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .page-item .page-link {
+            border-radius: 8px !important;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 0.82rem;
+            padding: 0.4rem 0.75rem;
+            transition: all 0.15s;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+            background-color: #0088cc;
+            border-color: #0088cc;
+            color: #fff;
+            font-weight: 600;
         }
 
         /* ── Sidebar ── */
@@ -1580,9 +1788,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- DataTables -->
+    <!-- DataTables & Responsive -->
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
     <!-- DataTables Buttons and dependencies -->
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
@@ -1636,16 +1846,31 @@
             });
         });
 
-        // Global DataTable defaults
+        // Global DataTable defaults (Responsive Accordion Child Row Drawer Pattern)
         $.extend(true, $.fn.dataTable.defaults, {
+            responsive: true,
+            autoWidth: false,
             language: {
                 search: '',
-                searchPlaceholder: 'Search...'
+                searchPlaceholder: 'Search records...',
+                lengthMenu: 'Show _MENU_ entries',
+                info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+                infoEmpty: 'Showing 0 to 0 of 0 entries',
+                infoFiltered: '(filtered from _MAX_ total)',
+                emptyTable: 'No records available',
+                zeroRecords: 'No matching records found',
+                paginate: {
+                    first: '<i class="bi bi-chevron-double-left"></i>',
+                    previous: '<i class="bi bi-chevron-left"></i>',
+                    next: '<i class="bi bi-chevron-right"></i>',
+                    last: '<i class="bi bi-chevron-double-right"></i>'
+                }
             },
             pageLength: 10,
             lengthChange: true,
-            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
             order: [],
+            dom: "<'row mb-3 align-items-center g-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>><'row'<'col-sm-12'tr>><'row mt-3 align-items-center g-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             columnDefs: [{
                 orderable: false,
                 targets: 'no-sort'

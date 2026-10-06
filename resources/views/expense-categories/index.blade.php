@@ -30,21 +30,21 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
             <div class="card-header"><i class="bi bi-tags-fill me-2" style="color:#d29922;"></i>All Expense Categories</div>
-            <div class="card-body p-0">
-                <table class="table mb-0">
+            <div class="card-body p-3 p-md-4">
+                <table class="table table-hover align-middle w-100" id="expenseCategoriesTable">
                     <thead>
                         <tr>
-                            <th>No</th>
-                            <th>Category Name</th>
-                            <th>Created By</th>
-                            <th>Date Created</th>
-                            <th class="text-end">Action</th>
+                            <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                            <th data-priority="1">Category Name</th>
+                            <th data-priority="3">Created By</th>
+                            <th data-priority="2">Date Created</th>
+                            <th data-priority="1" class="no-sort text-end" style="min-width: 90px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($categories as $category)
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
+                            <td class="text-center">{{ $loop->iteration }}</td>
                             <td><strong>{{ $category->name }}</strong></td>
                             <td>{{ $category->creator->name ?? 'System' }}</td>
                             <td class="text-secondary small">{{ $category->created_at->format('M d, Y H:i') }}</td>
@@ -102,6 +102,12 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    if ($.fn.DataTable && $('#expenseCategoriesTable tbody tr').length > 0 && !$('#expenseCategoriesTable tbody tr td[colspan]').length) {
+        $('#expenseCategoriesTable').DataTable({
+            order: [[0, 'asc']]
+        });
+    }
+
     $('.btn-edit-category').on('click', function() {
         const id = $(this).data('id');
         const name = $(this).data('name');

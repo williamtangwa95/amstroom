@@ -298,27 +298,23 @@
 </div>
 
 {{-- VISITOR LOG TABLE SECTION --}}
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-card-list me-2" style="color: var(--an-blue);"></i>Visitor Request Log (Last 1000 hits)</span>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0" id="visitorLogTable">
-                <thead>
-                    <tr>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">Time</th>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">IP Address</th>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">Location</th>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">Device / Browser</th>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">Request</th>
-                        <th style="font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;">User Account</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-card-list me-2 text-accent"></i><strong class="fw-700">Visitor Request Log</strong> <span class="badge badge-soft-secondary ms-2 small">Last 1000 hits</span></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="visitorLogTable">
+            <thead>
+                <tr>
+                    <th data-priority="1">Time</th>
+                    <th data-priority="3">IP Address</th>
+                    <th data-priority="2">Location</th>
+                    <th data-priority="3">Device / Browser</th>
+                    <th data-priority="2">Request</th>
+                    <th data-priority="1">User Account</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 </div>
 @endsection

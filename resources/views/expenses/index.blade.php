@@ -6,10 +6,10 @@
 @endsection
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-        <a href="{{ route('expense-categories.index') }}" class="btn btn-sm btn-outline-custom me-2">
+        <a href="{{ route('expense-categories.index') }}" class="btn btn-sm btn-outline-custom">
             <i class="bi bi-tags-fill me-1"></i> Categories
         </a>
         <button type="button" id="btn-bulk-approve" class="btn btn-sm btn-success d-none">
@@ -22,25 +22,25 @@
     </a>
 </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header"><i class="bi bi-wallet2 me-2" style="color:#3fb950;"></i>Expenses Ledger</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0" id="expensesTable">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-wallet2 me-2 text-success"></i><strong class="fw-700">Expenses Ledger</strong></div>
+    <div class="card-body p-3 p-md-4">
+        <table class="table table-hover align-middle w-100" id="expensesTable">
             <thead>
                 <tr>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th style="width: 40px;"><input type="checkbox" id="select-all-expenses" class="form-check-input"></th>
+                    <th data-priority="1000" class="no-sort" style="width: 40px;"><input type="checkbox" id="select-all-expenses" class="form-check-input"></th>
                     @endif
-                    <th>No</th>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Activity</th>
-                    <th>Description</th>
-                    <th>Amount</th>
-                    <th>Recorded By</th>
-                    <th>Approved By</th>
-                    <th>Status</th>
-                    <th class="text-end">Actions</th>
+                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
+                    <th data-priority="3">Date</th>
+                    <th data-priority="1">Category</th>
+                    <th data-priority="3">Activity</th>
+                    <th data-priority="4">Description</th>
+                    <th data-priority="2">Amount</th>
+                    <th data-priority="4">Recorded By</th>
+                    <th data-priority="4">Approved By</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
