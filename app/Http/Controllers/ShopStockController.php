@@ -435,28 +435,18 @@ class ShopStockController extends Controller
                 }
                 $mobileBatchActions .= '</div>';
 
-                $childTableHtml .= '<div class="border rounded p-2 mb-2" style="font-size:0.78rem;background:var(--card-bg);border-color:var(--card-border)!important;' . ($isZeroRemaining ? 'opacity:0.85;' : '') . '">';
-                // Card header: ID + type + date
-                $childTableHtml .= '<div class="d-flex justify-content-between align-items-center mb-2">';
-                $childTableHtml .= '<span class="fw-700" style="font-size:0.82rem;">#' . $batch->id . '&nbsp;' . $batchTypeTag . '</span>';
-                $childTableHtml .= '<span style="color:var(--text-secondary);font-size:0.72rem;">' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</span>';
-                $childTableHtml .= '</div>';
-                // Quantities
-                $childTableHtml .= '<div class="row g-1 mb-2">';
-                $childTableHtml .= '<div class="col-4"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Initial</div><div class="fw-600">' . $batch->quantity . '</div></div>';
-                $childTableHtml .= '<div class="col-4"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Sold</div><div class="fw-600 text-info">' . $soldBatchQty . '</div></div>';
-                $childTableHtml .= '<div class="col-4"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Remaining</div><div>' . $remainingDisplay . '</div></div>';
-                $childTableHtml .= '</div>';
-                // Prices
-                $childTableHtml .= '<div class="row g-1 mb-2">';
+                $childTableHtml .= '<div class="border rounded p-3 mb-2" style="font-size:0.78rem;background:var(--card-bg);border-color:var(--card-border)!important;width:100%!important;box-sizing:border-box!important;' . ($isZeroRemaining ? 'opacity:0.85;' : '') . '">';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Batch #:</span><span class="fw-700 text-primary">#' . $batch->id . '</span></div>';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Date Received:</span><span class="fw-600">' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</span></div>';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Stock Type:</span><div>' . $batchTypeTag . '</div></div>';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Initial Qty:</span><span class="fw-600">' . $batch->quantity . '</span></div>';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Sold Qty:</span><span class="fw-600 text-info">' . $soldBatchQty . '</span></div>';
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Remaining Qty:</span><div>' . $remainingDisplay . '</div></div>';
                 if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
-                    $childTableHtml .= '<div class="col-6"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Buying Price</div><div class="fw-600">TZS ' . number_format($batch->buying_price, 0) . '</div></div>';
-                    $childTableHtml .= '<div class="col-6"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Selling Price</div><div class="fw-600 text-success">TZS ' . number_format($batch->selling_price, 0) . '</div></div>';
-                } else {
-                    $childTableHtml .= '<div class="col-12"><div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.04em;">Selling Price</div><div class="fw-600 text-success">TZS ' . number_format($batch->selling_price, 0) . '</div></div>';
+                    $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Buying Price:</span><span class="fw-600">TZS ' . number_format($batch->buying_price, 0) . '</span></div>';
                 }
-                $childTableHtml .= '</div>';
-                $childTableHtml .= $mobileBatchActions;
+                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Selling Price:</span><span class="fw-600 text-success">TZS ' . number_format($batch->selling_price, 0) . '</span></div>';
+                $childTableHtml .= '<div class="pt-2"><div class="fw-700 text-muted mb-1" style="font-size:0.75rem;">Batch Actions</div>' . $mobileBatchActions . '</div>';
                 $childTableHtml .= '</div>'; // end batch card
             }
             $childTableHtml .= '</div>'; // end mobile cards
