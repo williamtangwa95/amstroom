@@ -27,6 +27,10 @@ class SaleController extends Controller
         $shops = $isOwner ? \App\Models\Shop::active()->get() : collect();
         $shopId = $request->get('shop_id', '');
 
+        // Default to current month if no date filter provided
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->toDateString();
+        $dateTo   = $request->filled('date_to')   ? $request->date_to   : now()->endOfMonth()->toDateString();
+
         $revenueQuery = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->whereNull('sales.deleted_at');
@@ -44,12 +48,9 @@ class SaleController extends Controller
             $revenueQuery->where('sales.shop_id', $user->shop_id);
         }
 
-        if ($request->filled('date_from')) {
-            $revenueQuery->whereDate('sales.sale_date', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $revenueQuery->whereDate('sales.sale_date', '<=', $request->date_to);
-        }
+        $revenueQuery->whereDate('sales.sale_date', '>=', $dateFrom);
+        $revenueQuery->whereDate('sales.sale_date', '<=', $dateTo);
+
         if ($request->filled('status')) {
             $revenueQuery->where('sales.status', $request->status);
         }
@@ -68,7 +69,7 @@ class SaleController extends Controller
 
         $statusFilter = $request->input('status', '');
 
-        return view('sales.index', compact('totalRevenue', 'paymentSummary', 'statusFilter', 'shops', 'shopId'));
+        return view('sales.index', compact('totalRevenue', 'paymentSummary', 'statusFilter', 'shops', 'shopId', 'dateFrom', 'dateTo'));
     }
 
     private function computePaymentSummary($revenueQuery, bool $isOwner, bool $isIndependent): array
@@ -140,12 +141,12 @@ class SaleController extends Controller
 
         $recordsTotal = (clone $query)->count();
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('sales.sale_date', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('sales.sale_date', '<=', $request->date_to);
-        }
+        // Default to current month if no date filter provided
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->toDateString();
+        $dateTo   = $request->filled('date_to')   ? $request->date_to   : now()->endOfMonth()->toDateString();
+
+        $query->whereDate('sales.sale_date', '>=', $dateFrom);
+        $query->whereDate('sales.sale_date', '<=', $dateTo);
         if ($request->filled('status')) {
             $query->where('sales.status', $request->status);
         }
@@ -187,12 +188,8 @@ class SaleController extends Controller
         } else {
             $revenueQuery->where('sales.shop_id', $user->shop_id);
         }
-        if ($request->filled('date_from')) {
-            $revenueQuery->whereDate('sales.sale_date', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $revenueQuery->whereDate('sales.sale_date', '<=', $request->date_to);
-        }
+        $revenueQuery->whereDate('sales.sale_date', '>=', $dateFrom);
+        $revenueQuery->whereDate('sales.sale_date', '<=', $dateTo);
         if ($request->filled('status')) {
             $revenueQuery->where('sales.status', $request->status);
         }

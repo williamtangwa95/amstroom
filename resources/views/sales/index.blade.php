@@ -81,11 +81,11 @@
         <form id="filterForm" method="GET" action="{{ route('sales.index') }}" class="row g-2 align-items-end">
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">From Date</label>
-                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', '') }}">
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', $dateFrom) }}">
             </div>
             <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
                 <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
-                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', '') }}">
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', $dateTo) }}">
             </div>
             @if(auth()->user()->isOwner())
             <div class="col-md-3">
@@ -221,9 +221,11 @@
             ajax: {
                 url: "{{ route('sales.data') }}",
                 data: function(d) {
-                    d.date_from = $('input[name="date_from"]').val();
-                    d.date_to = $('input[name="date_to"]').val();
-                    d.status = $('select[name="status"]').val();
+                    var defaultFrom = '{{ $dateFrom }}';
+                    var defaultTo   = '{{ $dateTo }}';
+                    d.date_from = $('input[name="date_from"]').val() || defaultFrom;
+                    d.date_to   = $('input[name="date_to"]').val()   || defaultTo;
+                    d.status  = $('select[name="status"]').val();
                     d.shop_id = $('select[name="shop_id"]').val();
                 }
             },
@@ -246,10 +248,11 @@
                     $('#totalRevenueText').text(settings.json.formattedTotalRevenue);
                 }
                 if (settings.json && settings.json.paymentSummary) {
-                    if (settings.json.paymentSummary.cash) $('#cardCashAmount').text(settings.json.paymentSummary.cash);
-                    if (settings.json.paymentSummary.mobile_money) $('#cardMobileAmount').text(settings.json.paymentSummary.mobile_money);
-                    if (settings.json.paymentSummary.card) $('#cardCardAmount').text(settings.json.paymentSummary.card);
-                    if (settings.json.paymentSummary.bank_transfer) $('#cardBankAmount').text(settings.json.paymentSummary.bank_transfer);
+                    var ps = settings.json.paymentSummary;
+                    if (ps.cash        !== undefined) $('#cardCashAmount').text(ps.cash);
+                    if (ps.mobile_money !== undefined) $('#cardMobileAmount').text(ps.mobile_money);
+                    if (ps.card        !== undefined) $('#cardCardAmount').text(ps.card);
+                    if (ps.bank_transfer !== undefined) $('#cardBankAmount').text(ps.bank_transfer);
                 }
             }
         });
