@@ -6,6 +6,15 @@
 @endsection
 @section('content')
 <style>
+    .stat-card.premium-stat-card .stat-value {
+        font-size: clamp(0.72rem, 0.85vw, 0.88rem);
+        font-weight: 800;
+        line-height: 1.2;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        letter-spacing: -0.2px;
+    }
     @media (max-width: 767.98px) {
         .main-stock-header-actions {
             display: grid !important;
@@ -19,19 +28,24 @@
             font-size: 0.76rem !important;
             padding: 0.4rem 0.5rem !important;
         }
+        .stat-card.premium-stat-card {
+            padding: 0.45rem 0.5rem !important;
+            gap: 0.35rem !important;
+        }
         .stat-card.premium-stat-card .stat-value {
-            font-size: 0.82rem !important;
+            font-size: 0.74rem !important;
             white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            letter-spacing: -0.3px !important;
         }
         .stat-card.premium-stat-card .stat-label {
-            font-size: 0.62rem !important;
+            font-size: 0.60rem !important;
         }
         .stat-card.premium-stat-card .stat-icon {
-            width: 26px !important;
-            height: 26px !important;
-            font-size: 0.8rem !important;
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 0.75rem !important;
         }
     }
 </style>
@@ -70,11 +84,11 @@
     <!-- Total Cost Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Cost Value ({{ number_format($stats['totalInitialQty']) }} units)">Total Cost <span class="small">({{ number_format($stats['totalInitialQty']) }})</span></div>
             </div>
         </div>
@@ -83,11 +97,11 @@
     <!-- Total Sell Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-success" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-success">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
             </div>
         </div>
@@ -96,11 +110,11 @@
     <!-- Remain Stock Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-box-seam"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($stats['totalRemainingQty']) }} units)">Remain Value <span class="small">({{ number_format($stats['totalRemainingQty']) }})</span></div>
             </div>
         </div>
@@ -109,11 +123,11 @@
     <!-- Remain Sell Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-piggy-bank"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
             </div>
         </div>
@@ -122,11 +136,11 @@
     <!-- Stock Batches Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-layers"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">{{ number_format($stats['stockBatchesCount']) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0">{{ number_format($stats['stockBatchesCount']) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
             </div>
         </div>

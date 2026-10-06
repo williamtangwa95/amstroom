@@ -285,7 +285,7 @@ class ShopStockController extends Controller
             $productHtml .= '<div style="font-weight:600;font-size:.83rem;">' . e($firstSt->item->item_name ?? 'N/A') . '</div>';
             $productHtml .= '<div style="font-size:.7rem;color:var(--text-secondary);">' . e($firstSt->item->brand ?? '');
             if ($totalBatchesCount > 1) {
-                $productHtml .= ' <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">' . $totalBatchesCount . ' Batches</span>';
+                $productHtml .= ' <span class="badge bg-info text-dark ms-1 toggle-child-details" style="cursor:pointer;font-size:0.65rem;" title="Click to view batches breakdown"><i class="bi bi-layers-fill me-1"></i>' . $totalBatchesCount . ' Batches</span>';
             }
             if ($firstSt->is_admin_stock) {
                 $productHtml .= ' <span style="background:rgba(57,178,255,.12);color:#39b2ff;padding:.15rem .4rem;border-radius:6px;font-size:.65rem;font-weight:600;margin-left:5px;">Admin Stock</span>';
@@ -329,7 +329,7 @@ class ShopStockController extends Controller
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
             // Build batch details sub-table HTML inside child template (showing all batches including remaining_quantity = 0 for physical verification)
-            $childTableHtml = '<div class="child-details-template d-none"><div class="p-3 my-2 rounded border" style="background:var(--body-bg); border-color:var(--card-border) !important;">';
+            $childTableHtml = '<div class="child-details-template d-none" style="width:100% !important;"><div class="p-2.5 p-sm-3 my-2 rounded border w-100" style="background:var(--body-bg); border-color:var(--card-border) !important; box-sizing: border-box !important;">';
             $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $totalBatchesCount . ' Batch' . ($totalBatchesCount > 1 ? 'es' : '') . ')</h6>';
 
             // ── DESKTOP TABLE (md and up) ─────────────────────────────────
@@ -465,8 +465,8 @@ class ShopStockController extends Controller
 
             $canDeleteFirst = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id && $firstSt->is_admin_stock);
 
-            $actions = '<div class="d-flex align-items-center gap-2">';
-            $actions .= '<button type="button" class="btn btn-xs btn-outline-info toggle-child-details" title="Toggle batch details"><i class="bi bi-chevron-down"></i></button>';
+            $actions = '<div class="d-flex align-items-center gap-2 flex-wrap w-100 mb-2">';
+            $actions .= '<button type="button" class="btn btn-xs btn-outline-info toggle-child-details" title="Toggle batch details"><i class="bi bi-chevron-down me-1"></i><span class="d-inline d-md-none">Batches</span></button>';
             
             if ($hasPendingPrice && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id))) {
                 $pendingPriceVal = $firstSt->pending_selling_price > 0 ? $firstSt->pending_selling_price : $firstSt->selling_price;

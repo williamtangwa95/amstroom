@@ -19,9 +19,107 @@
         line-height: 1.3 !important;
         min-height: auto !important;
     }
-    /* Specific adjustment for toggler to stay perfectly square */
-    #shopStockTable .toggle-child-details {
-        padding: 3px 8px !important;
+    /* ════════════════════════════════════════════════════════════════
+       HIGH-SPECIFICITY DATATABLES RESPONSIVE DRAWER OVERRIDES
+       ════════════════════════════════════════════════════════════════ */
+    table.dataTable#shopStockTable > tbody > tr.child {
+        background: var(--card-bg) !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child td.child {
+        padding: 0.75rem 0.5rem !important;
+        background: var(--card-bg) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+        box-sizing: border-box !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
+        padding: 0.45rem 0.35rem !important;
+        border-bottom: 1px dashed var(--card-border) !important;
+        box-sizing: border-box !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:last-child {
+        border-bottom: none !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details span.dtr-title {
+        font-weight: 700 !important;
+        font-size: 0.78rem !important;
+        color: var(--text-secondary) !important;
+        width: 110px !important;
+        min-width: 110px !important;
+        flex-shrink: 0 !important;
+        margin-right: 0.25rem !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details span.dtr-data {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        justify-content: flex-start !important;
+        flex-grow: 1 !important;
+        min-width: 0 !important;
+        max-width: calc(100% - 120px) !important;
+        font-size: 0.8rem !important;
+        color: var(--text-primary) !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+    }
+    /* Force Actions li and dtr-data to take 100% full width below dtr-title */
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:last-child,
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:has(.child-details-template) {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:last-child span.dtr-title,
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:has(.child-details-template) span.dtr-title {
+        width: 100% !important;
+        margin-bottom: 0.35rem !important;
+    }
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:last-child span.dtr-data,
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li:has(.child-details-template) span.dtr-data,
+    table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details span.dtr-data.has-expanded-template {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+        flex-basis: 100% !important;
+        max-width: 100% !important;
+        justify-content: flex-start !important;
+        margin-top: 0.25rem !important;
+        box-sizing: border-box !important;
+    }
+    /* Force the batch details breakdown template to span 100% full width */
+    table.dataTable#shopStockTable .child-details-template,
+    table.dataTable#shopStockTable tr.child .child-details-template,
+    #shopStockTable .child-details-template {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        flex-basis: 100% !important;
+        flex: 1 0 100% !important;
+        margin-top: 0.65rem !important;
+        clear: both !important;
+        box-sizing: border-box !important;
+        display: block;
+    }
+    table.dataTable#shopStockTable .child-details-template > div,
+    table.dataTable#shopStockTable tr.child .child-details-template > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .hover-lift {
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -122,6 +220,15 @@
         box-shadow: 0 6px 18px rgba(2, 132, 199, 0.38) !important;
         transform: translateY(-2px) scale(1.02) !important;
     }
+    .stat-card.premium-stat-card .stat-value {
+        font-size: clamp(0.70rem, 0.80vw, 0.85rem);
+        font-weight: 800;
+        line-height: 1.2;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        letter-spacing: -0.2px;
+    }
     @media (max-width: 767.98px) {
         .shop-stock-header-container {
             flex-direction: column !important;
@@ -157,22 +264,24 @@
             justify-content: center !important;
         }
         .stat-card.premium-stat-card {
-            padding: 0.5rem 0.6rem !important;
+            padding: 0.45rem 0.5rem !important;
+            gap: 0.35rem !important;
         }
         .stat-card.premium-stat-card .stat-icon {
-            width: 26px !important;
-            height: 26px !important;
-            font-size: 0.8rem !important;
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 0.75rem !important;
             border-radius: 6px !important;
         }
         .stat-card.premium-stat-card .stat-value {
-            font-size: 0.82rem !important;
+            font-size: 0.72rem !important;
             white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            letter-spacing: -0.3px !important;
         }
         .stat-card.premium-stat-card .stat-label {
-            font-size: 0.62rem !important;
+            font-size: 0.60rem !important;
         }
     }
 </style>
@@ -269,11 +378,11 @@
     <!-- Stock Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalStockValue, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0">TZS {{ number_format($totalStockValue, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Value ({{ number_format($totalQuantity) }} units)">Stock Value <span class="small">({{ number_format($totalQuantity) }})</span></div>
             </div>
         </div>
@@ -282,11 +391,11 @@
     <!-- Remaining Stock Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-box-seam"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingStockValue, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0">TZS {{ number_format($remainingStockValue, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remaining Stock ({{ number_format($totalRemainingQty) }} units)">Remaining <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
             </div>
         </div>
@@ -295,11 +404,11 @@
     <!-- Sold Stock Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-cart-check"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-danger" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldStockValue, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-danger">TZS {{ number_format($soldStockValue, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Sold Stock Value ({{ number_format($totalSoldQty) }} units)">Sold Value <span class="small">({{ number_format($totalSoldQty) }})</span></div>
             </div>
         </div>
@@ -308,11 +417,11 @@
     <!-- Expected Profit from Stock Value Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-success" style="font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0 text-success">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Stock Value)">Exp. Profit (Stock)</div>
             </div>
         </div>
@@ -321,11 +430,11 @@
     <!-- Expected Profit from Remaining Stock Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-piggy-bank"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important;">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Remaining Stock)">Exp. Profit (Rem.)</div>
             </div>
         </div>
@@ -334,11 +443,11 @@
     <!-- Profit for Sold Stock Card -->
     <div class="col">
         <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(255, 183, 0, 0.15); color: var(--accent-gold); width: 32px; height: 32px; font-size: 0.95rem; border-radius: 8px; flex-shrink: 0;">
+            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(255, 183, 0, 0.15); color: var(--accent-gold); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
                 <i class="bi bi-coin"></i>
             </div>
-            <div class="overflow-hidden flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: #ff9f00 !important; font-size: 0.95rem; font-weight: 800; line-height: 1.2;">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="stat-value mb-0" style="color: #ff9f00 !important;">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
                 <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Profit for Sold Stock">Profit (Sold)</div>
             </div>
         </div>
@@ -1177,26 +1286,103 @@
             }
         });
         @endif
-        // Toggle Expand/Collapse Child Row
-        $('#shopStockTable tbody').on('click', '.toggle-child-details', function() {
-            const tr = $(this).closest('tr');
-            const row = table.row(tr);
-            const icon = $(this).find('i');
+        // Toggle Expand/Collapse Child Row (Supports both Desktop DataTables and Mobile Responsive Drawer)
+        $(document).on('click', '.toggle-child-details', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
 
-            if (row.child.isShown()) {
+            const btn = $(this);
+            const icon = btn.find('i.bi');
+            const tr = btn.closest('tr');
+            
+            // Function to apply full-width inline styles to responsive drawer elements
+            function applyResponsiveFullWidth(container) {
+                const dtrLi = container.closest('li');
+                const dtrData = container.closest('.dtr-data');
+                if (dtrLi.length) {
+                    dtrLi.attr('style', 'display: flex !important; flex-direction: column !important; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;');
+                }
+                if (dtrData.length) {
+                    dtrData.addClass('has-expanded-template').attr('style', 'display: flex !important; flex-direction: column !important; align-items: flex-start !important; width: 100% !important; flex-basis: 100% !important; justify-content: flex-start !important; margin-top: 0.35rem !important; box-sizing: border-box !important;');
+                }
+            }
+
+            // 1. Check if we are inside an already open DataTables Responsive child row / drawer
+            const isInsideChildRow = tr.hasClass('child') || tr.hasClass('dtr-child') || btn.closest('.dtr-details').length > 0;
+
+            if (isInsideChildRow) {
+                const responsiveDrawer = btn.closest('tr.child, tr.dtr-child, .dtr-details');
+                const template = responsiveDrawer.find('.child-details-template');
+                if (template.length > 0) {
+                    if (template.hasClass('d-none')) {
+                        applyResponsiveFullWidth(template);
+                        template.removeClass('d-none').hide().slideDown(200);
+                        if (icon.length) icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                        btn.removeClass('btn-outline-info').addClass('btn-info');
+                    } else {
+                        template.slideUp(200, function() {
+                            $(this).addClass('d-none');
+                        });
+                        if (icon.length) icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                        btn.removeClass('btn-info').addClass('btn-outline-info');
+                    }
+                }
+                return;
+            }
+
+            // 2. Check if a DataTables Responsive child row exists right below this parent row (mobile mode)
+            const nextChildRow = tr.next('tr.child, tr.dtr-child');
+            if (nextChildRow.length > 0) {
+                const template = nextChildRow.find('.child-details-template');
+                if (template.length > 0) {
+                    if (template.hasClass('d-none')) {
+                        applyResponsiveFullWidth(template);
+                        template.removeClass('d-none').hide().slideDown(200);
+                        if (icon.length) icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                        btn.removeClass('btn-outline-info').addClass('btn-info');
+                    } else {
+                        template.slideUp(200, function() {
+                            $(this).addClass('d-none');
+                        });
+                        if (icon.length) icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                        btn.removeClass('btn-info').addClass('btn-outline-info');
+                    }
+                    return;
+                }
+            }
+
+            // 3. If in mobile mode (dtr-control present) but responsive drawer is not open yet, open it first then expand batch details!
+            const dtrControl = tr.find('td.dtr-control, .dtr-control');
+            if (dtrControl.length > 0 && window.innerWidth < 992) {
+                dtrControl.trigger('click');
+                setTimeout(() => {
+                    const openChildRow = tr.next('tr.child, tr.dtr-child');
+                    const template = openChildRow.find('.child-details-template');
+                    if (template.length > 0 && template.hasClass('d-none')) {
+                        applyResponsiveFullWidth(template);
+                        template.removeClass('d-none').hide().slideDown(200);
+                        openChildRow.find('.toggle-child-details i.bi').removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                        openChildRow.find('.toggle-child-details').removeClass('btn-outline-info').addClass('btn-info');
+                    }
+                }, 150);
+                return;
+            }
+
+            // 4. Desktop mode: standard DataTables row child API
+            const row = table.row(tr);
+            if (row && row.child.isShown()) {
                 row.child.hide();
                 tr.removeClass('shown');
-                icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
-                $(this).removeClass('btn-info').addClass('btn-outline-info');
-            } else {
+                if (icon.length) icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                btn.removeClass('btn-info').addClass('btn-outline-info');
+            } else if (row) {
                 const childHtml = tr.find('.child-details-template').html();
-                row.child(childHtml).show();
-                tr.addClass('shown');
-                icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
-                $(this).removeClass('btn-outline-info').addClass('btn-info');
-
-                // Child row action listeners (.toggle-components-btn, .btn-approve-price, .confirm-delete-btn) 
-                // are delegated globally on $(document) to support pagination and dynamic rows correctly.
+                if (childHtml) {
+                    row.child(childHtml).show();
+                    tr.addClass('shown');
+                    if (icon.length) icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                    btn.removeClass('btn-outline-info').addClass('btn-info');
+                }
             }
         });
 
