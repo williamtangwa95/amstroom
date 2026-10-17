@@ -9,14 +9,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ExpenseController extends Controller
 {
-    public function index()
+    private function scopedExpenseQuery($user)
     {
-        return view('expenses.index');
-    }
-
-    public function data(Request $request)
-    {
-        $user = Auth::user();
         $query = Expense::query();
 
         if ($user->isOwner()) {
@@ -36,7 +30,83 @@ class ExpenseController extends Controller
             $query->where('recorded_by', $user->id);
         }
 
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        // Default to current month if no date filter provided
+        $dateFrom = $request->has('date_from') ? $request->date_from : now()->startOfMonth()->toDateString();
+        $dateTo   = $request->has('date_to')   ? $request->date_to   : now()->endOfMonth()->toDateString();
+
+        $query = $this->scopedExpenseQuery($user);
+
+        if (!empty($dateFrom)) {
+            $query->whereDate('expenses.activity_date', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $query->whereDate('expenses.activity_date', '<=', $dateTo);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('expenses.expense_category_id', $request->category_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('expenses.status', $request->status);
+        }
+
+        $totalExpenses    = (float) (clone $query)->sum('amount');
+        $approvedExpenses = (float) (clone $query)->where('status', 'approved')->sum('amount');
+        $pendingExpenses  = (float) (clone $query)->where('status', 'pending')->sum('amount');
+        $expensesCount    = (int) (clone $query)->count();
+
+        $categories = ExpenseCategory::orderBy('name')->get();
+
+        return view('expenses.index', compact(
+            'totalExpenses',
+            'approvedExpenses',
+            'pendingExpenses',
+            'expensesCount',
+            'dateFrom',
+            'dateTo',
+            'categories'
+        ));
+    }
+
+    public function data(Request $request)
+    {
+        $user = Auth::user();
+        $query = $this->scopedExpenseQuery($user);
+
+        // Default to current month if no date filter provided
+        $dateFrom = $request->has('date_from') ? $request->date_from : now()->startOfMonth()->toDateString();
+        $dateTo   = $request->has('date_to')   ? $request->date_to   : now()->endOfMonth()->toDateString();
+
+        if (!empty($dateFrom)) {
+            $query->whereDate('expenses.activity_date', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $query->whereDate('expenses.activity_date', '<=', $dateTo);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('expenses.expense_category_id', $request->category_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('expenses.status', $request->status);
+        }
+
         $recordsTotal = (clone $query)->count();
+
+        // Calculate totals for the filtered range
+        $totalsQuery = clone $query;
+        $totalExpenses    = (float) (clone $totalsQuery)->sum('amount');
+        $approvedExpenses = (float) (clone $totalsQuery)->where('status', 'approved')->sum('amount');
+        $pendingExpenses  = (float) (clone $totalsQuery)->where('status', 'pending')->sum('amount');
 
         $searchValue = trim($request->input('search.value', ''));
         if ($searchValue !== '') {
@@ -164,6 +234,11 @@ class ExpenseController extends Controller
             'recordsTotal' => $recordsTotal,
             'recordsFiltered' => $recordsFiltered,
             'data' => $data,
+            'totalExpenses' => $totalExpenses,
+            'formattedTotalExpenses' => 'TZS ' . number_format($totalExpenses, 0),
+            'approvedExpenses' => 'TZS ' . number_format($approvedExpenses, 0),
+            'pendingExpenses' => 'TZS ' . number_format($pendingExpenses, 0),
+            'totalCount' => number_format($recordsFiltered),
         ]);
     }
 
