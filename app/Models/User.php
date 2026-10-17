@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, LogsActivity;
 
     protected $fillable = [
-        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path', 'allow_stock_addition', 'status',
+        'name', 'email', 'phone', 'password', 'role', 'shop_id', 'avatar_path', 'allow_stock_addition', 'allow_pos_admin', 'status',
     ];
 
     protected $hidden = [
@@ -26,6 +26,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'allow_stock_addition' => 'boolean',
+            'allow_pos_admin' => 'boolean',
         ];
     }
 
@@ -64,6 +65,11 @@ class User extends Authenticatable
     public function isSeller(): bool
     {
         return $this->role === 'seller';
+    }
+
+    public function canAccessAdminPos(): bool
+    {
+        return $this->isOwner() || $this->isShopAdmin() || ($this->isSeller() && (bool) $this->allow_pos_admin);
     }
 
     public function hasRole(string|array $roles): bool

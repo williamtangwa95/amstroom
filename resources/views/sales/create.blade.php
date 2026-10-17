@@ -126,6 +126,9 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <span class="fw-700 text-uppercase tracking-wider" style="font-size:.85rem; color:var(--text-primary);">
                         <i class="bi bi-box-seam-fill me-2" style="color:#3fb950;"></i>Available Inventory
+                        @if(auth()->user()->isSeller() && auth()->user()->allow_pos_admin)
+                            <span class="badge ms-2" style="background:rgba(88,166,255,.15);color:#58a6ff;font-size:.7rem;font-weight:600;"><i class="bi bi-shield-check me-1"></i>Admin POS Mode</span>
+                        @endif
                     </span>
                     <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end pos-header-actions" style="min-width:0;">
                         <div class="form-check form-switch mb-0 flex-shrink-0">
@@ -243,7 +246,12 @@
     <div class="col-lg-5">
         <div class="card h-100 shadow-sm border-0" style="background:var(--card-bg); border: 1px solid var(--card-border) !important;">
             <div class="card-header py-2.5 px-3 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid var(--card-border); background: rgba(255,255,255,0.01);">
-                <span class="fw-700 text-uppercase tracking-wider" style="font-size:.85rem; color:var(--text-primary);"><i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart</span>
+                <span class="fw-700 text-uppercase tracking-wider" style="font-size:.85rem; color:var(--text-primary);">
+                    <i class="bi bi-cart-check-fill me-2" style="color:#e94560;"></i>Shopping Cart
+                    @if(auth()->user()->isSeller() && auth()->user()->allow_pos_admin)
+                        <span class="badge ms-1" style="background:rgba(88,166,255,.15);color:#58a6ff;font-size:.68rem;font-weight:600;"><i class="bi bi-shield-check me-1"></i>Admin Pricing</span>
+                    @endif
+                </span>
                 <input type="date" name="sale_date" class="form-control form-control-sm" style="width:auto; border-radius: 6px;" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" form="checkoutForm">
             </div>
             <div class="card-body p-3 d-flex flex-column">
@@ -504,7 +512,7 @@
     function renderCart() {
         const list = document.getElementById('cartItemsList');
         const keys = Object.keys(cart);
-        const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
+        const isOwnerOrAdmin = {{ auth()->user()->canAccessAdminPos() ? 'true' : 'false' }};
         const countDisplay = document.getElementById('cartItemCountDisplay');
 
         if (keys.length === 0) {
@@ -792,7 +800,7 @@
                 }
 
                 // Validate negotiable price floor for completed sales
-                const isOwnerOrAdmin = {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'true' : 'false' }};
+                const isOwnerOrAdmin = {{ auth()->user()->canAccessAdminPos() ? 'true' : 'false' }};
                 const minAllowedPrice = isOwnerOrAdmin ? (cart[id].buyingPrice || 0) : (cart[id].price || 0);
                 if (cart[id].negotiatedPrice < minAllowedPrice) {
                     e.preventDefault();

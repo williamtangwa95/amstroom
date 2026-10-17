@@ -115,6 +115,7 @@ Route::middleware('auth')->group(function () {
         Route::get('users/data', [UserController::class, 'data'])->name('users.data');
         Route::resource('users', UserController::class);
         Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::patch('users/{user}/toggle-pos-admin', [UserController::class, 'togglePosAdmin'])->name('users.toggle-pos-admin');
         Route::get('shops/data', [ShopController::class, 'data'])->name('shops.data');
         Route::resource('shops', ShopController::class);
 

@@ -91,6 +91,25 @@ class UserController extends Controller
             $statusLabel = $u->status === 'active' ? 'Active' : 'Disabled';
             $statusHtml = '<span class="status-badge ' . $statusClass . '"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span> ' . e($statusLabel) . '</span>';
 
+            $adminPosHtml = '';
+            if ($u->isSeller()) {
+                $checked = $u->allow_pos_admin ? 'checked' : '';
+                $adminPosHtml = '<div class="form-check form-switch d-inline-flex align-items-center justify-content-center m-0">
+                    <input class="form-check-input pos-admin-toggle" type="checkbox" role="switch"
+                        id="pos-admin-switch-' . $u->id . '"
+                        data-user-id="' . $u->id . '"
+                        data-user-name="' . e($u->name) . '"
+                        data-url="' . route('users.toggle-pos-admin', $u) . '"
+                        ' . $checked . '
+                        title="' . ($u->allow_pos_admin ? 'Admin POS Enabled (Click to disable)' : 'Admin POS Disabled (Click to enable)') . '"
+                        style="cursor:pointer; width: 2.2rem; height: 1.15rem;">
+                </div>';
+            } elseif ($u->isShopAdmin()) {
+                $adminPosHtml = '<span class="badge" style="background:rgba(88,166,255,.15);color:#58a6ff;font-size:.72rem;font-weight:600;"><i class="bi bi-shield-check me-1"></i>Admin</span>';
+            } else {
+                $adminPosHtml = '<span class="badge" style="background:rgba(233,69,96,.15);color:#e94560;font-size:.72rem;font-weight:600;"><i class="bi bi-star-fill me-1"></i>Owner</span>';
+            }
+
             $actions = '<div class="d-flex gap-1">
                 <a href="' . route('users.show', $u) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
                 <a href="' . route('users.edit', $u) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
@@ -144,6 +163,7 @@ class UserController extends Controller
                 $row['shop'] = $shopHtml;
             }
 
+            $row['admin_pos'] = $adminPosHtml;
             $row['status'] = $statusHtml;
             $row['actions'] = $actions;
 
@@ -187,6 +207,7 @@ class UserController extends Controller
             'shop_id'  => 'nullable|exists:shops,id',
             'password' => 'required|min:6|confirmed',
             'allow_stock_addition' => 'nullable|boolean',
+            'allow_pos_admin'      => 'nullable|boolean',
         ]);
 
         // Shop admin always assigns to their own shop
@@ -200,6 +221,7 @@ class UserController extends Controller
             'shop_id'  => $shopId,
             'password' => Hash::make($request->password),
             'allow_stock_addition' => $auth->isOwner() ? $request->boolean('allow_stock_addition') : false,
+            'allow_pos_admin'      => $request->boolean('allow_pos_admin'),
         ]);
 
         return redirect()->route('users.index')
@@ -242,12 +264,14 @@ class UserController extends Controller
             'shop_id' => 'nullable|exists:shops,id',
             'password'=> 'nullable|min:6|confirmed',
             'allow_stock_addition' => 'nullable|boolean',
+            'allow_pos_admin'      => 'nullable|boolean',
             'status'  => 'required|in:active,inactive',
         ]);
 
         $data = $request->only('name', 'email', 'phone');
         $data['role']    = $auth->isShopAdmin() ? 'seller' : $request->role;
         $data['shop_id'] = $auth->isShopAdmin() ? $auth->shop_id : $request->shop_id;
+        $data['allow_pos_admin'] = $request->boolean('allow_pos_admin');
 
         if ($auth->isOwner()) {
             $data['allow_stock_addition'] = $request->boolean('allow_stock_addition');
@@ -283,6 +307,37 @@ class UserController extends Controller
         $user->update(['status' => $newStatus]);
 
         $message = $newStatus === 'active' ? 'Employee account has been enabled.' : 'Employee account has been disabled.';
+
+        return back()->with('success', $message);
+    }
+
+    public function togglePosAdmin(User $user)
+    {
+        $this->authorizeAccess($user);
+
+        if (!$user->isSeller()) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Admin POS toggle is only available for sellers.'
+                ], 422);
+            }
+            return back()->with('error', 'Admin POS toggle is only available for sellers.');
+        }
+
+        $user->allow_pos_admin = !$user->allow_pos_admin;
+        $user->save();
+
+        $statusText = $user->allow_pos_admin ? 'enabled' : 'disabled';
+        $message = "Admin POS access for {$user->name} has been {$statusText}.";
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'allow_pos_admin' => (bool) $user->allow_pos_admin,
+                'message' => $message,
+            ]);
+        }
 
         return back()->with('success', $message);
     }

@@ -63,6 +63,15 @@
                         <input type="hidden" name="role" value="seller">
                         @endif
 
+                        {{-- Allow POS Admin toggle for sellers --}}
+                        <div class="col-md-6 align-self-end" id="allow_pos_admin_wrapper" style="display: {{ (!auth()->user()->isOwner() || old('role', 'seller') === 'seller') ? 'block' : 'none' }}; margin-bottom: 8px;">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="allow_pos_admin" id="allow_pos_admin" value="1" {{ old('allow_pos_admin') ? 'checked' : '' }}>
+                                <label class="form-check-label fw-600" for="allow_pos_admin">Allow Admin POS Access</label>
+                            </div>
+                            <small class="text-muted d-block" style="font-size:0.75rem;">Allows seller to negotiate prices down to buying price like an admin.</small>
+                        </div>
+
                         {{-- Shop: owner can choose, shop_admin locked to their own --}}
                         @if(auth()->user()->isOwner())
                         <div class="col-md-6">
@@ -108,11 +117,17 @@
 <script>
 $(() => {
     $('#roleSelect').on('change', function() {
-        const wrapper = $('#allow_stock_addition_wrapper');
-        if ($(this).val() === 'shop_admin') {
-            wrapper.show();
+        const isShopAdmin = $(this).val() === 'shop_admin';
+        const stockWrapper = $('#allow_stock_addition_wrapper');
+        const posWrapper = $('#allow_pos_admin_wrapper');
+
+        if (isShopAdmin) {
+            stockWrapper.show();
+            posWrapper.hide();
+            $('#allow_pos_admin').prop('checked', false);
         } else {
-            wrapper.hide();
+            stockWrapper.hide();
+            posWrapper.show();
             $('#allow_stock_addition').prop('checked', false);
         }
     });

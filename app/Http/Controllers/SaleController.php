@@ -616,7 +616,7 @@ class SaleController extends Controller
 
                 $submittedPrice = floatval($cartItem['price']);
                 if (!$isDraftProforma) {
-                    if ($user->isOwner() || $user->isShopAdmin()) {
+                    if ($user->canAccessAdminPos()) {
                         if ($submittedPrice < floatval($stock->buying_price)) {
                             throw new \Exception("Price for {$stock->item->item_name} cannot be less than buying price TZS " . number_format($stock->buying_price, 0));
                         }

@@ -52,6 +52,7 @@
                     @if(auth()->user()->isOwner())
                     <th data-priority="2">Assigned Shop</th>
                     @endif
+                    <th data-priority="2" class="text-center" style="min-width: 90px;">Admin POS</th>
                     <th data-priority="2">Status</th>
                     <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
@@ -78,10 +79,66 @@ $(function() {
             @if(auth()->user()->isOwner())
             { data: 'shop', name: 'shop', orderable: false, searchable: false },
             @endif
+            { data: 'admin_pos', name: 'allow_pos_admin', orderable: false, searchable: false, className: 'text-center' },
             { data: 'status', name: 'status', orderable: false, searchable: false },
             { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ],
         order: [[1, 'asc']]
+    });
+
+    $(document).on('change', '.pos-admin-toggle', function() {
+        const toggle = $(this);
+        const url = toggle.data('url');
+        const isChecked = toggle.is(':checked');
+
+        toggle.prop('disabled', true);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                _method: 'PATCH'
+            },
+            success: function(res) {
+                toggle.prop('disabled', false);
+                toggle.prop('checked', res.allow_pos_admin);
+                
+                const title = res.allow_pos_admin 
+                    ? 'Admin POS Enabled (Click to disable)' 
+                    : 'Admin POS Disabled (Click to enable)';
+                toggle.attr('title', title);
+
+                if (window.Swal) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: res.message || 'Updated successfully',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true
+                    });
+                }
+            },
+            error: function(xhr) {
+                toggle.prop('disabled', false);
+                toggle.prop('checked', !isChecked);
+                const err = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to update Admin POS setting.';
+                if (window.Swal) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: err,
+                        showConfirmButton: false,
+                        timer: 3500
+                    });
+                } else {
+                    alert(err);
+                }
+            }
+        });
     });
 });
 </script>
