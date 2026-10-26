@@ -66,6 +66,20 @@
                     </div>
                 </div>
 
+                @if($shopStock->is_admin_stock && $shopStock->remaining_quantity > 0 && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $shopStock->shop_id)))
+                <div class="alert alert-warning d-flex align-items-center justify-content-between p-3 mb-4 rounded flex-wrap gap-2" style="background:rgba(227, 179, 65, 0.1); border:1px solid rgba(227, 179, 65, 0.3);">
+                    <div>
+                        <h6 class="mb-1 text-warning fw-700"><i class="bi bi-arrow-left-right me-1"></i> Stocked as Admin Stock by mistake?</h6>
+                        <p class="mb-0 text-secondary" style="font-size:0.84rem;">
+                            Transfer the remaining <strong>{{ $shopStock->remaining_quantity }}</strong> unit(s) of this batch directly to <strong>Owner Stock</strong> without needing to delete and recreate.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#transferEditModal">
+                        <i class="bi bi-arrow-left-right me-1"></i>Transfer to Owner
+                    </button>
+                </div>
+                @endif
+
                 @if(auth()->user()->isShopAdmin() && !$shopStock->is_admin_stock)
                 {{-- Shop Admin editing owner-transferred stock: selling price only --}}
                 <form method="POST" action="{{ route('shop-stock.update', $shopStock) }}" id="editStockForm">
@@ -364,6 +378,119 @@ $(document).ready(function () {
     qtyInput.on('input change', validateForm);
     remInput.on('input change', validateForm);
     @endif
+
+    // Transfer Modal Price formatting & validation
+    function validateEditTransferPrices() {
+        var bp = parseFloat($('#editTransferBP').val() || 0);
+        var sp = parseFloat($('#editTransferSP').val() || 0);
+        var warning = $('#editTransferPriceWarning');
+        var btn = $('#editConfirmTransferBtn');
+
+        if (sp < bp) {
+            warning.show();
+            $('#editTransferSPDisplay').addClass('is-invalid');
+            btn.prop('disabled', true);
+        } else {
+            warning.hide();
+            $('#editTransferSPDisplay').removeClass('is-invalid');
+            btn.prop('disabled', false);
+        }
+    }
+
+    $('#editTransferBPDisplay').on('input', function() {
+        var clean = this.value.replace(/[^0-9]/g, '');
+        this.value = formatNum(clean);
+        $('#editTransferBP').val(clean);
+        validateEditTransferPrices();
+    });
+
+    $('#editTransferSPDisplay').on('input', function() {
+        var clean = this.value.replace(/[^0-9]/g, '');
+        this.value = formatNum(clean);
+        $('#editTransferSP').val(clean);
+        validateEditTransferPrices();
+    });
 });
 </script>
+
+@if($shopStock->is_admin_stock && $shopStock->remaining_quantity > 0 && (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $shopStock->shop_id)))
+<!-- Transfer Modal for Edit Page -->
+<div class="modal fade" id="transferEditModal" tabindex="-1" aria-labelledby="transferEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="transferEditModalLabel">
+                    <i class="bi bi-arrow-left-right text-warning me-2"></i>Transfer to Owner Stock
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('shop-stock.transfer-to-owner', $shopStock) }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="p-3 rounded mb-3" style="background:var(--input-bg); border:1px solid var(--input-border);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Product:</span>
+                            <strong class="text-white text-end">{{ $shopStock->item->item_name ?? 'Product' }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Batch ID:</span>
+                            <span class="badge bg-secondary">#{{ $shopStock->id }}</span>
+                        </div>
+                        <hr class="my-2" style="border-color:var(--card-border);">
+                        <div class="row g-2 text-center" style="font-size:0.82rem;">
+                            <div class="col-4">
+                                <span class="text-muted d-block small">Initial Qty</span>
+                                <strong class="fs-6">{{ $shopStock->quantity }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block small">Sold Qty</span>
+                                <strong class="fs-6 text-info">{{ max(0, $shopStock->quantity - $shopStock->remaining_quantity) }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block small">To Transfer</span>
+                                <strong class="fs-6 text-success">{{ $shopStock->remaining_quantity }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $soldQty = max(0, $shopStock->quantity - $shopStock->remaining_quantity);
+                    @endphp
+                    @if($soldQty === 0)
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i> <strong>Full Transfer:</strong> No sales have occurred for this batch yet. All <strong>{{ $shopStock->remaining_quantity }}</strong> unit(s) will be converted directly into Owner Stock.
+                    </div>
+                    @else
+                    <div class="alert alert-warning py-2 px-3 small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Partial Transfer:</strong> <strong>{{ $soldQty }}</strong> unit(s) have already been sold as Admin Stock and will be <strong>retained as finished stock</strong> with 0 remaining to safeguard past receipts & audit reports. The remaining <strong>{{ $shopStock->remaining_quantity }}</strong> unit(s) will be transferred into a new Owner Stock batch.
+                    </div>
+                    @endif
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-600 mb-1">Buying Price (TZS)</label>
+                            <input type="text" class="form-control form-control-sm" id="editTransferBPDisplay" value="{{ number_format($shopStock->buying_price, 0) }}" required autocomplete="off">
+                            <input type="hidden" id="editTransferBP" name="buying_price" value="{{ (float)$shopStock->buying_price }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-600 mb-1">Selling Price (TZS)</label>
+                            <input type="text" class="form-control form-control-sm" id="editTransferSPDisplay" value="{{ number_format($shopStock->selling_price, 0) }}" required autocomplete="off">
+                            <input type="hidden" id="editTransferSP" name="selling_price" value="{{ (float)$shopStock->selling_price }}">
+                        </div>
+                    </div>
+                    <div id="editTransferPriceWarning" class="text-danger small mt-1" style="display:none;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Selling price cannot be less than buying price!
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold" id="editConfirmTransferBtn">
+                        <i class="bi bi-arrow-left-right me-1"></i>Confirm Transfer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endpush

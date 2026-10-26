@@ -547,6 +547,75 @@
     </div>
 </div>
 
+<!-- Transfer Admin Stock to Owner Stock Modal -->
+<div class="modal fade" id="transferToOwnerModal" tabindex="-1" aria-labelledby="transferToOwnerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="transferToOwnerModalLabel">
+                    <i class="bi bi-arrow-left-right text-warning me-2"></i>Transfer to Owner Stock
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="transferToOwnerForm" method="POST" action="">
+                @csrf
+                <div class="modal-body">
+                    <div class="p-3 rounded mb-3" style="background:var(--input-bg); border:1px solid var(--input-border);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Product:</span>
+                            <strong id="transferItemName" class="text-white text-end"></strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Batch ID:</span>
+                            <span id="transferBatchId" class="badge bg-secondary"></span>
+                        </div>
+                        <hr class="my-2" style="border-color:var(--card-border);">
+                        <div class="row g-2 text-center" style="font-size:0.82rem;">
+                            <div class="col-4">
+                                <span class="text-muted d-block small">Initial Qty</span>
+                                <strong id="transferInitialQty" class="fs-6">0</strong>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block small">Sold Qty</span>
+                                <strong id="transferSoldQty" class="fs-6 text-info">0</strong>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block small">To Transfer</span>
+                                <strong id="transferRemainingQty" class="fs-6 text-success">0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explanatory notice depending on full or partial transfer -->
+                    <div id="transferScenarioAlert" class="alert py-2 px-3 small mb-3"></div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label for="transferBuyingPriceDisplay" class="form-label small fw-600 mb-1">Buying Price (TZS)</label>
+                            <input type="text" class="form-control form-control-sm" id="transferBuyingPriceDisplay" required autocomplete="off">
+                            <input type="hidden" id="transferBuyingPrice" name="buying_price">
+                        </div>
+                        <div class="col-6">
+                            <label for="transferSellingPriceDisplay" class="form-label small fw-600 mb-1">Selling Price (TZS)</label>
+                            <input type="text" class="form-control form-control-sm" id="transferSellingPriceDisplay" required autocomplete="off">
+                            <input type="hidden" id="transferSellingPrice" name="selling_price">
+                        </div>
+                    </div>
+                    <div id="transferPriceWarning" class="text-danger small mt-1" style="display:none;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Selling price cannot be less than buying price!
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold" id="confirmTransferBtn">
+                        <i class="bi bi-arrow-left-right me-1"></i>Confirm Transfer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @if(auth()->user()->isShopAdmin())
 <style>
     .product-block {
@@ -2531,6 +2600,132 @@
         $('#btnDisableCategoryComp').on('click', () => sendCategoryComponentUpdate(false));
         @endif
         $('#bulkDeleteBtn').on('click', sendBulkDelete);
+
+        // ── Transfer Admin Stock to Owner Stock Handler ──────────────────
+        $(document).on('click', '.btn-transfer-to-owner', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            const itemName = $(this).data('item-name');
+            const totalQty = parseInt($(this).data('total-qty') || 0);
+            const soldQty = parseInt($(this).data('sold-qty') || 0);
+            const remainingQty = parseInt($(this).data('remaining-qty') || 0);
+            const buyingPrice = parseFloat($(this).data('buying-price') || 0);
+            const sellingPrice = parseFloat($(this).data('selling-price') || 0);
+
+            $('#transferItemName').text(itemName);
+            $('#transferBatchId').text('#' + id);
+            $('#transferInitialQty').text(totalQty);
+            $('#transferSoldQty').text(soldQty);
+            $('#transferRemainingQty').text(remainingQty);
+
+            // Populate price fields
+            $('#transferBuyingPrice').val(buyingPrice);
+            $('#transferBuyingPriceDisplay').val(formatNumber(buyingPrice.toString()));
+            $('#transferSellingPrice').val(sellingPrice);
+            $('#transferSellingPriceDisplay').val(formatNumber(sellingPrice.toString()));
+
+            const scenarioAlert = $('#transferScenarioAlert');
+            if (soldQty === 0) {
+                scenarioAlert.removeClass('alert-warning').addClass('alert-info')
+                    .html('<i class="bi bi-info-circle-fill me-1"></i> <strong>Full Transfer:</strong> No sales have occurred for this batch yet. All <strong>' + remainingQty + '</strong> unit(s) will be converted directly into Owner Stock.');
+            } else {
+                scenarioAlert.removeClass('alert-info').addClass('alert-warning')
+                    .html('<i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Partial Transfer:</strong> <strong>' + soldQty + '</strong> unit(s) have already been sold as Admin Stock and will be <strong>retained as finished stock</strong> with 0 remaining to safeguard past receipts & audit reports. The remaining <strong>' + remainingQty + '</strong> unit(s) will be transferred into a new Owner Stock batch.');
+            }
+
+            $('#transferPriceWarning').hide();
+            $('#confirmTransferBtn').prop('disabled', false);
+
+            const formAction = '{{ url("shop-stock") }}/' + id + '/transfer-to-owner';
+            $('#transferToOwnerForm').attr('action', formAction);
+
+            $('#transferToOwnerModal').modal('show');
+        });
+
+        // Price formatting & validation inside Transfer Modal
+        function validateTransferModalPrices() {
+            const buying = parseFloat($('#transferBuyingPrice').val() || 0);
+            const selling = parseFloat($('#transferSellingPrice').val() || 0);
+            const warning = $('#transferPriceWarning');
+            const btn = $('#confirmTransferBtn');
+
+            if (selling < buying) {
+                warning.show();
+                $('#transferSellingPriceDisplay').addClass('is-invalid');
+                btn.prop('disabled', true);
+            } else {
+                warning.hide();
+                $('#transferSellingPriceDisplay').removeClass('is-invalid');
+                btn.prop('disabled', false);
+            }
+        }
+
+        $('#transferBuyingPriceDisplay').on('input', function() {
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            this.value = formatNumber(cleanVal);
+            $('#transferBuyingPrice').val(cleanVal);
+            validateTransferModalPrices();
+        });
+
+        $('#transferSellingPriceDisplay').on('input', function() {
+            let cleanVal = this.value.replace(/[^0-9.]/g, '');
+            let dotCount = (cleanVal.match(/\./g) || []).length;
+            if (dotCount > 1) cleanVal = cleanVal.substr(0, cleanVal.lastIndexOf('.'));
+            this.value = formatNumber(cleanVal);
+            $('#transferSellingPrice').val(cleanVal);
+            validateTransferModalPrices();
+        });
+
+        $('#transferToOwnerForm').on('submit', function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const btn = $('#confirmTransferBtn');
+            const url = form.attr('action');
+
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Transferring...');
+
+            $.ajax({
+                url: url,
+                method: 'POST',
+                data: form.serialize(),
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                    'Accept': 'application/json'
+                },
+                success: function(res) {
+                    $('#transferToOwnerModal').modal('hide');
+                    btn.prop('disabled', false).html('<i class="bi bi-arrow-left-right me-1"></i>Confirm Transfer');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Stock Transferred!',
+                        text: res.message || 'Admin stock transferred to Owner stock successfully.',
+                        background: '#161b22',
+                        color: '#e6edf3',
+                        confirmButtonColor: '#238636'
+                    }).then(() => {
+                        if (typeof table !== 'undefined') {
+                            table.ajax.reload(null, false);
+                        } else {
+                            window.location.reload();
+                        }
+                    });
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="bi bi-arrow-left-right me-1"></i>Confirm Transfer');
+                    const err = xhr.responseJSON?.message || 'Failed to transfer stock. Please try again.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Transfer Error',
+                        text: err,
+                        background: '#161b22',
+                        color: '#e6edf3'
+                    });
+                }
+            });
+        });
 
         $(document).on('click', '.confirm-delete-btn', function(e) {
             e.preventDefault();

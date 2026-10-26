@@ -367,6 +367,20 @@ class ShopStockController extends Controller
                             . '</form>';
                     }
                 }
+                $canTransferBatch = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) && $batch->is_admin_stock && $batch->remaining_quantity > 0;
+                if ($canTransferBatch) {
+                    $batchActions .= '<button type="button" class="btn btn-xs btn-outline-warning btn-transfer-to-owner p-0 px-1" '
+                        . 'data-id="' . $batch->id . '" '
+                        . 'data-item-name="' . e($batch->item->item_name ?? 'Product') . '" '
+                        . 'data-total-qty="' . $batch->quantity . '" '
+                        . 'data-sold-qty="' . $soldBatchQty . '" '
+                        . 'data-remaining-qty="' . $batch->remaining_quantity . '" '
+                        . 'data-buying-price="' . (float)$batch->buying_price . '" '
+                        . 'data-selling-price="' . (float)$batch->selling_price . '" '
+                        . 'title="Transfer Admin Stock to Owner Stock">'
+                        . '<i class="bi bi-arrow-left-right"></i>'
+                        . '</button>';
+                }
                 if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
                     $batchChecked = $batch->allow_components ? 'checked' : '';
                     $batchActions .= '<div class="form-check form-switch ms-1 mb-0 d-inline-flex align-items-center" title="Toggle custom components on sell">'
@@ -433,6 +447,19 @@ class ShopStockController extends Controller
                         . '<input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $batch->id . '" style="cursor:pointer;width:28px;height:14px;" ' . $batchChecked . '>'
                         . '</div></div>';
                 }
+                if ($canTransferBatch) {
+                    $mobileBatchActions .= '<button type="button" class="btn btn-xs btn-outline-warning btn-transfer-to-owner" '
+                        . 'data-id="' . $batch->id . '" '
+                        . 'data-item-name="' . e($batch->item->item_name ?? 'Product') . '" '
+                        . 'data-total-qty="' . $batch->quantity . '" '
+                        . 'data-sold-qty="' . $soldBatchQty . '" '
+                        . 'data-remaining-qty="' . $batch->remaining_quantity . '" '
+                        . 'data-buying-price="' . (float)$batch->buying_price . '" '
+                        . 'data-selling-price="' . (float)$batch->selling_price . '" '
+                        . 'title="Transfer Admin Stock to Owner Stock">'
+                        . '<i class="bi bi-arrow-left-right me-1"></i>Transfer to Owner'
+                        . '</button>';
+                }
                 $mobileBatchActions .= '</div>';
 
                 $childTableHtml .= '<div class="border rounded p-3 mb-2" style="font-size:0.78rem;background:var(--card-bg);border-color:var(--card-border)!important;width:100%!important;box-sizing:border-box!important;' . ($isZeroRemaining ? 'opacity:0.85;' : '') . '">';
@@ -478,6 +505,21 @@ class ShopStockController extends Controller
             $actions .= '<a href="' . route('shop-stock.show', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>';
             if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) {
                 $actions .= '<a href="' . route('shop-stock.edit', $firstSt) . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
+                $canTransferFirst = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $firstSt->shop_id)) && $firstSt->is_admin_stock && $firstSt->remaining_quantity > 0;
+                if ($canTransferFirst) {
+                    $soldFirstQty = max(0, $firstSt->quantity - $firstSt->remaining_quantity);
+                    $actions .= '<button type="button" class="btn btn-xs btn-outline-warning btn-transfer-to-owner" '
+                        . 'data-id="' . $firstSt->id . '" '
+                        . 'data-item-name="' . e($firstSt->item->item_name ?? 'Product') . '" '
+                        . 'data-total-qty="' . $firstSt->quantity . '" '
+                        . 'data-sold-qty="' . $soldFirstQty . '" '
+                        . 'data-remaining-qty="' . $firstSt->remaining_quantity . '" '
+                        . 'data-buying-price="' . (float)$firstSt->buying_price . '" '
+                        . 'data-selling-price="' . (float)$firstSt->selling_price . '" '
+                        . 'title="Transfer Admin Stock to Owner Stock">'
+                        . '<i class="bi bi-arrow-left-right me-1"></i><span class="d-none d-lg-inline">To Owner</span>'
+                        . '</button>';
+                }
                 if ($canDeleteFirst) {
                     if ($firstSt->quantity != $firstSt->remaining_quantity) {
                         $actions .= '<button type="button" class="btn btn-xs btn-outline-secondary" disabled title="Cannot delete stock batch because sales have already occurred"><i class="bi bi-trash"></i></button>';
@@ -2742,6 +2784,258 @@ class ShopStockController extends Controller
             'recordsFiltered' => $recordsFiltered,
             'data' => $data,
         ]);
+    }
+
+    /**
+     * Transfer an Admin Stock batch to Owner Stock.
+     * If no sales have occurred (remaining == quantity), converts the batch in-place.
+     * If partial sales occurred (0 < remaining < quantity), retains the sold units as
+     * a finished admin stock batch (quantity = sold, remaining = 0) and creates a new
+     * Owner Stock batch for the remaining units.
+     */
+    public function transferToOwnerStock(Request $request, ShopStock $shopStock)
+    {
+        $user = Auth::user();
+        if (!$user->isOwner() && !($user->isShopAdmin() && $user->shop_id == $shopStock->shop_id)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+            abort(403, 'Unauthorized.');
+        }
+
+        if (!$shopStock->is_admin_stock) {
+            $msg = 'This stock batch is already Owner Stock.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        $remainingQty = (int) $shopStock->remaining_quantity;
+        if ($remainingQty <= 0) {
+            $msg = 'Cannot transfer: This stock batch has no remaining quantity (it is already completely sold out).';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        $initialQty = (int) $shopStock->quantity;
+        $soldQty = max(0, $initialQty - $remainingQty);
+
+        $buyingPrice = $request->filled('buying_price') ? floatval($request->buying_price) : floatval($shopStock->buying_price);
+        $sellingPrice = $request->filled('selling_price') ? floatval($request->selling_price) : floatval($shopStock->selling_price);
+
+        if ($buyingPrice < 0 || $sellingPrice < 0) {
+            $msg = 'Prices cannot be negative.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        if ($sellingPrice < $buyingPrice) {
+            $msg = 'Selling price must be greater than or equal to buying price.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
+        $dateReceived = $shopStock->date_received ? $shopStock->date_received->format('Y-m-d') : now()->toDateString();
+        $shop = $shopStock->shop;
+        $shopName = $shop?->shop_name ?? 'Shop';
+        $item = $shopStock->item;
+        $itemName = $item?->item_name ?? 'Product';
+
+        DB::transaction(function () use (
+            $shopStock,
+            $user,
+            $item,
+            $itemName,
+            $shopName,
+            $initialQty,
+            $remainingQty,
+            $soldQty,
+            $buyingPrice,
+            $sellingPrice,
+            $dateReceived
+        ) {
+            // 1. If product was marked as admin item, convert it to master owner catalog
+            if ($item && $item->is_admin_item) {
+                $item->update([
+                    'is_admin_item' => false,
+                    'shop_id'       => null,
+                ]);
+
+                if ($item->category && $item->category->is_admin_category) {
+                    $item->category->update([
+                        'is_admin_category' => false,
+                        'shop_id'           => null,
+                    ]);
+                }
+            }
+
+            $stockService = app(\App\Services\MainStoreStockService::class);
+
+            if ($soldQty === 0) {
+                // ── SCENARIO A: Full untouched batch transfer ────────────────────────
+                $shopStock->update([
+                    'is_admin_stock' => false,
+                    'buying_price'   => $buyingPrice,
+                    'selling_price'  => $sellingPrice,
+                ]);
+
+                // Register reference in MainStore
+                $stockService->processStockAddition(
+                    (int) $shopStock->item_id,
+                    (int) $remainingQty,
+                    (float) (0.5 * $buyingPrice),
+                    (float) $buyingPrice,
+                    $dateReceived,
+                    $user->id,
+                    "Admin stock batch #{$shopStock->id} transferred to Owner stock (Full batch)",
+                    true
+                );
+
+                // Stock transfer record
+                $transfer = \App\Models\StockTransfer::create([
+                    'from_store'    => 'Main Warehouse',
+                    'to_shop'       => $shopStock->shop_id,
+                    'approved_by'   => $user->id,
+                    'transfer_date' => $dateReceived,
+                    'status'        => 'received',
+                ]);
+
+                \App\Models\StockTransferItem::create([
+                    'transfer_id'   => $transfer->id,
+                    'item_id'       => $shopStock->item_id,
+                    'quantity'      => $remainingQty,
+                    'buying_price'  => 0.5 * $buyingPrice,
+                    'selling_price' => $buyingPrice,
+                    'status'        => 'received',
+                    'received_by'   => $user->id,
+                    'received_at'   => now(),
+                ]);
+
+                // Stock Log
+                \App\Models\StockLog::create([
+                    'item_id'          => $shopStock->item_id,
+                    'from_location'    => 'Supplier (Admin)',
+                    'to_location'      => $shopName,
+                    'quantity'         => $remainingQty,
+                    'transaction_type' => 'STOCK_RECEIVED',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => "Admin stock batch #{$shopStock->id} (\"{$itemName}\") transferred to Owner stock by {$user->name}",
+                    'is_admin_stock'   => false,
+                ]);
+
+            } else {
+                // ── SCENARIO B: Partially sold batch ─────────────────────────────────
+                // 1. Retain sold quantity in original batch and finalize it as finished admin stock
+                $shopStock->update([
+                    'quantity'           => $soldQty,
+                    'remaining_quantity' => 0,
+                ]);
+
+                // 2. Create new Owner Stock batch with the remaining units
+                $newOwnerStock = ShopStock::create([
+                    'shop_id'            => $shopStock->shop_id,
+                    'item_id'            => $shopStock->item_id,
+                    'buying_price'       => $buyingPrice,
+                    'selling_price'      => $sellingPrice,
+                    'quantity'           => $remainingQty,
+                    'remaining_quantity' => $remainingQty,
+                    'low_stock_alert'    => $shopStock->low_stock_alert ?? 1,
+                    'date_received'      => $dateReceived,
+                    'is_price_pending'   => false,
+                    'is_sellable'        => true,
+                    'is_admin_stock'     => false,
+                ]);
+
+                // Register reference in MainStore for remaining units
+                $stockService->processStockAddition(
+                    (int) $shopStock->item_id,
+                    (int) $remainingQty,
+                    (float) (0.5 * $buyingPrice),
+                    (float) $buyingPrice,
+                    $dateReceived,
+                    $user->id,
+                    "Owner stock batch #{$newOwnerStock->id} created from transferred Admin Stock batch #{$shopStock->id}",
+                    true
+                );
+
+                // Stock transfer record
+                $transfer = \App\Models\StockTransfer::create([
+                    'from_store'    => 'Main Warehouse',
+                    'to_shop'       => $shopStock->shop_id,
+                    'approved_by'   => $user->id,
+                    'transfer_date' => $dateReceived,
+                    'status'        => 'received',
+                ]);
+
+                \App\Models\StockTransferItem::create([
+                    'transfer_id'   => $transfer->id,
+                    'item_id'       => $shopStock->item_id,
+                    'quantity'      => $remainingQty,
+                    'buying_price'  => 0.5 * $buyingPrice,
+                    'selling_price' => $buyingPrice,
+                    'status'        => 'received',
+                    'received_by'   => $user->id,
+                    'received_at'   => now(),
+                ]);
+
+                // Log adjustment on original admin batch
+                \App\Models\StockLog::create([
+                    'item_id'          => $shopStock->item_id,
+                    'from_location'    => $shopName,
+                    'to_location'      => $shopName,
+                    'quantity'         => $remainingQty,
+                    'transaction_type' => 'ADJUSTMENT',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => "Admin stock batch #{$shopStock->id} (\"{$itemName}\") split: {$remainingQty} unit(s) transferred to Owner Stock (Batch #{$newOwnerStock->id}). {$soldQty} sold unit(s) retained as finished admin stock.",
+                    'is_admin_stock'   => true,
+                ]);
+
+                // Log receipt on new owner batch
+                \App\Models\StockLog::create([
+                    'item_id'          => $shopStock->item_id,
+                    'from_location'    => 'Admin Stock #' . $shopStock->id,
+                    'to_location'      => $shopName,
+                    'quantity'         => $remainingQty,
+                    'transaction_type' => 'STOCK_RECEIVED',
+                    'performed_by'     => $user->id,
+                    'date'             => now(),
+                    'notes'            => "Owner stock batch #{$newOwnerStock->id} created from transferred Admin Stock batch #{$shopStock->id} by {$user->name}",
+                    'is_admin_stock'   => false,
+                ]);
+            }
+
+            // Notify sellers in this shop
+            $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)->where('role', 'seller')->get();
+            foreach ($sellers as $seller) {
+                \App\Models\Notification::create([
+                    'user_id' => $seller->id,
+                    'title'   => 'Stock Transferred to Owner Stock',
+                    'message' => "Admin has transferred {$remainingQty} unit(s) of \"{$itemName}\" to Owner Stock.",
+                ]);
+            }
+        });
+
+        $successMsg = ($soldQty === 0)
+            ? "Batch #{$shopStock->id} ({$remainingQty} units of {$itemName}) transferred to Owner Stock successfully."
+            : "Transferred {$remainingQty} unit(s) of {$itemName} to a new Owner Stock batch. {$soldQty} sold unit(s) retained as finished Admin Stock.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $successMsg,
+            ]);
+        }
+
+        return back()->with('success', $successMsg);
     }
 }
 

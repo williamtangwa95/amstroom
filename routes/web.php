@@ -170,6 +170,7 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-stock/{shopStock}/request-edit', [ShopStockController::class, 'requestEdit'])->name('shop-stock.request-edit');
         Route::post('shop-stock/{shopStock}/approve-delete', [ShopStockController::class, 'approveDelete'])->name('shop-stock.approve-delete');
         Route::post('shop-stock/{shopStock}/reject-delete', [ShopStockController::class, 'rejectDelete'])->name('shop-stock.reject-delete');
+        Route::post('shop-stock/{shopStock}/transfer-to-owner', [ShopStockController::class, 'transferToOwnerStock'])->name('shop-stock.transfer-to-owner');
         Route::post('settings/toggle-components', [SettingController::class, 'toggleComponents'])->name('settings.toggle-components');
 
         // Handover Reports
