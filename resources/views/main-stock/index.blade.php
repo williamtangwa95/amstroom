@@ -371,6 +371,104 @@
     </div>
 </div>
 
+<!-- Swap Product Modal -->
+<div class="modal fade" id="swapProductModal" tabindex="-1" aria-labelledby="swapProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.12); width: 36px; height: 36px;">
+                        <i class="bi bi-arrow-left-right text-warning fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-700 mb-0" id="swapProductModalLabel" style="font-size: 1.05rem;">Swap Product Stock</h5>
+                        <small class="text-muted" style="font-size: 0.75rem;">Reassign this stock to a different catalog product</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: var(--btn-close-filter, none);"></button>
+            </div>
+            <form id="swapProductForm">
+                @csrf
+                <input type="hidden" id="swapStockId" name="stock_id" value="">
+                <div class="modal-body p-4">
+                    <!-- Current Product Card -->
+                    <div class="p-3 mb-3 rounded border" style="background: rgba(255, 255, 255, 0.03); border-color: var(--card-border) !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-secondary-subtle text-secondary fw-700" style="font-size: 0.72rem;">CURRENT PRODUCT</span>
+                            <span class="badge bg-info-subtle text-info fw-600" id="swapCurrentCategory"></span>
+                        </div>
+                        <h6 class="fw-bold mb-2" id="swapCurrentProductName" style="font-size: 1rem; color: var(--text-primary);">-</h6>
+                        <div class="row g-2 text-muted small" style="font-size: 0.78rem;">
+                            <div class="col-6 col-sm-3">
+                                <div>Remaining Qty:</div>
+                                <strong class="text-success fs-6" id="swapCurrentRemainingQty">0</strong>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div>Total Stocked:</div>
+                                <strong class="fs-6" id="swapCurrentStockedQty">0</strong>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div>Buy Price:</div>
+                                <strong class="fs-6" id="swapCurrentBuyPrice">TZS 0</strong>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div>Sell Price:</div>
+                                <strong class="fs-6" id="swapCurrentSellPrice">TZS 0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Swap Icon Divider -->
+                    <div class="text-center my-3">
+                        <span class="badge rounded-pill px-3 py-2 text-warning border border-warning" style="background: rgba(245, 158, 11, 0.08);">
+                            <i class="bi bi-arrow-down-up me-1"></i> Swap With
+                        </span>
+                    </div>
+
+                    <!-- Target Product Selection -->
+                    <div class="mb-3">
+                        <label for="swapTargetItemId" class="form-label fw-600" style="font-size: 0.85rem;">Select New Product to Swap to *</label>
+                        <select name="target_item_id" id="swapTargetItemId" class="form-select form-select-sm" required style="width: 100%;">
+                            <option value="">-- Choose New Product from List --</option>
+                            @foreach($items as $item)
+                            <option value="{{ $item->id }}" data-category="{{ $item->category->category_name ?? 'Uncategorized' }}" data-name="{{ $item->item_name }}">
+                                [{{ $item->category->category_name ?? 'Uncategorized' }}] {{ $item->item_name }} {{ $item->brand ? "($item->brand)" : '' }}
+                            </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text small" style="font-size: 0.72rem;">Choose the correct catalog product to replace the current stock with.</div>
+                    </div>
+
+                    <!-- Propagation Option -->
+                    <div class="form-check form-switch mb-3 p-3 rounded border" style="background: rgba(0, 136, 204, 0.03); border-color: rgba(0, 136, 204, 0.15) !important;">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" name="affect_shops" value="1" id="swapAffectShops" checked style="cursor: pointer;">
+                        <label class="form-check-label fw-600 mb-0" for="swapAffectShops" style="cursor: pointer; font-size: 0.82rem;">
+                            <i class="bi bi-shop me-1 text-accent"></i> Also propagate swap to all Shop Branches
+                        </label>
+                        <div class="text-muted small mt-1 ms-4 ps-1" style="font-size: 0.72rem;">
+                            If enabled, any stock of the old product currently held in shop branches and pending stock transfers will also be reassigned to the new product.
+                        </div>
+                    </div>
+
+                    <!-- Info Alert -->
+                    <div class="alert alert-warning py-2 px-3 mb-0 d-flex align-items-center gap-2" style="font-size: 0.76rem; background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.2); color: #d97706;">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 fs-6"></i>
+                        <div>
+                            <strong>Note:</strong> If the target product already has existing stock in the warehouse, the quantities will be consolidated automatically.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-warning px-3 fw-600" id="btnConfirmSwap">
+                        <i class="bi bi-arrow-left-right me-1"></i> Update & Swap Product
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 @push('scripts')
 <script>
@@ -868,6 +966,151 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     form.submit();
+                }
+            });
+        });
+
+        // ════════════════════════════════════════════════════════════════
+        // PRODUCT SWAP HANDLERS (OWNER ONLY)
+        // ════════════════════════════════════════════════════════════════
+        $('#swapProductModal').on('shown.bs.modal', function () {
+            if ($.fn.select2) {
+                if ($('#swapTargetItemId').hasClass('select2-hidden-accessible')) {
+                    $('#swapTargetItemId').select2('destroy');
+                }
+                $('#swapTargetItemId').select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    dropdownParent: $('#swapProductModal'),
+                    placeholder: '-- Choose New Product from List --',
+                    allowClear: true
+                });
+            }
+        });
+
+        $(document).on('click', '.btn-swap-product', function() {
+            const btn = $(this);
+            const stockId = btn.data('id');
+            const itemId = btn.data('item-id');
+            const itemName = btn.data('item-name');
+            const category = btn.data('category');
+            const remainingQty = btn.data('remaining-qty');
+            const stockedQty = btn.data('stocked-qty');
+            const buyPrice = btn.data('buying-price');
+            const sellPrice = btn.data('selling-price');
+
+            $('#swapStockId').val(stockId);
+            $('#swapCurrentProductName').text(itemName);
+            $('#swapCurrentCategory').text(category || 'General');
+            $('#swapCurrentRemainingQty').text(remainingQty);
+            $('#swapCurrentStockedQty').text(stockedQty);
+            $('#swapCurrentBuyPrice').text('TZS ' + buyPrice);
+            $('#swapCurrentSellPrice').text('TZS ' + sellPrice);
+
+            // Hide/disable current product in target selection
+            $('#swapTargetItemId option').each(function() {
+                if ($(this).val() == itemId) {
+                    $(this).prop('disabled', true);
+                } else {
+                    $(this).prop('disabled', false);
+                }
+            });
+
+            $('#swapTargetItemId').val('');
+            $('#swapAffectShops').prop('checked', true);
+
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('swapProductModal'));
+            modal.show();
+        });
+
+        $('#swapProductForm').on('submit', function(e) {
+            e.preventDefault();
+            const stockId = $('#swapStockId').val();
+            const targetItemId = $('#swapTargetItemId').val();
+            const targetItemName = $('#swapTargetItemId option:selected').data('name') || 'Selected Product';
+            const currentItemName = $('#swapCurrentProductName').text();
+            const affectShops = $('#swapAffectShops').is(':checked') ? 1 : 0;
+
+            if (!targetItemId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Select Product',
+                    text: 'Please select a new product to swap to.',
+                    background: '#161b22',
+                    color: '#e6edf3'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Confirm Product Swap',
+                html: `Are you sure you want to swap <b>${currentItemName}</b> to <b>${targetItemName}</b>?<br><br><small class="text-warning">This will update warehouse stock and ${affectShops ? 'propagate to all shop branches' : 'keep shop stocks unchanged'}.</small>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, swap product!',
+                cancelButtonText: 'Cancel',
+                background: '#161b22',
+                color: '#e6edf3'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Swapping product...',
+                        allowOutsideClick: false,
+                        background: '#161b22',
+                        color: '#e6edf3',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    const swapUrl = "{{ url('main-stock') }}/" + stockId + "/swap";
+
+                    $.ajax({
+                        url: swapUrl,
+                        type: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            target_item_id: targetItemId,
+                            affect_shops: affectShops
+                        },
+                        success: function(res) {
+                            bootstrap.Modal.getInstance(document.getElementById('swapProductModal'))?.hide();
+                            if (res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Product Swapped!',
+                                    text: res.message,
+                                    background: '#161b22',
+                                    color: '#e6edf3'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: res.message || 'Failed to swap product.',
+                                    background: '#161b22',
+                                    color: '#e6edf3'
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            let msg = 'Failed to swap product.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Swap Failed',
+                                text: msg,
+                                background: '#161b22',
+                                color: '#e6edf3'
+                            });
+                        }
+                    });
                 }
             });
         });

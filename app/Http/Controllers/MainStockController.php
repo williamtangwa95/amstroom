@@ -6,6 +6,11 @@ use App\Models\Item;
 use App\Models\MainStock;
 use App\Models\StockLog;
 use App\Models\Category;
+use App\Models\ShopStock;
+use App\Models\StockTransferItem;
+use App\Models\StockRequestItem;
+use App\Models\SaleBatchAllocation;
+use App\Models\SaleReturnBatchAllocation;
 use App\Services\MainStoreStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -162,6 +167,22 @@ class MainStockController extends Controller
             $actionsHtml = '<div class="d-flex align-items-center gap-2">
                 <a href="' . $showRoute . '" class="btn btn-xs btn-outline-custom" title="View details"><i class="bi bi-eye"></i></a>
                 <a href="' . $editRoute . '" class="btn btn-xs btn-outline-custom" title="Edit batch"><i class="bi bi-pencil"></i></a>';
+
+            if (Auth::user()?->isOwner()) {
+                $actionsHtml .= '
+                <button type="button" class="btn btn-xs btn-outline-warning btn-swap-product" 
+                    data-id="' . $stock->id . '" 
+                    data-item-id="' . $stock->item_id . '" 
+                    data-item-name="' . htmlspecialchars($itemName, ENT_QUOTES) . '" 
+                    data-category="' . htmlspecialchars($categoryName, ENT_QUOTES) . '" 
+                    data-remaining-qty="' . $stock->remaining_quantity . '" 
+                    data-stocked-qty="' . $stock->stocked_quantity . '" 
+                    data-buying-price="' . number_format($stock->buying_price, 0) . '" 
+                    data-selling-price="' . number_format($stock->selling_price, 0) . '" 
+                    title="Swap Product">
+                    <i class="bi bi-arrow-left-right"></i>
+                </button>';
+            }
 
             if ($stock->stocked_quantity == $stock->remaining_quantity) {
                 $actionsHtml .= '
@@ -531,6 +552,169 @@ class MainStockController extends Controller
 
         return redirect()->route('main-stock.index')
             ->with('success', 'Stock updated successfully. Associated shop stock prices are now pending admin approval.');
+    }
+
+    public function swapProduct(Request $request, MainStock $mainStock)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isOwner()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized action. Only the System Owner can swap products.',
+            ], 403);
+        }
+
+        $request->validate([
+            'target_item_id' => ['required', 'integer', 'exists:items,id'],
+            'affect_shops'   => ['nullable'],
+        ]);
+
+        $targetItemId = (int) $request->input('target_item_id');
+        $sourceItemId = (int) $mainStock->item_id;
+
+        if ($targetItemId === $sourceItemId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Target product cannot be the same as current product.',
+            ], 422);
+        }
+
+        $targetItem = Item::findOrFail($targetItemId);
+        $sourceItem = $mainStock->item ?? Item::findOrFail($sourceItemId);
+        $affectShops = $request->boolean('affect_shops', true);
+
+        DB::beginTransaction();
+        try {
+            // Lock source main stock
+            $sourceStock = MainStock::where('id', $mainStock->id)->lockForUpdate()->firstOrFail();
+            $swappedRemainingQty = (int) $sourceStock->remaining_quantity;
+            $swappedStockedQty = (int) $sourceStock->stocked_quantity;
+            $sourceBuyPrice = (float) $sourceStock->buying_price;
+            $sourceSellPrice = (float) $sourceStock->selling_price;
+
+            // Check if target item already has a MainStock record
+            $existingTargetStock = MainStock::where('item_id', $targetItemId)->lockForUpdate()->first();
+
+            if ($existingTargetStock) {
+                // Consolidate into existing target stock
+                $prevTargetRemaining = (int) $existingTargetStock->remaining_quantity;
+                $prevTargetStocked = (int) $existingTargetStock->stocked_quantity;
+                $prevTargetSellPrice = (float) $existingTargetStock->selling_price;
+
+                $newRemainingQty = $prevTargetRemaining + $swappedRemainingQty;
+                $newStockedQty = $prevTargetStocked + $swappedStockedQty;
+
+                // Price policy: MIN(existing, incoming) if incoming > 0
+                $finalSellPrice = ($sourceSellPrice > 0 && $sourceSellPrice < $prevTargetSellPrice)
+                    ? $sourceSellPrice
+                    : $prevTargetSellPrice;
+
+                $existingTargetStock->update([
+                    'stocked_quantity'   => $newStockedQty,
+                    'remaining_quantity' => $newRemainingQty,
+                    'selling_price'      => $finalSellPrice,
+                ]);
+
+                // Re-link batch allocations
+                SaleBatchAllocation::where('stock_type', 'main')
+                    ->where('stock_id', $sourceStock->id)
+                    ->update(['stock_id' => $existingTargetStock->id]);
+
+                SaleReturnBatchAllocation::where('stock_type', 'main')
+                    ->where('stock_id', $sourceStock->id)
+                    ->update(['stock_id' => $existingTargetStock->id]);
+
+                // Delete source main stock record
+                $sourceStock->delete();
+            } else {
+                // Direct update of the main stock record
+                $sourceStock->update([
+                    'item_id' => $targetItemId,
+                ]);
+            }
+
+            $affectedShopCount = 0;
+            if ($affectShops) {
+                // Find all shop stocks for source item
+                $sourceShopStocks = ShopStock::where('item_id', $sourceItemId)->lockForUpdate()->get();
+
+                foreach ($sourceShopStocks as $sourceShopStock) {
+                    $shopId = $sourceShopStock->shop_id;
+                    $isAdminStock = (bool) $sourceShopStock->is_admin_stock;
+
+                    // Check if target item already exists in this shop
+                    $existingTargetShopStock = ShopStock::where('shop_id', $shopId)
+                        ->where('item_id', $targetItemId)
+                        ->where('is_admin_stock', $isAdminStock)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($existingTargetShopStock) {
+                        // Merge quantities
+                        $existingTargetShopStock->update([
+                            'quantity'           => (int) $existingTargetShopStock->quantity + (int) $sourceShopStock->quantity,
+                            'remaining_quantity' => (int) $existingTargetShopStock->remaining_quantity + (int) $sourceShopStock->remaining_quantity,
+                        ]);
+
+                        // Re-link batch allocations
+                        SaleBatchAllocation::where('stock_type', 'shop')
+                            ->where('stock_id', $sourceShopStock->id)
+                            ->update(['stock_id' => $existingTargetShopStock->id]);
+
+                        SaleReturnBatchAllocation::where('stock_type', 'shop')
+                            ->where('stock_id', $sourceShopStock->id)
+                            ->update(['stock_id' => $existingTargetShopStock->id]);
+
+                        $sourceShopStock->delete();
+                    } else {
+                        // Direct update
+                        $sourceShopStock->update([
+                            'item_id' => $targetItemId,
+                        ]);
+                    }
+                    $affectedShopCount++;
+                }
+
+                // Update pending stock transfer items
+                StockTransferItem::where('item_id', $sourceItemId)
+                    ->where('status', 'pending')
+                    ->update(['item_id' => $targetItemId]);
+
+                // Update pending stock request items
+                StockRequestItem::where('item_id', $sourceItemId)
+                    ->whereHas('request', function ($q) {
+                        $q->where('status', 'pending');
+                    })
+                    ->update(['item_id' => $targetItemId]);
+            }
+
+            // Create StockLog entry for audit trail
+            StockLog::create([
+                'item_id'          => $targetItemId,
+                'from_location'    => 'Main Warehouse',
+                'to_location'      => 'Main Warehouse',
+                'quantity'         => $swappedRemainingQty,
+                'transaction_type' => 'ADJUSTMENT',
+                'performed_by'     => $user->id,
+                'date'             => now()->toDateString(),
+                'notes'            => "Product swapped from '{$sourceItem->item_name}' to '{$targetItem->item_name}' by System Owner. " .
+                                      ($affectShops ? "Propagated to {$affectedShopCount} shop stock record(s) and pending transfers." : "Main warehouse only."),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully swapped '{$sourceItem->item_name}' to '{$targetItem->item_name}'." .
+                             ($affectShops ? " Propagated to {$affectedShopCount} shop branch stock(s)." : ""),
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to swap product: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function destroy(MainStock $mainStock)

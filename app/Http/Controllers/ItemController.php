@@ -46,7 +46,7 @@ class ItemController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $items = $query->with('category', 'mainStocks')
+        $items = $query->with(['category', 'mainStocks', 'shopStocks.shop'])
             ->orderBy('id', 'desc')
             ->skip($start)
             ->take($length)
@@ -84,9 +84,55 @@ class ItemController extends Controller
                 $brandModel = '—';
             }
 
+            $shopRemaining = (int) $item->shopStocks->sum('remaining_quantity');
+            $shopTotal = (int) $item->shopStocks->sum('quantity');
+
+            $shopBreakdowns = [];
+            foreach ($item->shopStocks as $ss) {
+                $shopName = $ss->shop?->shop_name ?? ('Shop #' . $ss->shop_id);
+                $shopBreakdowns[] = $shopName . ': ' . $ss->remaining_quantity . '/' . $ss->quantity;
+            }
+            $shopBadgeTitle = $shopRemaining . ' in stock / ' . $shopTotal . ' total';
+            if (!empty($shopBreakdowns)) {
+                $shopBadgeTitle .= ' (' . implode(', ', $shopBreakdowns) . ')';
+            }
+
+            if ($shopTotal === 0) {
+                $shopStockHtml = '<span style="background:rgba(148,163,184,.12);color:#94a3b8;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;" title="Not stocked in any shop">0 available / 0 total</span>';
+            } elseif ($shopRemaining > 0) {
+                $shopStockHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;" title="' . e($shopBadgeTitle) . '">'
+                    . e($shopRemaining . ' available / ' . $shopTotal . ' total') . '</span>';
+            } else {
+                $shopStockHtml = '<span style="background:rgba(233,69,96,.12);color:#e94560;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;" title="' . e($shopBadgeTitle) . '">'
+                    . e('0 available / ' . $shopTotal . ' total') . '</span>';
+            }
+
+            $hasMainStock = ($item->mainStocks->sum('stocked_quantity') > 0 || $item->mainStocks->sum('remaining_quantity') > 0);
+            $hasShopStock = ($shopTotal > 0);
+            $isDeleteDisabled = $hasMainStock || $hasShopStock;
+
             $actions = '<div class="d-flex gap-1">
                 <a href="' . route('items.show', $item) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                <a href="' . route('items.edit', $item) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+                <a href="' . route('items.edit', $item) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+
+            if ($isDeleteDisabled) {
+                $disabledTitle = 'Cannot delete: product ';
+                if ($hasMainStock && $hasShopStock) {
+                    $disabledTitle .= 'has main store stock and has shop stock (' . $shopRemaining . '/' . $shopTotal . ')';
+                } elseif ($hasMainStock) {
+                    $disabledTitle .= 'has main store stock';
+                } else {
+                    $disabledTitle .= 'has shop stock (' . $shopRemaining . '/' . $shopTotal . ')';
+                }
+
+                $actions .= '
+                <button type="button" class="btn btn-xs btn-outline-custom disabled" disabled
+                    title="' . e($disabledTitle) . '"
+                    style="opacity: 0.35; cursor: not-allowed; pointer-events: auto;">
+                    <i class="bi bi-trash text-muted"></i>
+                </button>';
+            } else {
+                $actions .= '
                 <form method="POST" action="' . route('items.destroy', $item) . '" id="del-item-' . $item->id . '" class="d-inline">
                     ' . csrf_field() . method_field('DELETE') . '
                     <button type="button" class="btn btn-xs btn-outline-custom"
@@ -94,8 +140,10 @@ class ItemController extends Controller
                         data-form="del-item-' . $item->id . '">
                         <i class="bi bi-trash" style="color:#e94560;"></i>
                     </button>
-                </form>
-            </div>';
+                </form>';
+            }
+
+            $actions .= '</div>';
 
             $data[] = [
                 'no' => $iteration,
@@ -104,6 +152,7 @@ class ItemController extends Controller
                 'brand_model' => $brandModel,
                 'warranty' => e($item->warranty_period ?: '—'),
                 'main_stock' => $stockHtml,
+                'shop_stock' => $shopStockHtml,
                 'actions' => $actions,
             ];
         }
@@ -199,10 +248,41 @@ class ItemController extends Controller
 
     public function destroy(Item $item)
     {
+        $mainStockTotal = (int) $item->mainStocks()->sum('stocked_quantity');
+        $mainStockRemaining = (int) $item->mainStocks()->sum('remaining_quantity');
+        $hasMainStock = ($mainStockTotal > 0 || $mainStockRemaining > 0);
+
+        $shopTotal = (int) $item->shopStocks()->sum('quantity');
+        $shopRemaining = (int) $item->shopStocks()->sum('remaining_quantity');
+        $hasShopStock = ($shopTotal > 0);
+
+        if ($hasMainStock || $hasShopStock) {
+            $reasons = [];
+            if ($hasMainStock) {
+                $reasons[] = 'stock in the main store';
+            }
+            if ($hasShopStock) {
+                $reasons[] = 'stock in shop branches (' . $shopRemaining . '/' . $shopTotal . ')';
+            }
+
+            $msg = 'Cannot delete "' . $item->item_name . '" because it has ' . implode(' and ', $reasons) . '.';
+
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return redirect()->route('items.index')->with('error', $msg);
+        }
+
         if ($item->image_path) {
             Storage::disk('public')->delete($item->image_path);
         }
         $item->delete();
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Item deleted successfully.']);
+        }
+
         return redirect()->route('items.index')
             ->with('success', 'Item deleted successfully.');
     }

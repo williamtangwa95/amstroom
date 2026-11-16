@@ -28,6 +28,7 @@
                     <th data-priority="3">Brand / Model</th>
                     <th data-priority="4">Warranty</th>
                     <th data-priority="2">Main Stock</th>
+                    <th data-priority="2">Shop Stock</th>
                     <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
@@ -82,6 +83,7 @@ $(function() {
             { data: 'brand_model', name: 'brand_model' },
             { data: 'warranty', name: 'warranty' },
             { data: 'main_stock', name: 'main_stock', orderable: false, searchable: false },
+            { data: 'shop_stock', name: 'shop_stock', orderable: false, searchable: false },
             { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ],
         order: [[1, 'asc']]
