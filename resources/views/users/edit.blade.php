@@ -44,6 +44,9 @@
                             <select name="role" id="roleSelect" class="form-select" required>
                                 <option value="seller" {{ old('role', $user->role)==='seller' ? 'selected' : '' }}>Seller</option>
                                 <option value="shop_admin" {{ old('role', $user->role)==='shop_admin' ? 'selected' : '' }}>Shop Admin</option>
+                                @if(auth()->user()->role === 'owner')
+                                <option value="system_admin" {{ old('role', $user->role)==='system_admin' ? 'selected' : '' }}>System Admin</option>
+                                @endif
                             </select>
                         </div>
                         <div class="col-md-6 align-self-end" id="allow_stock_addition_wrapper" style="display: {{ old('role', $user->role) === 'shop_admin' ? 'block' : 'none' }}; margin-bottom: 8px;">
@@ -75,14 +78,15 @@
 
                         {{-- Shop --}}
                         @if(auth()->user()->isOwner())
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="shop_select_wrapper">
                             <label class="form-label">Assign to Shop</label>
-                            <select name="shop_id" class="form-select">
-                                <option value="">None (Unassigned)</option>
+                            <select name="shop_id" id="shopSelect" class="form-select">
+                                <option value="">None (Unassigned / Global)</option>
                                 @foreach($shops as $shop)
                                 <option value="{{ $shop->id }}" {{ old('shop_id', $user->shop_id)==$shop->id ? 'selected' : '' }}>{{ $shop->shop_name }}</option>
                                 @endforeach
                             </select>
+                            <small class="text-muted d-none system-admin-note" style="font-size:0.75rem;"><i class="bi bi-info-circle me-1"></i>System Admin operates globally across all shops.</small>
                         </div>
                         @else
                         <input type="hidden" name="shop_id" value="{{ auth()->user()->shop_id }}">
@@ -127,20 +131,44 @@
 @push('scripts')
 <script>
 $(() => {
-    $('#roleSelect').on('change', function() {
-        const isShopAdmin = $(this).val() === 'shop_admin';
+    function updateRoleVisibility() {
+        const role = $('#roleSelect').val();
+        const isShopAdmin = role === 'shop_admin';
+        const isSystemAdmin = role === 'system_admin';
+
         const stockWrapper = $('#allow_stock_addition_wrapper');
         const posWrapper = $('#allow_pos_admin_wrapper');
+        const shopSelect = $('#shopSelect');
+        const systemAdminNote = $('.system-admin-note');
 
-        if (isShopAdmin) {
+        if (isSystemAdmin) {
+            stockWrapper.hide();
+            posWrapper.hide();
+            $('#allow_pos_admin').prop('checked', false);
+            $('#allow_stock_addition').prop('checked', false);
+            shopSelect.val('');
+            shopSelect.prop('disabled', true);
+            systemAdminNote.removeClass('d-none');
+        } else if (isShopAdmin) {
             stockWrapper.show();
             posWrapper.hide();
             $('#allow_pos_admin').prop('checked', false);
+            shopSelect.prop('disabled', false);
+            systemAdminNote.addClass('d-none');
         } else {
             stockWrapper.hide();
             posWrapper.show();
             $('#allow_stock_addition').prop('checked', false);
+            shopSelect.prop('disabled', false);
+            systemAdminNote.addClass('d-none');
         }
+    }
+
+    $('#roleSelect').on('change', updateRoleVisibility);
+    updateRoleVisibility();
+
+    $('form').on('submit', function() {
+        $('#shopSelect').prop('disabled', false);
     });
 });
 </script>

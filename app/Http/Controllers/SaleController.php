@@ -1259,7 +1259,7 @@ class SaleController extends Controller
                 }
 
                 // Notify Owner(s)
-                $owners = User::where('role', 'owner')->get();
+                $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
                 $shopName = $sale->shop?->shop_name ?? ($sale->shop_id ? 'Shop' : 'Main Store');
                 $parentName = $saleItem->display_name;
                 $performerName = $user->name;

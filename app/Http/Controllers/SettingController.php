@@ -400,10 +400,11 @@ class SettingController extends Controller
             foreach ($lowStockGroups as $group) {
                 $st = ShopStock::with(['item', 'shop'])->where('shop_id', $group->shop_id)->where('item_id', $group->item_id)->first();
                 if ($st) {
+                    $uSym = $st->unit_symbol;
                     $lowStockItems[] = [
                         'name'  => ($st->item?->item_name ?? 'Item') . ' (' . ($st->shop?->shop_name ?? 'Shop') . ')',
-                        'qty'   => (int) $group->total_rem,
-                        'alert' => (int) $group->alert_thresh
+                        'qty'   => $group->total_rem . ' ' . $uSym,
+                        'alert' => $group->alert_thresh . ' ' . $uSym,
                     ];
                 }
             }
@@ -468,10 +469,11 @@ class SettingController extends Controller
             foreach ($lowStockGroups as $group) {
                 $st = ShopStock::with('item')->where('shop_id', $group->shop_id)->where('item_id', $group->item_id)->first();
                 if ($st) {
+                    $uSym = $st->unit_symbol;
                     $lowStockItems[] = [
                         'name'  => $st->item?->item_name ?? 'Item',
-                        'qty'   => (int) $group->total_rem,
-                        'alert' => (int) $group->alert_thresh
+                        'qty'   => $group->total_rem . ' ' . $uSym,
+                        'alert' => $group->alert_thresh . ' ' . $uSym,
                     ];
                 }
             }

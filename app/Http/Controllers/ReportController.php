@@ -508,7 +508,7 @@ class ReportController extends Controller
 
         // ── Sales query helper ─────────────────────────────────────────────
         $baseSaleQuery = function () use ($user, $shopId, $itemId) {
-            $q = Sale::completed()->with('items.item.category', 'seller', 'shop');
+            $q = Sale::completed()->with('items.item.category', 'items.item.unit', 'seller', 'shop');
             if ($user->isOwner()) {
                 $q->where('is_admin_stock', false);
             }
@@ -572,12 +572,13 @@ class ReportController extends Controller
         $byItem = $allItems->filter(fn($si) => $si->item_id)->groupBy('item_id')->map(function ($items) {
             $first = $items->first();
             return (object)[
-                'item_id'   => $first->item_id,
-                'item_name' => optional($first->item)->item_name ?? 'Unknown',
-                'category'  => optional(optional($first->item)->category)->name ?? '—',
-                'qty_sold'  => $items->sum('quantity'),
-                'revenue'   => $items->sum('_rev'),
-                'profit'    => $items->sum('_profit'),
+                'item_id'     => $first->item_id,
+                'item_name'   => optional($first->item)->item_name ?? 'Unknown',
+                'category'    => optional(optional($first->item)->category)->category_name ?? (optional(optional($first->item)->category)->name ?? '—'),
+                'unit_symbol' => $first->item?->unit_symbol ?? 'pc',
+                'qty_sold'    => $items->sum('quantity'),
+                'revenue'     => $items->sum('_rev'),
+                'profit'      => $items->sum('_profit'),
             ];
         })->values()->sortByDesc('qty_sold');
 
@@ -589,12 +590,12 @@ class ReportController extends Controller
 
         // Items in stock but zero sales in the period → "Stop Ordering"
         $soldItemIds = $byItem->pluck('item_id')->toArray();
-        $stopItemsQuery = \App\Models\MainStock::with('item.category')
+        $stopItemsQuery = \App\Models\MainStock::with('item.category', 'item.unit')
             ->selectRaw('item_id, SUM(remaining_quantity) as total_qty')
             ->groupBy('item_id')
             ->having('total_qty', '>', 0);
         if (!$isOwner) {
-            $stopItemsQuery = \App\Models\ShopStock::with('item.category')
+            $stopItemsQuery = \App\Models\ShopStock::with('item.category', 'item.unit')
                 ->selectRaw('item_id, SUM(remaining_quantity) as total_qty')
                 ->where('shop_id', $user->shop_id)
                 ->groupBy('item_id')
@@ -606,8 +607,9 @@ class ReportController extends Controller
         $stopItems = $stopItemsQuery->get()
             ->filter(fn($s) => !in_array($s->item_id, $soldItemIds))
             ->map(fn($s) => (object)[
-                'item_name' => optional($s->item)->item_name ?? 'Unknown',
-                'category'  => optional(optional($s->item)->category)->name ?? '—',
+                'item_name'    => optional($s->item)->item_name ?? 'Unknown',
+                'category'     => optional(optional($s->item)->category)->category_name ?? (optional(optional($s->item)->category)->name ?? '—'),
+                'unit_symbol'  => $s->item?->unit_symbol ?? 'pc',
                 'qty_in_stock' => $s->total_qty,
             ])->values()->take(20);
 
@@ -643,6 +645,7 @@ class ReportController extends Controller
                 'item_id'       => $i->item_id,
                 'item_name'     => $i->item_name,
                 'category'      => $i->category,
+                'unit_symbol'   => $i->unit_symbol ?? 'pc',
                 'daily_rate'    => round($dailyRate, 2),
                 'current_stock' => $currentStock,
                 'days_left'     => $daysLeft === PHP_INT_MAX ? null : round($daysLeft, 1),
@@ -926,7 +929,7 @@ class ReportController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $sales = $query->with('shop', 'seller', 'items.item')
+        $sales = $query->with('shop', 'seller', 'items.item.unit')
             ->orderBy('sales.sale_date', 'desc')
             ->orderBy('sales.id', 'desc')
             ->skip($start)
@@ -978,8 +981,9 @@ class ReportController extends Controller
                 $saleRevenue += $itemRevenue;
                 $saleCost += $itemCost;
 
+                $unitSymbol = $item->unit_symbol;
                 $itemsHtml .= '<div style="font-size:.78rem;line-height:1.4;margin-bottom:2px;" class="d-flex align-items-center gap-1 flex-wrap">';
-                $itemsHtml .= '<span>' . e($item->item?->item_name ?? 'Unknown Item') . ' (x' . $item->quantity . ')</span>';
+                $itemsHtml .= '<span>' . e($item->item?->item_name ?? 'Unknown Item') . ' <strong style="color:var(--text-secondary);">(x' . $item->quantity . ' ' . e($unitSymbol) . ')</strong></span>';
                 if (!$isOwner) {
                     if ($item->is_admin_stock) {
                         $itemsHtml .= ' <span class="badge bg-info text-dark" style="font-size:.65rem;padding:.15rem .3rem;"><i class="bi bi-person-fill-lock"></i> Admin</span>';
@@ -1050,14 +1054,15 @@ class ReportController extends Controller
             $requestedLength = (int) $request->input('length', 10);
             $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-            $stocks = $groupedQuery->with('item.category')->skip($start)->take($length)->get();
+            $stocks = $groupedQuery->with('item.category', 'item.unit')->skip($start)->take($length)->get();
 
             $data = [];
             foreach ($stocks as $index => $ms) {
                 $iteration = $start + $index + 1;
                 $productName = e($ms->item?->item_name ?? 'N/A');
                 $categoryName = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($ms->item?->category?->category_name ?? 'General') . '</span>';
-                $qtyHtml = '<strong style="color:' . ($ms->qty > 0 ? '#3fb950' : '#e94560') . '">' . $ms->qty . '</strong>';
+                $unitSymbol = $ms->item?->unit_symbol ?? 'pc';
+                $qtyHtml = '<strong style="color:' . ($ms->qty > 0 ? '#3fb950' : '#e94560') . '">' . $ms->qty . '</strong> <small style="color:var(--text-secondary);font-size:.75rem;">' . e($unitSymbol) . '</small>';
                 $valueHtml = 'TZS ' . number_format($ms->value, 0);
                 $sellValueHtml = '<strong style="color:#58a6ff;">TZS ' . number_format($ms->sell_value, 0) . '</strong>';
 
@@ -1071,7 +1076,7 @@ class ReportController extends Controller
                 ];
             }
         } else {
-            $query = \App\Models\ShopStock::with('item.category', 'shop')
+            $query = \App\Models\ShopStock::with('item.category', 'item.unit', 'shop')
                 ->where('remaining_quantity', '>', 0);
 
             if (!$user->isOwner()) {
@@ -1111,7 +1116,8 @@ class ReportController extends Controller
                 $shopName = e($ss->shop?->shop_name ?? 'N/A');
                 $productName = e($ss->item?->item_name ?? 'N/A');
                 $categoryName = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($ss->item?->category?->category_name ?? 'General') . '</span>';
-                $qtyHtml = '<strong style="color:' . ($ss->isLowStock() ? '#e94560' : '#3fb950') . '">' . $ss->remaining_quantity . '</strong>';
+                $unitSymbol = $ss->unit_symbol;
+                $qtyHtml = '<strong style="color:' . ($ss->isLowStock() ? '#e94560' : '#3fb950') . '">' . $ss->remaining_quantity . '</strong> <small style="color:var(--text-secondary);font-size:.75rem;">' . e($unitSymbol) . '</small>';
                 $priceHtml = 'TZS ' . number_format($ss->selling_price, 0);
                 $totalValuationHtml = '<strong style="color:#58a6ff;">TZS ' . number_format($ss->remaining_quantity * $ss->selling_price, 0) . '</strong>';
 
@@ -1176,7 +1182,7 @@ class ReportController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $requests = $query->with('shop', 'requester', 'items')
+        $requests = $query->with('shop', 'requester', 'items.item.unit')
             ->orderBy('stock_requests.request_date', 'desc')
             ->orderBy('stock_requests.id', 'desc')
             ->skip($start)
@@ -1191,7 +1197,16 @@ class ReportController extends Controller
             $requesterName = e($req->requester?->name ?? 'N/A');
             $requestDate = $req->request_date ? $req->request_date->format('M d, Y') : 'N/A';
             $statusBadge = '<span class="status-badge badge-' . $req->status . '">' . e(ucfirst($req->status)) . '</span>';
-            $itemsCount = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;">' . $req->items->count() . ' item(s)</span>';
+
+            $itemsHtml = '';
+            if ($req->items->isNotEmpty()) {
+                foreach ($req->items as $reqItem) {
+                    $uSym = $reqItem->item?->unit_symbol ?? 'pc';
+                    $itemsHtml .= '<div style="font-size:.78rem;line-height:1.4;">' . e($reqItem->item?->item_name ?? 'Item') . ' <strong style="color:#58a6ff;">(x' . $reqItem->quantity . ' ' . e($uSym) . ')</strong></div>';
+                }
+            } else {
+                $itemsHtml = '<span class="text-muted small">—</span>';
+            }
 
             $data[] = [
                 'iteration' => $iteration,
@@ -1200,7 +1215,7 @@ class ReportController extends Controller
                 'requester' => $requesterName,
                 'request_date' => $requestDate,
                 'status' => $statusBadge,
-                'items' => $itemsCount,
+                'items' => $itemsHtml,
             ];
         }
 
@@ -1252,7 +1267,7 @@ class ReportController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $defects = $query->with('shop', 'item', 'reporter')
+        $defects = $query->with('shop', 'item.unit', 'reporter')
             ->orderBy('defects.date', 'desc')
             ->orderBy('defects.id', 'desc')
             ->skip($start)
@@ -1265,7 +1280,8 @@ class ReportController extends Controller
             $dateStr = $def->date ? $def->date->format('M d, Y') : 'N/A';
             $location = e($def->shop ? $def->shop->shop_name : 'Main Warehouse');
             $productName = e($def->item?->item_name ?? 'N/A');
-            $qtyHtml = '<strong style="color:#e94560;">' . $def->quantity . '</strong>';
+            $unitSymbol = $def->item?->unit_symbol ?? 'pc';
+            $qtyHtml = '<strong style="color:#e94560;">' . $def->quantity . '</strong> <small style="color:var(--text-secondary);font-size:.75rem;">' . e($unitSymbol) . '</small>';
             $reason = e($def->reason);
             $reporterName = e($def->reporter?->name ?? 'N/A');
             $statusBadge = '<span class="status-badge badge-' . ($def->status === 'resolved' ? 'approved' : 'rejected') . '">' . e(ucfirst($def->status)) . '</span>';
@@ -1586,7 +1602,8 @@ class ReportController extends Controller
             $itemsSummary = [];
             foreach ($filteredItems as $fi) {
                 $name = $fi->item ? $fi->item->item_name : ($fi->custom_name ?: 'Custom Item');
-                $itemsSummary[] = "{$name} (x{$fi->quantity})";
+                $uSym = $fi->unit_symbol;
+                $itemsSummary[] = "{$name} (x{$fi->quantity} {$uSym})";
             }
 
             $salesList[] = [
@@ -1714,7 +1731,7 @@ class ReportController extends Controller
 
         if ($type === 'main' && $user->isOwner()) {
             $stockTypeLabel = 'Main Store Stock';
-            $mainStocks = \App\Models\MainStock::with('item.category')
+            $mainStocks = \App\Models\MainStock::with('item.category', 'item.unit')
                 ->selectRaw('item_id, SUM(remaining_quantity) as qty, SUM(remaining_quantity * buying_price) as value, SUM(remaining_quantity * selling_price) as sell_value')
                 ->groupBy('item_id')
                 ->get();
@@ -1728,6 +1745,7 @@ class ReportController extends Controller
                     'name'      => $ms->item?->item_name ?? 'Unknown Item',
                     'category'  => $ms->item?->category?->category_name ?? '—',
                     'qty'       => (float) $ms->qty,
+                    'unit'      => $ms->item?->unit_symbol ?? 'pc',
                     'valuation' => (float) $ms->sell_value,
                     'cost'      => (float) $ms->value,
                 ];
@@ -1737,7 +1755,7 @@ class ReportController extends Controller
             $isShopView = true;
             $showShopColumn = $user->isOwner();
 
-            $shopStocksQuery = \App\Models\ShopStock::with('item.category', 'shop')
+            $shopStocksQuery = \App\Models\ShopStock::with('item.category', 'item.unit', 'shop')
                 ->where('remaining_quantity', '>', 0);
 
             if (!$user->isOwner()) {
@@ -1757,6 +1775,7 @@ class ReportController extends Controller
                     'category'  => $ss->item?->category?->category_name ?? '—',
                     'shop'      => $ss->shop?->shop_name ?? 'Shop',
                     'qty'       => (float) $ss->remaining_quantity,
+                    'unit'      => $ss->unit_symbol,
                     'valuation' => (float) ($ss->remaining_quantity * $ss->selling_price),
                 ];
             }
@@ -2122,7 +2141,7 @@ class ReportController extends Controller
             $query->where('shop_id', $shopId);
         }
 
-        $defects = $query->orderBy('created_at', 'desc')->get();
+        $defects = $query->with('item.unit', 'shop', 'reporter')->orderBy('created_at', 'desc')->get();
         $totalDefective = (int) $defects->sum('quantity');
 
         $defectsList = [];
@@ -2134,6 +2153,7 @@ class ReportController extends Controller
                 'category' => $d->item?->category?->category_name ?? '—',
                 'shop'     => $d->shop?->shop_name ?? 'Main Warehouse',
                 'quantity' => (int) $d->quantity,
+                'unit'     => $d->item?->unit_symbol ?? 'pc',
                 'reason'   => $d->reason ?: 'Defective / Damaged',
                 'reporter' => $d->reporter?->name ?? 'Staff',
                 'status'   => $d->status ?? 'pending',
@@ -2215,7 +2235,7 @@ class ReportController extends Controller
             $query->where('status', $status);
         }
 
-        $requests = $query->orderBy('created_at', 'desc')->get();
+        $requests = $query->with('items.item.unit', 'shop', 'requester')->orderBy('created_at', 'desc')->get();
 
         $stats = [
             'pending'  => StockRequest::when($user->isShopAdmin(), fn($q) => $q->where('shop_id', $user->shop_id))->where('status', 'pending')->count(),
@@ -2225,10 +2245,17 @@ class ReportController extends Controller
 
         $requestsList = [];
         foreach ($requests as $req) {
-            $itemsSummary = 'Stock Transfer';
-            if ($req->transfer && $req->transfer->item) {
-                $itemsSummary = "{$req->transfer->item->item_name} (x{$req->transfer->quantity})";
+            $itemsSummaryArr = [];
+            if ($req->items->isNotEmpty()) {
+                foreach ($req->items as $ri) {
+                    $uSym = $ri->item?->unit_symbol ?? 'pc';
+                    $itemsSummaryArr[] = ($ri->item?->item_name ?? 'Item') . " (x{$ri->quantity} {$uSym})";
+                }
+            } elseif ($req->transfer && $req->transfer->item) {
+                $uSym = $req->transfer->item->unit_symbol ?? 'pc';
+                $itemsSummaryArr[] = "{$req->transfer->item->item_name} (x{$req->transfer->quantity} {$uSym})";
             }
+            $itemsSummary = !empty($itemsSummaryArr) ? implode(', ', $itemsSummaryArr) : 'Stock Transfer';
 
             $requestsList[] = [
                 'id'            => $req->id,

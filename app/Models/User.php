@@ -52,9 +52,17 @@ class User extends Authenticatable
     }
 
     // Role helpers
+    public function isSystemAdmin(): bool
+    {
+        return $this->role === 'system_admin';
+    }
+
+    /**
+     * Check if user is owner or system admin (who has identical owner privileges and duties).
+     */
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return in_array($this->role, ['owner', 'system_admin'], true);
     }
 
     public function isShopAdmin(): bool
@@ -74,10 +82,23 @@ class User extends Authenticatable
 
     public function hasRole(string|array $roles): bool
     {
-        if (is_array($roles)) {
-            return in_array($this->role, $roles);
+        $roles = is_array($roles) ? $roles : func_get_args();
+        if (in_array($this->role, $roles, true)) {
+            return true;
         }
-        return $this->role === $roles;
+        // System admin has full owner capabilities and satisfies any owner role checks
+        if ($this->isOwner() && in_array('owner', $roles, true)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Scope query to users with owner capabilities (owner and system_admin).
+     */
+    public function scopeOwners($query)
+    {
+        return $query->whereIn('role', ['owner', 'system_admin']);
     }
 
     /**

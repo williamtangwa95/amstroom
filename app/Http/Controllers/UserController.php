@@ -75,13 +75,15 @@ class UserController extends Controller
             $emailHtml = e($u->email);
             $phoneHtml = e($u->phone ?: '—');
             
-            $roleLabel = str_replace('_', ' ', ucfirst($u->role));
+            $roleLabel = ucwords(str_replace('_', ' ', $u->role));
             $roleHtml = '<span class="role-pill role-' . e($u->role) . '">' . e($roleLabel) . '</span>';
 
             $shopHtml = '';
             if ($isOwner) {
                 if ($u->shop) {
                     $shopHtml = '<span style="background:rgba(88,166,255,.12);color:#58a6ff;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;"><i class="bi bi-shop me-1"></i>' . e($u->shop->shop_name) . '</span>';
+                } elseif ($u->isSystemAdmin()) {
+                    $shopHtml = '<span style="background:rgba(139,92,246,.12);color:#8b5cf6;padding:.2rem .5rem;border-radius:6px;font-size:.75rem;font-weight:600;"><i class="bi bi-globe me-1"></i>Global Access</span>';
                 } else {
                     $shopHtml = '<span style="font-size:.75rem;color:var(--text-secondary);">Unassigned</span>';
                 }
@@ -106,15 +108,23 @@ class UserController extends Controller
                 </div>';
             } elseif ($u->isShopAdmin()) {
                 $adminPosHtml = '<span class="badge" style="background:rgba(88,166,255,.15);color:#58a6ff;font-size:.72rem;font-weight:600;"><i class="bi bi-shield-check me-1"></i>Admin</span>';
+            } elseif ($u->isSystemAdmin()) {
+                $adminPosHtml = '<span class="badge" style="background:rgba(139,92,246,.15);color:#8b5cf6;font-size:.72rem;font-weight:600;"><i class="bi bi-shield-lock-fill me-1"></i>Sys Admin</span>';
             } else {
                 $adminPosHtml = '<span class="badge" style="background:rgba(233,69,96,.15);color:#e94560;font-size:.72rem;font-weight:600;"><i class="bi bi-star-fill me-1"></i>Owner</span>';
             }
 
-            $actions = '<div class="d-flex gap-1">
-                <a href="' . route('users.show', $u) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                <a href="' . route('users.edit', $u) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+            $canManageUser = ($auth->role === 'owner') || ($auth->isSystemAdmin() && $u->role !== 'system_admin');
 
-            if (!$u->isOwner() && $u->id !== $auth->id) {
+            $actions = '<div class="d-flex gap-1">';
+            if ($canManageUser || $u->id === $auth->id) {
+                $actions .= '<a href="' . route('users.show', $u) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>';
+            }
+            if ($canManageUser) {
+                $actions .= '<a href="' . route('users.edit', $u) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+            }
+
+            if ($canManageUser && $u->role !== 'owner' && $u->id !== $auth->id) {
                 $toggleConfirm = $u->status === 'active' ? 'Disable employee account?' : 'Enable employee account?';
                 $toggleText = $u->status === 'active' ? 'They will not be able to log in or reset password.' : 'They will be able to log in and use the application.';
                 $toggleTitle = $u->status === 'active' ? 'Disable' : 'Enable';
@@ -132,21 +142,23 @@ class UserController extends Controller
                 </form>';
             }
 
-            if (!$u->hasDependencies()) {
-                $actions .= '<form method="POST" action="' . route('users.destroy', $u) . '" id="del-user-' . $u->id . '" class="d-inline">
-                    ' . csrf_field() . method_field('DELETE') . '
-                    <button type="button" class="btn btn-xs btn-outline-custom"
-                        data-confirm="Delete employee account?"
-                        data-form="del-user-' . $u->id . '"
-                        title="Delete">
-                        <i class="bi bi-trash" style="color:#e94560;"></i>
-                    </button>
-                </form>';
-            } else {
-                $actions .= '<button type="button" class="btn btn-xs btn-outline-custom" disabled style="opacity:0.5; cursor:not-allowed;"
-                    title="Cannot delete user with associated sales, stock requests, or other records.">
-                    <i class="bi bi-trash" style="color:var(--text-secondary);"></i>
-                </button>';
+            if ($canManageUser && $u->role !== 'owner' && $u->id !== $auth->id) {
+                if (!$u->hasDependencies()) {
+                    $actions .= '<form method="POST" action="' . route('users.destroy', $u) . '" id="del-user-' . $u->id . '" class="d-inline">
+                        ' . csrf_field() . method_field('DELETE') . '
+                        <button type="button" class="btn btn-xs btn-outline-custom"
+                            data-confirm="Delete employee account?"
+                            data-form="del-user-' . $u->id . '"
+                            title="Delete">
+                            <i class="bi bi-trash" style="color:#e94560;"></i>
+                        </button>
+                    </form>';
+                } else {
+                    $actions .= '<button type="button" class="btn btn-xs btn-outline-custom" disabled style="opacity:0.5; cursor:not-allowed;"
+                        title="Cannot delete user with associated sales, stock requests, or other records.">
+                        <i class="bi bi-trash" style="color:var(--text-secondary);"></i>
+                    </button>';
+                }
             }
 
             $actions .= '</div>';
@@ -197,7 +209,12 @@ class UserController extends Controller
     {
         $auth = Auth::user();
 
-        $roleAllowed = $auth->isOwner() ? ['shop_admin', 'seller'] : ['seller'];
+        $roleAllowed = ['seller'];
+        if ($auth->role === 'owner') {
+            $roleAllowed = ['system_admin', 'shop_admin', 'seller'];
+        } elseif ($auth->isOwner()) {
+            $roleAllowed = ['shop_admin', 'seller'];
+        }
 
         $request->validate([
             'name'     => 'required|string|max:150',
@@ -210,8 +227,8 @@ class UserController extends Controller
             'allow_pos_admin'      => 'nullable|boolean',
         ]);
 
-        // Shop admin always assigns to their own shop
-        $shopId = $auth->isShopAdmin() ? $auth->shop_id : $request->shop_id;
+        // Shop admin always assigns to their own shop; system admin has global access (shop_id = null)
+        $shopId = $auth->isShopAdmin() ? $auth->shop_id : ($request->role === 'system_admin' ? null : $request->shop_id);
 
         User::create([
             'name'     => $request->name,
@@ -220,8 +237,8 @@ class UserController extends Controller
             'role'     => $auth->isShopAdmin() ? 'seller' : $request->role,
             'shop_id'  => $shopId,
             'password' => Hash::make($request->password),
-            'allow_stock_addition' => $auth->isOwner() ? $request->boolean('allow_stock_addition') : false,
-            'allow_pos_admin'      => $request->boolean('allow_pos_admin'),
+            'allow_stock_addition' => ($auth->isOwner() && $request->role === 'shop_admin') ? $request->boolean('allow_stock_addition') : false,
+            'allow_pos_admin'      => ($request->role === 'seller') ? $request->boolean('allow_pos_admin') : false,
         ]);
 
         return redirect()->route('users.index')
@@ -254,7 +271,12 @@ class UserController extends Controller
         $this->authorizeAccess($user);
         $auth = Auth::user();
 
-        $roleAllowed = $auth->isOwner() ? ['shop_admin', 'seller'] : ['seller'];
+        $roleAllowed = ['seller'];
+        if ($auth->role === 'owner') {
+            $roleAllowed = ['system_admin', 'shop_admin', 'seller'];
+        } elseif ($auth->isOwner()) {
+            $roleAllowed = ['shop_admin', 'seller'];
+        }
 
         $request->validate([
             'name'    => 'required|string|max:150',
@@ -270,12 +292,9 @@ class UserController extends Controller
 
         $data = $request->only('name', 'email', 'phone');
         $data['role']    = $auth->isShopAdmin() ? 'seller' : $request->role;
-        $data['shop_id'] = $auth->isShopAdmin() ? $auth->shop_id : $request->shop_id;
-        $data['allow_pos_admin'] = $request->boolean('allow_pos_admin');
-
-        if ($auth->isOwner()) {
-            $data['allow_stock_addition'] = $request->boolean('allow_stock_addition');
-        }
+        $data['shop_id'] = $auth->isShopAdmin() ? $auth->shop_id : ($request->role === 'system_admin' ? null : $request->shop_id);
+        $data['allow_pos_admin'] = ($data['role'] === 'seller') ? $request->boolean('allow_pos_admin') : false;
+        $data['allow_stock_addition'] = ($auth->isOwner() && $data['role'] === 'shop_admin') ? $request->boolean('allow_stock_addition') : false;
 
         if ($user->id !== $auth->id) {
             $data['status'] = $request->status;
@@ -295,7 +314,7 @@ class UserController extends Controller
     {
         $this->authorizeAccess($user);
 
-        if ($user->isOwner()) {
+        if ($user->role === 'owner') {
             return back()->with('error', 'Cannot disable owner account.');
         }
 
@@ -346,8 +365,12 @@ class UserController extends Controller
     {
         $this->authorizeAccess($user);
 
-        if ($user->isOwner()) {
+        if ($user->role === 'owner') {
             return back()->with('error', 'Cannot delete owner account.');
+        }
+
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'Cannot delete your own account.');
         }
 
         if ($user->hasDependencies()) {
@@ -360,18 +383,33 @@ class UserController extends Controller
     }
 
     /**
-     * Abort 403 if the authenticated shop_admin tries to access a user outside their shop
-     * or a non-seller user. Owners can access anything.
+     * Abort 403 if unauthorized.
+     * Primary owner can access everything.
+     * System admin can manage shop admins and sellers.
+     * Shop admin can only manage sellers in their own shop.
      */
     private function authorizeAccess(User $user): void
     {
         $auth = Auth::user();
-        if ($auth->isOwner()) return;
+
+        if ($auth->role === 'owner') {
+            return;
+        }
+
+        if ($auth->isSystemAdmin()) {
+            if ($user->role === 'owner' || ($user->role === 'system_admin' && $user->id !== $auth->id)) {
+                abort(403, 'Only the primary owner can manage system admins.');
+            }
+            return;
+        }
 
         if ($auth->isShopAdmin()) {
             if ($user->shop_id !== $auth->shop_id || $user->role !== 'seller') {
                 abort(403, 'You can only manage sellers in your own shop.');
             }
+            return;
         }
+
+        abort(403, 'Unauthorized.');
     }
 }

@@ -23,6 +23,10 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\HandoverReportController;
+use App\Http\Controllers\DiaryController;
+use App\Http\Controllers\UnitController;
+use App\Http\Controllers\ReorderController;
+use App\Http\Controllers\ShopProductSwapController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -65,8 +69,13 @@ Route::middleware('auth')->group(function () {
         Route::post('categories/import', [CategoryController::class, 'import'])->name('categories.import');
         Route::resource('categories', CategoryController::class);
 
+        // Units
+        Route::get('units/data', [UnitController::class, 'data'])->name('units.data');
+        Route::resource('units', UnitController::class)->except(['create', 'show', 'edit']);
+
         // Items
         Route::get('items/data', [ItemController::class, 'data'])->name('items.data');
+        Route::post('items/bulk-assign-unit', [ItemController::class, 'bulkAssignUnit'])->name('items.bulk-assign-unit');
         Route::get('items/import-template', [ItemController::class, 'downloadTemplate'])->name('items.import-template');
         Route::post('items/import', [ItemController::class, 'import'])->name('items.import');
         Route::resource('items', ItemController::class);
@@ -155,6 +164,22 @@ Route::middleware('auth')->group(function () {
         Route::get('finished-stocks', [ShopStockController::class, 'finishedIndex'])->name('shop-stock.finished');
         Route::get('finished-stocks/data', [ShopStockController::class, 'finishedData'])->name('shop-stock.finished-data');
 
+        // Reorder Suggestions & Multi-Item Replenishment
+        Route::get('stock-reorder', [ReorderController::class, 'index'])->name('reorder.index');
+        Route::post('stock-reorder/request', [ReorderController::class, 'storeRequest'])->name('reorder.request');
+        Route::post('stock-reorder/transfer', [ReorderController::class, 'storeDirectTransfer'])->name('reorder.transfer');
+
+        // Inter-Shop Product Swaps (Product Exchange)
+        Route::get('shop-swaps', [ShopProductSwapController::class, 'index'])->name('shop-swaps.index');
+        Route::get('shop-swaps/create', [ShopProductSwapController::class, 'create'])->name('shop-swaps.create');
+        Route::post('shop-swaps', [ShopProductSwapController::class, 'store'])->name('shop-swaps.store');
+        Route::get('shop-swaps/destination-items', [ShopProductSwapController::class, 'getDestinationItems'])->name('shop-swaps.destination-items');
+        Route::get('shop-swaps/{shopProductSwap}', [ShopProductSwapController::class, 'show'])->name('shop-swaps.show');
+        Route::post('shop-swaps/{shopProductSwap}/approve-destination', [ShopProductSwapController::class, 'approveDestination'])->name('shop-swaps.approve-destination');
+        Route::post('shop-swaps/{shopProductSwap}/confirm-owner', [ShopProductSwapController::class, 'confirmOwner'])->name('shop-swaps.confirm-owner');
+        Route::post('shop-swaps/{shopProductSwap}/cancel', [ShopProductSwapController::class, 'cancel'])->name('shop-swaps.cancel');
+        Route::post('shop-swaps/{shopProductSwap}/revert', [ShopProductSwapController::class, 'revert'])->name('shop-swaps.revert');
+
         // Shop stock price update
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');
@@ -195,6 +220,13 @@ Route::middleware('auth')->group(function () {
 
     // ─── ALL AUTHENTICATED (OWNER + ADMIN + SELLER) ──────────────────────────
     Route::middleware('role:owner,shop_admin,seller')->group(function () {
+
+        // ── Daily Diary (personal — each user sees only their own entries) ────────
+        Route::get('diary', [DiaryController::class, 'index'])->name('diary.index');
+        Route::get('diary/data', [DiaryController::class, 'data'])->name('diary.data');
+        Route::post('diary', [DiaryController::class, 'store'])->name('diary.store');
+        Route::put('diary/{diary}', [DiaryController::class, 'update'])->name('diary.update');
+        Route::delete('diary/{diary}', [DiaryController::class, 'destroy'])->name('diary.destroy');
 
         // User Activity Logs
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
@@ -285,6 +317,9 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-stock/{shopStock}/approve-price', [ShopStockController::class, 'approvePrice'])->name('shop-stock.approve-price');
 
         // Reports
+        Route::get('reports', function () {
+            return redirect()->route('reports.sales');
+        })->name('reports.index');
         Route::get('reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
         Route::get('reports/sales/data', [ReportController::class, 'salesData'])->name('reports.sales.data');
         Route::post('reports/sales/send-email', [ReportController::class, 'sendSalesEmail'])->name('reports.sales.send-email');

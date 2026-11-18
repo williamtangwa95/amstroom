@@ -57,6 +57,11 @@ class SaleItem extends Model
         return $this->custom_name ?? 'Custom Item';
     }
 
+    public function getUnitSymbolAttribute(): string
+    {
+        return $this->item?->unit_symbol ?? 'pc';
+    }
+
     public function getSubtotalAttribute(): float
     {
         return $this->quantity * $this->selling_price;

@@ -80,7 +80,8 @@
         /* ═════════════════════════════════════════════════════════
            MODERN RESPONSIVE TABLES & ACCORDION DRAWER (Reference 1)
            ═════════════════════════════════════════════════════════ */
-        .card, .table-card {
+        .card,
+        .table-card {
             border-radius: 12px;
             border: 1px solid var(--card-border);
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
@@ -96,7 +97,7 @@
             width: 100% !important;
         }
 
-        .table > :not(caption) > * > * {
+        .table> :not(caption)>*>* {
             padding: 0.85rem 1rem;
             border-bottom-width: 1px;
             border-color: #f1f5f9;
@@ -123,35 +124,130 @@
         }
 
         /* Parent row highlight when expanded (Reference Picture 1) */
-        table.dataTable > tbody > tr.parent,
-        table.dataTable.table-hover > tbody > tr.parent {
+        table.dataTable>tbody>tr.parent,
+        table.dataTable.table-hover>tbody>tr.parent {
             background-color: #f1f5f9 !important;
         }
 
         /* Soft Badges */
-        .badge-soft-primary { background: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(2,132,199,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-success { background: #d1fae5 !important; color: #059669 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(16,185,129,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-danger  { background: #fee2e2 !important; color: #dc2626 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(239,68,68,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-warning { background: #fef3c7 !important; color: #d97706 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(245,158,11,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-info    { background: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(2,132,199,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-secondary { background: #f1f5f9 !important; color: #475569 !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(100,116,139,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-purple  { background: #ede9fe !important; color: #7c3aed !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(139,92,246,.15); display: inline-flex; align-items: center; gap: 4px; }
-        .badge-soft-dark    { background: #334155 !important; color: #f8fafc !important; font-weight: 600; padding: .35em .65em; border-radius: 6px; font-size: .75rem; border: 1px solid rgba(51,65,85,.15); display: inline-flex; align-items: center; gap: 4px; }
+        .badge-soft-primary {
+            background: #e0f2fe !important;
+            color: #0284c7 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(2, 132, 199, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-success {
+            background: #d1fae5 !important;
+            color: #059669 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(16, 185, 129, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-danger {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(239, 68, 68, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-warning {
+            background: #fef3c7 !important;
+            color: #d97706 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(245, 158, 11, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-info {
+            background: #e0f2fe !important;
+            color: #0284c7 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(2, 132, 199, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-secondary {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(100, 116, 139, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-purple {
+            background: #ede9fe !important;
+            color: #7c3aed !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(139, 92, 246, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-soft-dark {
+            background: #334155 !important;
+            color: #f8fafc !important;
+            font-weight: 600;
+            padding: .35em .65em;
+            border-radius: 6px;
+            font-size: .75rem;
+            border: 1px solid rgba(51, 65, 85, .15);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
 
         /* DataTables Responsive Caret Indicators (Reference Picture 1: ▶ / ▼) */
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
             display: none !important;
         }
 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control {
             position: relative;
             padding-left: 2rem !important;
             cursor: pointer;
         }
 
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control::after {
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control::after {
             content: '▶';
             position: absolute;
             left: 0.75rem;
@@ -163,23 +259,23 @@
             transition: color 0.15s ease;
         }
 
-        table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td.dtr-control::after {
+        table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control::after {
             content: '▼';
             color: #0f172a;
         }
 
         /* Expanded Child Drawer Styling (Reference Picture 1) */
-        table.dataTable > tbody > tr.child {
+        table.dataTable>tbody>tr.child {
             background: #ffffff !important;
         }
 
-        table.dataTable > tbody > tr.child td.child {
+        table.dataTable>tbody>tr.child td.child {
             padding: 0.6rem 1.25rem 1.25rem 1.25rem !important;
             background: #ffffff !important;
             border-bottom: 1px solid #e2e8f0 !important;
         }
 
-        table.dataTable > tbody > tr.child ul.dtr-details {
+        table.dataTable>tbody>tr.child ul.dtr-details {
             display: flex !important;
             flex-direction: column !important;
             gap: 0 !important;
@@ -190,7 +286,7 @@
             margin: 0 !important;
         }
 
-        table.dataTable > tbody > tr.child ul.dtr-details > li {
+        table.dataTable>tbody>tr.child ul.dtr-details>li {
             display: flex !important;
             align-items: center !important;
             justify-content: flex-start !important;
@@ -199,12 +295,12 @@
             font-size: 0.88rem !important;
         }
 
-        table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
+        table.dataTable>tbody>tr.child ul.dtr-details>li:last-child {
             border-bottom: none !important;
             padding-top: 0.85rem !important;
         }
 
-        table.dataTable > tbody > tr.child span.dtr-title {
+        table.dataTable>tbody>tr.child span.dtr-title {
             font-weight: 800 !important;
             color: #0f172a !important;
             font-size: 0.88rem !important;
@@ -215,7 +311,7 @@
             flex-shrink: 0;
         }
 
-        table.dataTable > tbody > tr.child span.dtr-data {
+        table.dataTable>tbody>tr.child span.dtr-data {
             color: #334155 !important;
             font-size: 0.88rem !important;
             font-weight: 500 !important;
@@ -226,7 +322,8 @@
         }
 
         /* Action Buttons Inside Tables & Drawer */
-        .action-btn-group, .dtr-data .btn-group {
+        .action-btn-group,
+        .dtr-data .btn-group {
             display: inline-flex !important;
             align-items: center !important;
             gap: 0.35rem !important;
@@ -253,7 +350,7 @@
 
         .dataTables_wrapper .dataTables_filter input:focus {
             border-color: #0088cc;
-            box-shadow: 0 0 0 3px rgba(0,136,204,0.15);
+            box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.15);
         }
 
         .dataTables_wrapper .dataTables_length select {
@@ -490,6 +587,12 @@
             background: rgba(255, 183, 0, 0.15);
             color: var(--accent-gold);
             border: 1px solid rgba(255, 183, 0, 0.3);
+        }
+
+        .role-system_admin {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
         }
 
         .role-shop_admin {
@@ -1096,10 +1199,16 @@
                 </a>
             </div>
 
+            <div class="nav-item-custom">
+                <a href="{{ route('diary.index') }}" class="nav-link-custom {{ request()->routeIs('diary.*') ? 'active' : '' }}">
+                    <i class="bi bi-journal-bookmark-fill" style="color:#ffffff;"></i> Daily Diary
+                </a>
+            </div>
+
             @if(auth()->user()->isOwner())
             {{-- Products collapsible --}}
             @php
-            $isProductsActive = request()->routeIs('items.*') || request()->routeIs('categories.*') || request()->routeIs('shops.*') || request()->routeIs('users.*');
+            $isProductsActive = request()->routeIs('items.*') || request()->routeIs('categories.*') || request()->routeIs('units.*') || request()->routeIs('shops.*') || request()->routeIs('users.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isProductsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1116,6 +1225,9 @@
                         <a href="{{ route('categories.index') }}" class="nav-link-custom {{ request()->routeIs('categories.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-tags"></i> Categories
                         </a>
+                        <a href="{{ route('units.index') }}" class="nav-link-custom {{ request()->routeIs('units.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-rulers"></i> Units
+                        </a>
                         <a href="{{ route('shops.index') }}" class="nav-link-custom {{ request()->routeIs('shops.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-shop"></i> Shops
                         </a>
@@ -1128,7 +1240,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-            $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*');
+            $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1141,6 +1253,14 @@
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('main-stock.index') }}" class="nav-link-custom {{ request()->routeIs('main-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-building"></i> Main Store Stock
+                        </a>
+                        <a href="{{ route('reorder.index') }}" class="nav-link-custom {{ request()->routeIs('reorder.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-magic text-warning"></i> Reorder Suggestions
+                        </a>
+                        <a href="{{ route('shop-swaps.index') }}" class="nav-link-custom {{ request()->routeIs('shop-swaps.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right text-info"></i> Product Swaps
+                            @php $pendingSwaps = \App\Models\ShopProductSwap::where('status', 'pending_owner')->count() @endphp
+                            @if($pendingSwaps > 0) <span class="nav-badge bg-warning text-dark">{{ $pendingSwaps }}</span> @endif
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -1313,7 +1433,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-            $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*');
+            $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1326,6 +1446,14 @@
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-layers"></i> Shop Stock
+                        </a>
+                        <a href="{{ route('reorder.index') }}" class="nav-link-custom {{ request()->routeIs('reorder.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-magic text-warning"></i> Reorder Suggestions
+                        </a>
+                        <a href="{{ route('shop-swaps.index') }}" class="nav-link-custom {{ request()->routeIs('shop-swaps.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-arrow-left-right text-info"></i> Product Swaps
+                            @php $myIncomingSwaps = \App\Models\ShopProductSwap::where('status', 'pending_destination')->where('destination_shop_id', auth()->user()->shop_id)->count() @endphp
+                            @if($myIncomingSwaps > 0) <span class="nav-badge bg-warning text-dark">{{ $myIncomingSwaps }}</span> @endif
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -1741,13 +1869,16 @@
         .product-img-wrapper:hover .img-zoom-overlay {
             opacity: 1 !important;
         }
+
         .product-img-wrapper:hover .product-img-thumb {
             transform: scale(1.2) !important;
         }
+
         .img-lightbox {
             cursor: zoom-in !important;
             transition: transform .15s ease, box-shadow .15s ease;
         }
+
         .img-lightbox:hover {
             transform: scale(1.06);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
@@ -1868,7 +1999,10 @@
             },
             pageLength: 10,
             lengthChange: true,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "All"]
+            ],
             order: [],
             dom: "<'row mb-3 align-items-center g-2'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>><'row'<'col-sm-12'tr>><'row mt-3 align-items-center g-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             columnDefs: [{
@@ -2049,7 +2183,7 @@
         // ─── 15-MINUTE INACTIVITY AUTO-LOGOUT & IDLE POLLING MANAGEMENT ──────
         (function() {
             const FIFTEEN_MINUTES_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)
-            const IDLE_PAUSE_MS = 3 * 60 * 1000;      // 3 minutes idle to pause background polling
+            const IDLE_PAUSE_MS = 3 * 60 * 1000; // 3 minutes idle to pause background polling
             const STORAGE_KEY = 'amstroom_last_activity_time';
 
             function updateActivity() {
@@ -2061,6 +2195,7 @@
             }
 
             let lastUpdate = 0;
+
             function onUserAction() {
                 const now = Date.now();
                 if (now - lastUpdate > 3000) {
@@ -2070,7 +2205,9 @@
             }
 
             ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(function(evt) {
-                window.addEventListener(evt, onUserAction, { passive: true });
+                window.addEventListener(evt, onUserAction, {
+                    passive: true
+                });
             });
 
             $(document).ajaxError(function(event, jqXHR) {
@@ -2388,7 +2525,6 @@
                 }, 10000);
             });
         })();
-
     </script>
 
     @stack('scripts')

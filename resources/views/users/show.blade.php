@@ -11,8 +11,8 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-person-badge-fill me-2" style="color:#58a6ff;"></i>{{ $user->name }}</span>
-                {{-- Show edit only if owner, or if shop_admin owns this seller --}}
-                @if(auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && $user->shop_id === auth()->user()->shop_id && $user->role === 'seller'))
+                {{-- Show edit only if primary owner, system admin managing non-system admins, or shop admin owning seller, or own profile --}}
+                @if(auth()->user()->role === 'owner' || (auth()->user()->isSystemAdmin() && $user->role !== 'system_admin') || (auth()->user()->isShopAdmin() && $user->shop_id === auth()->user()->shop_id && $user->role === 'seller') || $user->id === auth()->id())
                 <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-accent">Edit</a>
                 @endif
             </div>
@@ -22,11 +22,11 @@
                     <tr><th style="color:var(--text-secondary);">Phone</th><td>{{ $user->phone ?: '—' }}</td></tr>
                     <tr>
                         <th style="color:var(--text-secondary);">Role</th>
-                        <td><span class="role-pill role-{{ $user->role }}">{{ str_replace('_',' ',ucfirst($user->role)) }}</span></td>
+                        <td><span class="role-pill role-{{ $user->role }}">{{ ucwords(str_replace('_',' ',$user->role)) }}</span></td>
                     </tr>
                     <tr>
                         <th style="color:var(--text-secondary);">Assigned Shop</th>
-                        <td>{{ $user->shop ? $user->shop->shop_name : 'Unassigned' }}</td>
+                        <td>{{ $user->shop ? $user->shop->shop_name : ($user->isSystemAdmin() ? 'Global Access (All Shops)' : 'Unassigned') }}</td>
                     </tr>
                     <tr>
                         <th style="color:var(--text-secondary);">Status</th>

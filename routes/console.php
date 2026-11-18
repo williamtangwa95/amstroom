@@ -19,7 +19,7 @@ Artisan::command('amstroom:send-summaries {--force : Send reports immediately by
     $this->info("Checking system and shop summary reports schedule... (Time: {$currentTime} {$tz})");
 
     // 1. Send to Owner(s)
-    $owners = User::where('role', 'owner')->get();
+    $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
     foreach ($owners as $owner) {
         $sendTime = Setting::get('summary_report_time', '22:00');
         if (!$force && $currentTime !== $sendTime) {

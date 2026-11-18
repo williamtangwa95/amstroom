@@ -343,7 +343,7 @@
                                 <div style="font-size:11px; color:#64748b;">{{ $def['shop'] }}</div>
                             </td>
                             <td style="text-align:center; font-weight:700; color:#dc2626;">
-                                {{ number_format($def['quantity']) }}
+                                {{ number_format($def['quantity']) }} <span style="font-size:10px; color:#64748b; font-weight:500;">{{ $def['unit'] ?? '' }}</span>
                             </td>
                             <td>
                                 <div style="font-size:12px; color:#0f172a;">{{ $def['reason'] }}</div>

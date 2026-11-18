@@ -12,7 +12,7 @@ class Item extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-        'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period', 'image_path',
+        'item_name', 'category_id', 'unit_id', 'specification', 'brand', 'model', 'warranty_period', 'image_path',
         'is_admin_item', 'shop_id',
     ];
 
@@ -23,6 +23,16 @@ class Item extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function getUnitSymbolAttribute(): string
+    {
+        return $this->unit ? $this->unit->symbol : 'pc';
     }
 
     public function mainStocks()

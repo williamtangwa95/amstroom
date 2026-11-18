@@ -350,7 +350,7 @@
                             <td style="color:#64748b; font-size:11px;">{{ $item['shop'] }}</td>
                             @endif
                             <td style="text-align:center; font-weight:700; color:#0f172a;">
-                                {{ number_format($item['qty']) }}
+                                {{ number_format($item['qty']) }} <span style="font-size:10px; color:#64748b; font-weight:500;">{{ $item['unit'] ?? '' }}</span>
                             </td>
                             <td style="text-align:right; font-weight:700; color:#059669;">
                                 TZS {{ number_format($item['valuation'], 0) }}

@@ -268,7 +268,9 @@
                                             @endphp
                                             <option value="{{ $item->id }}"
                                                     data-buying-price="{{ $buyingPrice }}"
-                                                    data-selling-price="{{ $sellingPrice }}">
+                                                    data-selling-price="{{ $sellingPrice }}"
+                                                    data-unit-id="{{ $item->unit_id }}"
+                                                    data-unit-symbol="{{ $item->unit_symbol }}">
                                                 [{{ $item->category->category_name ?? 'Uncategorized' }}] {{ $item->item_name }} {{ $item->brand ? "($item->brand)" : '' }}
                                                 @if($hasMainStock)
                                                     (Current: BP {{ number_format($item->mainStock->buying_price, 0) }} / SP {{ number_format($item->mainStock->selling_price, 0) }})
@@ -286,7 +288,7 @@
 
                             <div class="modal-main-new-product-group border rounded p-3 mb-2" style="display: none; background: rgba(0, 136, 204, 0.02);">
                                 <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <label class="form-label fw-600 mb-0" style="font-size:0.8rem;">Category *</label>
                                             <div class="form-check form-switch mb-0" style="padding-left: 2.2em;">
@@ -306,7 +308,16 @@
                                             <input type="text" name="products[0][new_category_name]" class="form-control form-control-sm modal-main-new-category-name-input" placeholder="e.g. Laptops">
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-600 mb-1" style="font-size:0.8rem;">Unit *</label>
+                                        <select name="products[0][unit_id]" class="form-select form-select-sm modal-main-new-unit-id-select" disabled>
+                                            <option value="">-- Choose Unit --</option>
+                                            @foreach($units as $u)
+                                            <option value="{{ $u->id }}" data-symbol="{{ $u->symbol }}" {{ $u->is_default ? 'selected' : '' }}>{{ $u->name }} ({{ $u->symbol }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label fw-600 mb-1" style="font-size:0.8rem;">Brand</label>
                                         <input type="text" name="products[0][brand]" class="form-control form-control-sm modal-main-brand-input" placeholder="e.g. Dell">
                                     </div>
@@ -327,6 +338,7 @@
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text"><i class="bi bi-hash"></i></span>
                                         <input type="text" class="form-control modal-main-quantity-display-input" required autocomplete="off" placeholder="e.g. 10">
+                                        <span class="input-group-text modal-main-unit-symbol-display" style="min-width: 48px; justify-content: center; font-weight: 600; font-size: 0.78rem; background: var(--input-bg, #21262d); color: var(--text-secondary, #8b949e);">pc</span>
                                     </div>
                                     <input type="hidden" name="products[0][quantity]" class="modal-main-quantity-hidden-input">
                                 </div>
@@ -599,14 +611,25 @@
                 block.find('.modal-main-item-id-select').val('').prop('required', false);
                 block.find('.modal-main-new-product-group').show();
                 block.find('.modal-main-new-item-name-input').prop('required', true);
+                block.find('.modal-main-new-unit-id-select').prop('required', true).prop('disabled', false);
+                const newUnitSym = block.find('.modal-main-new-unit-id-select option:selected').data('symbol') || 'pc';
+                block.find('.modal-main-unit-symbol-display').text(newUnitSym);
                 updateModalMainBlockCategoryFields(block);
             } else {
                 block.find('.modal-main-new-product-group').hide();
                 block.find('.modal-main-new-item-name-input').val('').prop('required', false);
+                block.find('.modal-main-new-unit-id-select').prop('required', false).prop('disabled', true);
                 block.find('.modal-main-existing-product-group').show();
                 block.find('.modal-main-item-id-select').prop('required', true);
+                const itemUnitSym = block.find('.modal-main-item-id-select option:selected').data('unit-symbol') || 'pc';
+                block.find('.modal-main-unit-symbol-display').text(itemUnitSym);
                 updateModalMainBlockCategoryFields(block);
             }
+        });
+
+        $('#modalMainStockProductsContainer').on('change', '.modal-main-new-unit-id-select', function() {
+            const sym = $(this).find('option:selected').data('symbol') || 'pc';
+            $(this).closest('.product-block-modal-main').find('.modal-main-unit-symbol-display').text(sym);
         });
 
         $('#modalMainStockProductsContainer').on('change', '.modal-main-create-new-category-toggle', function() {
@@ -622,11 +645,15 @@
                 block.find('.modal-main-buying-price-hidden-input').val('');
                 block.find('.modal-main-selling-price-display-input').val('');
                 block.find('.modal-main-selling-price-hidden-input').val('');
+                block.find('.modal-main-unit-symbol-display').text('pc');
                 return;
             }
 
             const mainBuying = selectedOpt.data('buying-price');
             const mainSelling = selectedOpt.data('selling-price');
+            const unitSymbol = selectedOpt.data('unit-symbol') || 'pc';
+
+            block.find('.modal-main-unit-symbol-display').text(unitSymbol);
 
             if (mainBuying && mainSelling) {
                 block.find('.modal-main-buying-price-hidden-input').val(mainBuying);
@@ -690,6 +717,8 @@
             newBlock.find('.modal-main-existing-product-group').show();
             newBlock.find('.modal-main-item-id-select').prop('required', true);
             newBlock.find('.modal-main-new-item-name-input').prop('required', false);
+            newBlock.find('.modal-main-new-unit-id-select').prop('required', false).prop('disabled', true);
+            newBlock.find('.modal-main-unit-symbol-display').text('pc');
             newBlock.find('.modal-main-new-category-group').hide();
             newBlock.find('.modal-main-existing-category-group').show();
             newBlock.find('.modal-main-price-warning').hide();

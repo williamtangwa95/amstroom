@@ -203,7 +203,7 @@
                                     <td>
                                         <span class="badge bg-primary" style="font-size:0.6rem;">Owner</span>
                                     </td>
-                                    <td>{{ $item->quantity }}</td>
+                                    <td>{{ $item->quantity }} <small class="text-muted">{{ $item->unit_symbol }}</small></td>
                                     <td class="text-end">TZS {{ number_format($priceVal, 0) }}</td>
                                     @if(auth()->user()->isOwner())
                                     <td class="text-end text-muted">TZS {{ number_format($item->owner_cost_price, 0) }}</td>

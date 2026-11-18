@@ -679,6 +679,8 @@
                                                     data-owner-buying="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->buying_price ?? '' }}"
                                                     data-owner-selling="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->selling_price ?? '' }}"
                                                     data-main-selling="{{ $item->mainStocks->last()?->selling_price ?? '' }}"
+                                                    data-unit-id="{{ $item->unit_id }}"
+                                                    data-unit-symbol="{{ $item->unit_symbol }}"
                                             >{{ $item->item_name }} ({{ $item->brand }})</option>
                                             @endforeach
                                         </select>
@@ -712,11 +714,20 @@
                                             <input type="text" name="products[0][new_category_name]" class="form-control form-control-sm new-category-name-input" placeholder="e.g. Gaming Gear">
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1" style="font-size:0.8rem;">Unit *</label>
+                                        <select name="products[0][unit_id]" class="form-select form-select-sm new-unit-id-select" disabled>
+                                            <option value="">-- Choose Unit --</option>
+                                            @foreach($units as $u)
+                                            <option value="{{ $u->id }}" data-symbol="{{ $u->symbol }}" {{ $u->is_default ? 'selected' : '' }}>{{ $u->name }} ({{ $u->symbol }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label mb-1" style="font-size:0.8rem;">Brand</label>
                                         <input type="text" name="products[0][brand]" class="form-control form-control-sm brand-input" placeholder="e.g. Logitech">
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label mb-1" style="font-size:0.8rem;">Model</label>
                                         <input type="text" name="products[0][model]" class="form-control form-control-sm model-input" placeholder="e.g. K120">
                                     </div>
@@ -733,6 +744,7 @@
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text input-group-text-custom"><i class="bi bi-hash"></i></span>
                                         <input type="text" class="form-control quantity-display-input" required autocomplete="off" placeholder="e.g. 10">
+                                        <span class="input-group-text unit-symbol-display" style="min-width: 48px; justify-content: center; font-weight: 600; font-size: 0.78rem; background: var(--input-bg, #21262d); color: var(--text-secondary, #8b949e);">pc</span>
                                     </div>
                                     <input type="hidden" name="products[0][quantity]" class="quantity-hidden-input">
                                 </div>
@@ -831,6 +843,8 @@
                                                     data-owner-buying="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->buying_price ?? '' }}"
                                                     data-owner-selling="{{ $item->shopStocks->where('is_admin_stock', false)->last()?->selling_price ?? '' }}"
                                                     data-main-selling="{{ $item->mainStocks->last()?->selling_price ?? '' }}"
+                                                    data-unit-id="{{ $item->unit_id }}"
+                                                    data-unit-symbol="{{ $item->unit_symbol }}"
                                             >{{ $item->item_name }} ({{ $item->brand }})</option>
                                             @endforeach
                                         </select>
@@ -864,11 +878,20 @@
                                             <input type="text" name="products[0][new_category_name]" class="form-control form-control-sm owner-new-category-name-input" placeholder="e.g. Gaming Gear">
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
+                                        <label class="form-label mb-1" style="font-size:0.8rem;">Unit *</label>
+                                        <select name="products[0][unit_id]" class="form-select form-select-sm owner-new-unit-id-select" disabled>
+                                            <option value="">-- Choose Unit --</option>
+                                            @foreach($units as $u)
+                                            <option value="{{ $u->id }}" data-symbol="{{ $u->symbol }}" {{ $u->is_default ? 'selected' : '' }}>{{ $u->name }} ({{ $u->symbol }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label mb-1" style="font-size:0.8rem;">Brand</label>
                                         <input type="text" name="products[0][brand]" class="form-control form-control-sm owner-brand-input" placeholder="e.g. Logitech">
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label mb-1" style="font-size:0.8rem;">Model</label>
                                         <input type="text" name="products[0][model]" class="form-control form-control-sm owner-model-input" placeholder="e.g. K120">
                                     </div>
@@ -885,6 +908,7 @@
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text input-group-text-custom"><i class="bi bi-hash"></i></span>
                                         <input type="text" class="form-control owner-quantity-display-input" required autocomplete="off" placeholder="e.g. 10">
+                                        <span class="input-group-text owner-unit-symbol-display" style="min-width: 48px; justify-content: center; font-weight: 600; font-size: 0.78rem; background: var(--input-bg, #21262d); color: var(--text-secondary, #8b949e);">pc</span>
                                     </div>
                                     <input type="hidden" name="products[0][quantity]" class="owner-quantity-hidden-input">
                                 </div>
@@ -1627,6 +1651,8 @@
             newBlock.find('.new-product-group').hide();
             newBlock.find('.item-id-select').prop('required', true);
             newBlock.find('.new-item-name-input').prop('required', false);
+            newBlock.find('.new-unit-id-select').prop('required', false).prop('disabled', true);
+            newBlock.find('.unit-symbol-display').text('pc');
             
             newBlock.find('.btn-remove-product').removeClass('d-none');
             
@@ -1827,14 +1853,26 @@
                 block.find('.item-id-select').val('').prop('required', false);
                 block.find('.new-product-group').show();
                 block.find('.new-item-name-input').prop('required', true);
+                block.find('.new-unit-id-select').prop('required', true).prop('disabled', false);
+                const newUnitSym = block.find('.new-unit-id-select option:selected').data('symbol') || 'pc';
+                block.find('.unit-symbol-display').text(newUnitSym);
                 updateBlockCategoryFields(block);
             } else {
                 block.find('.new-product-group').hide();
                 block.find('.new-item-name-input').val('').prop('required', false);
+                block.find('.new-unit-id-select').prop('required', false).prop('disabled', true);
                 block.find('.existing-product-group').show();
                 block.find('.item-id-select').prop('required', true);
+                const itemUnitSym = block.find('.item-id-select option:selected').data('unit-symbol') || 'pc';
+                block.find('.unit-symbol-display').text(itemUnitSym);
                 updateBlockCategoryFields(block);
             }
+        });
+
+        // Update unit display when new product unit changes
+        $('#addAdminStockModal').on('change', '.new-unit-id-select', function() {
+            const sym = $(this).find('option:selected').data('symbol') || 'pc';
+            $(this).closest('.product-block').find('.unit-symbol-display').text(sym);
         });
 
         // Toggle new category input vs category select dropdown
@@ -1852,8 +1890,12 @@
                 block.find('.buying-price-hidden-input').val('');
                 block.find('.selling-price-display-input').val('');
                 block.find('.selling-price-hidden-input').val('');
+                block.find('.unit-symbol-display').text('pc');
                 return;
             }
+
+            const unitSymbol = selectedOpt.data('unit-symbol') || 'pc';
+            block.find('.unit-symbol-display').text(unitSymbol);
 
             const shopBuying = selectedOpt.data('admin-buying');
             const shopSelling = selectedOpt.data('admin-selling');
@@ -2330,14 +2372,26 @@
                 block.find('.owner-item-id-select').val('').prop('required', false);
                 block.find('.owner-new-product-group').show();
                 block.find('.owner-new-item-name-input').prop('required', true);
+                block.find('.owner-new-unit-id-select').prop('required', true).prop('disabled', false);
+                const newUnitSym = block.find('.owner-new-unit-id-select option:selected').data('symbol') || 'pc';
+                block.find('.owner-unit-symbol-display').text(newUnitSym);
                 updateOwnerBlockCategoryFields(block);
             } else {
                 block.find('.owner-new-product-group').hide();
                 block.find('.owner-new-item-name-input').val('').prop('required', false);
+                block.find('.owner-new-unit-id-select').prop('required', false).prop('disabled', true);
                 block.find('.owner-existing-product-group').show();
                 block.find('.owner-item-id-select').prop('required', true);
+                const itemUnitSym = block.find('.owner-item-id-select option:selected').data('unit-symbol') || 'pc';
+                block.find('.owner-unit-symbol-display').text(itemUnitSym);
                 updateOwnerBlockCategoryFields(block);
             }
+        });
+
+        // Update unit display when new product unit changes (Owner Stock)
+        $('#addOwnerStockModal').on('change', '.owner-new-unit-id-select', function() {
+            const sym = $(this).find('option:selected').data('symbol') || 'pc';
+            $(this).closest('.product-block-owner').find('.owner-unit-symbol-display').text(sym);
         });
 
         // Toggle new category input vs category select dropdown (Owner Stock)
@@ -2355,8 +2409,12 @@
                 block.find('.owner-buying-price-hidden-input').val('');
                 block.find('.owner-selling-price-display-input').val('');
                 block.find('.owner-selling-price-hidden-input').val('');
+                block.find('.owner-unit-symbol-display').text('pc');
                 return;
             }
+
+            const unitSymbol = selectedOpt.data('unit-symbol') || 'pc';
+            block.find('.owner-unit-symbol-display').text(unitSymbol);
 
             const shopBuying = selectedOpt.data('owner-buying');
             const shopSelling = selectedOpt.data('owner-selling');
@@ -2443,6 +2501,8 @@
             newBlock.find('.owner-new-product-group').hide();
             newBlock.find('.owner-item-id-select').prop('required', true);
             newBlock.find('.owner-new-item-name-input').prop('required', false);
+            newBlock.find('.owner-new-unit-id-select').prop('required', false).prop('disabled', true);
+            newBlock.find('.owner-unit-symbol-display').text('pc');
             
             newBlock.find('.btn-remove-owner-product').removeClass('d-none');
             

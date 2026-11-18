@@ -179,7 +179,7 @@
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span style="font-size:.78rem;font-weight:600;">{{ Str::limit($item->item_name,28) }}</span>
-                    <span class="badge badge-fast" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_sold) }} units</span>
+                    <span class="badge badge-fast" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_sold) }} {{ $item->unit_symbol ?? 'units' }}</span>
                 </div>
                 <div class="velocity-bar">
                     <div class="velocity-bar-fill" style="width:{{ ($item->qty_sold/$maxQ)*100 }}%;background:var(--an-green);"></div>
@@ -201,7 +201,7 @@
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span style="font-size:.78rem;font-weight:600;">{{ Str::limit($item->item_name,28) }}</span>
-                    <span class="badge badge-slow" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_sold) }} units</span>
+                    <span class="badge badge-slow" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_sold) }} {{ $item->unit_symbol ?? 'units' }}</span>
                 </div>
                 <div class="velocity-bar">
                     <div class="velocity-bar-fill" style="width:{{ max(5,($item->qty_sold/$maxQ2)*100) }}%;background:var(--an-amber);"></div>
@@ -224,7 +224,7 @@
                     <div style="font-size:.78rem;font-weight:600;">{{ Str::limit($item->item_name,30) }}</div>
                     <div style="font-size:.65rem;color:var(--text-secondary);">{{ $item->category }}</div>
                 </div>
-                <span class="badge badge-stop" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_in_stock) }} in stock</span>
+                <span class="badge badge-stop" style="font-size:.65rem;border-radius:8px;">{{ number_format($item->qty_in_stock) }} {{ $item->unit_symbol ?? 'units' }} in stock</span>
             </div>
             @empty
             <div class="text-center py-4">
@@ -302,9 +302,9 @@
                     @endif
                 </div>
                 <div class="d-flex gap-3 mt-1 flex-wrap" style="font-size:.68rem;color:var(--text-secondary);">
-                    <span>📦 {{ number_format($s->current_stock) }} in stock</span>
+                    <span>📦 {{ number_format($s->current_stock) }} {{ $s->unit_symbol ?? 'units' }} in stock</span>
                     <span>⏳ ~{{ $s->days_left!==null ? $s->days_left.' days left' : 'Unknown' }}</span>
-                    <span>➕ Order: <strong>{{ number_format($s->suggest_qty) }} units</strong></span>
+                    <span>➕ Order: <strong>{{ number_format($s->suggest_qty) }} {{ $s->unit_symbol ?? 'units' }}</strong></span>
                 </div>
             </div>
             @empty
@@ -472,7 +472,7 @@
                 <td class="text-center">{{ $idx+1 }}</td>
                 <td class="fw-600">{{ $item->item_name }}</td>
                 <td class="text-secondary">{{ $item->category }}</td>
-                <td>{{ number_format($item->qty_sold) }}</td>
+                <td>{{ number_format($item->qty_sold) }} <small class="text-secondary">{{ $item->unit_symbol ?? 'pc' }}</small></td>
                 <td><strong>TZS {{ number_format($item->revenue,0) }}</strong></td>
                 <td><strong class="text-success">TZS {{ number_format($item->profit,0) }}</strong></td>
                 <td><span class="margin-pill margin-{{ $item->margin_tier }}">{{ number_format($item->margin_pct,1) }}%</span></td>

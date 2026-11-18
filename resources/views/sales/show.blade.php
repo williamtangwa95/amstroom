@@ -107,7 +107,7 @@
                                     <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem; border:1px solid var(--card-border);">Bundle Item</span>
                                 @endif
                             </td>
-                            <td>{{ $item->quantity }}</td>
+                            <td>{{ $item->quantity }} <small class="text-muted">{{ $item->unit_symbol }}</small></td>
                             <td>TZS {{ number_format($displayPrice, 0) }}</td>
                             <td><strong style="color:#3fb950;">TZS {{ number_format($displaySubtotal, 0) }}</strong></td>
                             <td class="text-center">
@@ -131,7 +131,7 @@
                                         <span class="text-muted">└─</span> {{ $component->display_name }}
                                     </td>
                                     <td style="font-size:.8rem; color: var(--text-secondary);">
-                                        {{ $component->quantity }}
+                                        {{ $component->quantity }} <small>{{ $component->unit_symbol }}</small>
                                     </td>
                                     <td style="font-size:.8rem; color: var(--text-secondary); font-style: italic;">
                                         Included

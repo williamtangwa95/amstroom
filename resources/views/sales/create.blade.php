@@ -205,7 +205,7 @@
                                 <div>
                                     <div class="fw-800" style="color:#3fb950;font-size:.95rem;">TZS {{ number_format($stock->selling_price, 0) }}</div>
                                     <div style="font-size:.7rem;color:{{ ($stock->isLowStock() && !$isMock) ? '#e94560' : 'var(--text-secondary)' }};">
-                                        In Stock: <strong>{{ $stock->remaining_quantity }}</strong>
+                                        In Stock: <strong>{{ $stock->remaining_quantity }}</strong> <small style="color:var(--text-secondary);">{{ $stock->unit_symbol }}</small>
                                     </div>
                                 </div>
                                 @if($isLocked)
@@ -223,6 +223,7 @@
                                     data-pending-price="{{ $pendingPrice ?? 0 }}"
                                     data-is-sellable="true"
                                     data-is-admin-stock="{{ (isset($stock->is_admin_stock) && $stock->is_admin_stock) ? 'true' : 'false' }}"
+                                    data-unit="{{ $stock->unit_symbol }}"
                                     data-allow-components="{{ $stock->allow_components ? 'true' : 'false' }}"
                                     data-components="{{ json_encode($stock->item->components->map(fn($c) => ['item_id' => $c->component_item_id, 'item_name' => $c->childItem->item_name, 'quantity' => $c->quantity])) }}" style="font-size:.78rem; border-radius: 6px;">
                                     <i class="bi bi-cart-plus me-1"></i> Add
@@ -502,7 +503,8 @@
                     negotiatedPrice: price,
                     isAdminStock: isAdminStock,
                     components: components,
-                    allowComponents: allowComponents
+                    allowComponents: allowComponents,
+                    unit: this.dataset.unit || 'pc'
                 };
             }
             renderCart();
@@ -604,6 +606,7 @@
                         <button type="button" class="btn btn-xs btn-outline-secondary cart-qty-btn" onclick="changeQty('${id}', -1)">-</button>
                         <input type="number" name="items[${index}][quantity]" value="${item.qty}" min="1" ${(!item.isCustom && !item.isMock) ? `max="${item.maxStock}"` : ''} onchange="updateItemQty('${id}', this.value)" class="form-control form-control-sm cart-qty-input">
                         <button type="button" class="btn btn-xs btn-outline-secondary cart-qty-btn" onclick="changeQty('${id}', 1)">+</button>
+                        <small style="color:var(--text-secondary);font-size:.7rem;min-width:20px;">${item.unit || 'pc'}</small>
                     </div>
 
                     <div class="d-flex align-items-center gap-1 cart-item-price-group">

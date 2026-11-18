@@ -41,6 +41,11 @@ class ShopStock extends Model
         return $this->belongsTo(Item::class);
     }
 
+    public function getUnitSymbolAttribute(): string
+    {
+        return $this->item?->unit_symbol ?? 'pc';
+    }
+
     public function isLowStock(): bool
     {
         if (!$this->shop_id || !$this->item_id) {

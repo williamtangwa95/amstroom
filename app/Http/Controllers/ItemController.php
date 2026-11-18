@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Item;
+use App\Models\Unit;
 use App\Helpers\ImageCompressor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,8 @@ class ItemController extends Controller
 {
     public function index()
     {
-        return view('items.index');
+        $units = Unit::orderBy('name')->get();
+        return view('items.index', compact('units'));
     }
 
     public function data(Request $request)
@@ -46,7 +48,7 @@ class ItemController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $items = $query->with(['category', 'mainStocks', 'shopStocks.shop'])
+        $items = $query->with(['category', 'unit', 'mainStocks', 'shopStocks.shop'])
             ->orderBy('id', 'desc')
             ->skip($start)
             ->take($length)
@@ -56,9 +58,10 @@ class ItemController extends Controller
         foreach ($items as $index => $item) {
             $iteration = $start + $index + 1;
             $stock = $item->mainStocks->sum('remaining_quantity');
-            $stockHtml = '<span style="font-weight:700;color:' . ($stock > 0 ? '#3fb950' : '#e94560') . ';">' . $stock . '</span>';
+            $stockHtml = '<span style="font-weight:700;color:' . ($stock > 0 ? '#3fb950' : '#e94560') . ';">' . $stock . '</span> <small style="color:var(--text-secondary);font-size:0.72rem;">' . e($item->unit_symbol) . '</small>';
             $categoryName = e($item->category ? $item->category->category_name : '—');
             $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;font-weight:600;">' . $categoryName . '</span>';
+            $unitHtml = '<span class="badge" style="background:rgba(88,166,255,.12);color:#58a6ff;font-size:.75rem;font-weight:600;">' . e($item->unit_symbol) . '</span>';
             
             $imageHtml = $item->image_path
                 ? '<div class="product-img-wrapper overflow-hidden rounded position-relative" style="width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage(\'' . asset('media/' . $item->image_path) . '\', \'' . addslashes(e($item->item_name)) . '\')" title="Click to zoom image">
@@ -146,9 +149,12 @@ class ItemController extends Controller
             $actions .= '</div>';
 
             $data[] = [
+                'id' => $item->id,
+                'checkbox' => '<input type="checkbox" class="form-check-input item-select-cb" value="' . $item->id . '">',
                 'no' => $iteration,
                 'product' => $productHtml,
                 'category' => $categoryHtml,
+                'unit' => $unitHtml,
                 'brand_model' => $brandModel,
                 'warranty' => e($item->warranty_period ?: '—'),
                 'main_stock' => $stockHtml,
@@ -165,10 +171,29 @@ class ItemController extends Controller
         ]);
     }
 
+    public function bulkAssignUnit(Request $request)
+    {
+        $request->validate([
+            'item_ids'   => 'required|array|min:1',
+            'item_ids.*' => 'required|integer|exists:items,id',
+            'unit_id'    => 'required|exists:units,id',
+        ]);
+
+        $unit = Unit::findOrFail($request->unit_id);
+        $count = Item::whereIn('id', $request->item_ids)->update(['unit_id' => $unit->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Successfully assigned unit '{$unit->name} ({$unit->symbol})' to {$count} product(s).",
+            'count'   => $count,
+        ]);
+    }
+
     public function create()
     {
         $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
-        return view('items.create', compact('categories'));
+        $units = Unit::orderBy('name')->get();
+        return view('items.create', compact('categories', 'units'));
     }
 
     public function store(Request $request)
@@ -176,6 +201,7 @@ class ItemController extends Controller
         $request->validate([
             'item_name'      => 'required|string|max:150',
             'category_id'    => 'required|exists:categories,id',
+            'unit_id'        => 'nullable|exists:units,id',
             'specification'  => 'nullable|string',
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
@@ -184,7 +210,7 @@ class ItemController extends Controller
         ]);
 
         $data = $request->only(
-            'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period'
+            'item_name', 'category_id', 'unit_id', 'specification', 'brand', 'model', 'warranty_period'
         );
 
         if ($request->hasFile('image')) {
@@ -199,7 +225,7 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
-        $item->load('category', 'mainStocks', 'shopStocks.shop', 'components.childItem');
+        $item->load('category', 'unit', 'mainStocks', 'shopStocks.shop', 'components.childItem');
         
         $currentComponentsIds = $item->components->pluck('component_item_id')->toArray();
         $allItems = Item::where('is_admin_item', false)
@@ -214,7 +240,8 @@ class ItemController extends Controller
     public function edit(Item $item)
     {
         $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
-        return view('items.edit', compact('item', 'categories'));
+        $units = Unit::orderBy('name')->get();
+        return view('items.edit', compact('item', 'categories', 'units'));
     }
 
     public function update(Request $request, Item $item)
@@ -222,6 +249,7 @@ class ItemController extends Controller
         $request->validate([
             'item_name'      => 'required|string|max:150',
             'category_id'    => 'required|exists:categories,id',
+            'unit_id'        => 'nullable|exists:units,id',
             'specification'  => 'nullable|string',
             'brand'          => 'nullable|string|max:100',
             'model'          => 'nullable|string|max:100',
@@ -230,7 +258,7 @@ class ItemController extends Controller
         ]);
 
         $data = $request->only(
-            'item_name', 'category_id', 'specification', 'brand', 'model', 'warranty_period'
+            'item_name', 'category_id', 'unit_id', 'specification', 'brand', 'model', 'warranty_period'
         );
 
         if ($request->hasFile('image')) {

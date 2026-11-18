@@ -87,10 +87,10 @@
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center mt-0.5">
                                             <span class="text-muted text-truncate d-block" style="font-size: 0.7rem;">
-                                                {{ $user->shop ? $user->shop->shop_name : 'Owner Store' }}
+                                                {{ $user->shop ? $user->shop->shop_name : ($user->isOwner() ? 'Main Store' : 'Unassigned') }}
                                             </span>
                                             <span class="badge bg-secondary-subtle text-secondary py-0.5 px-1.5 rounded" style="font-size: 0.58rem; text-transform: uppercase; font-weight: 700;">
-                                                {{ $user->role === 'shop_admin' ? 'admin' : ($user->role === 'owner' ? 'owner' : 'seller') }}
+                                                {{ $user->role === 'shop_admin' ? 'admin' : ($user->role === 'owner' ? 'owner' : ($user->role === 'system_admin' ? 'sys admin' : 'seller')) }}
                                             </span>
                                         </div>
                                     </div>

@@ -194,7 +194,7 @@ class StockRequestController extends Controller
         }
 
         // Notify all owners
-        $owners = \App\Models\User::where('role', 'owner')->get();
+        $owners = \App\Models\User::whereIn('role', ['owner', 'system_admin'])->get();
         foreach ($owners as $owner) {
             \App\Models\Notification::create([
                 'user_id' => $owner->id,

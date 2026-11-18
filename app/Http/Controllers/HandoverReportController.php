@@ -53,15 +53,19 @@ class HandoverReportController extends Controller
         $handovers = $query->latest()->get();
         $shops = $user->isOwner() ? Shop::all() : collect();
 
-        // Dashboard Stats
+        // Dashboard Stats — scoped by role
+        $baseQuery = $user->isOwner()
+            ? HandoverReport::query()
+            : HandoverReport::where('shop_id', $user->shop_id);
+
         $stats = [
-            'pending' => HandoverReport::where('status', 'submitted')->count(),
-            'under_review' => HandoverReport::where('status', 'under_review')->count(),
-            'completed' => HandoverReport::where('status', 'completed')->count(),
-            'total_expected' => HandoverReport::where('status', 'completed')->sum('expected_amount'),
-            'total_received' => HandoverReport::where('status', 'completed')->sum('amount_received'),
-            'total_shortage' => HandoverReport::where('status', 'completed')->where('difference_status', 'shortage')->sum('difference'),
-            'total_excess' => HandoverReport::where('status', 'completed')->where('difference_status', 'excess')->sum('difference'),
+            'pending'        => (clone $baseQuery)->whereIn('status', ['submitted', 'under_review'])->count(),
+            'under_review'   => (clone $baseQuery)->where('status', 'under_review')->count(),
+            'completed'      => (clone $baseQuery)->where('status', 'completed')->count(),
+            'total_expected' => (clone $baseQuery)->where('status', 'completed')->sum('expected_amount'),
+            'total_received' => (clone $baseQuery)->where('status', 'completed')->sum('amount_received'),
+            'total_shortage' => (clone $baseQuery)->where('status', 'completed')->where('difference_status', 'shortage')->sum('difference'),
+            'total_excess'   => (clone $baseQuery)->where('status', 'completed')->where('difference_status', 'excess')->sum('difference'),
         ];
 
         return view('handovers.index', compact('handovers', 'shops', 'stats'));
@@ -750,7 +754,7 @@ class HandoverReportController extends Controller
             if ($handover->shopAdmin && !empty($handover->shopAdmin->email)) {
                 $recipientEmails[] = $handover->shopAdmin->email;
             }
-            $ownerEmails = User::where('role', 'owner')->pluck('email')->filter()->toArray();
+            $ownerEmails = User::whereIn('role', ['owner', 'system_admin'])->pluck('email')->filter()->toArray();
             $recipientEmails = array_values(array_unique(array_merge($recipientEmails, $ownerEmails)));
 
             if (!empty($recipientEmails)) {
@@ -987,7 +991,7 @@ class HandoverReportController extends Controller
     private function sendSubmissionNotifications(HandoverReport $handover, User $submitter)
     {
         $handover->loadMissing(['shop', 'shopAdmin']);
-        $owners = User::where('role', 'owner')->get();
+        $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
 
         foreach ($owners as $owner) {
             Notification::create([

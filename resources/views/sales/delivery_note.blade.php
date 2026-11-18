@@ -64,8 +64,8 @@
         <tr>
             <td>{{ $rowNum++ }}</td>
             <td style="font-weight:600;">{{ $item->display_name }}</td>
-            <td class="text-center">{{ $item->quantity }}</td>
-            <td class="text-center">{{ $item->quantity }}</td>
+            <td class="text-center">{{ $item->quantity }} <span style="font-size: 10px; color: #555;">{{ $item->unit_symbol }}</span></td>
+            <td class="text-center">{{ $item->quantity }} <span style="font-size: 10px; color: #555;">{{ $item->unit_symbol }}</span></td>
             <td class="text-center">
                 <span class="badge-status badge-delivered">Delivered</span>
             </td>
@@ -77,8 +77,8 @@
                 <td style="padding-left: 1.5rem; color: #555; font-size: 11px;">
                     <span style="color: #bbb; margin-right: 2px;">└─</span> {{ $component->display_name }}
                 </td>
-                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }}</td>
-                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }}</td>
+                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }} <span style="font-size: 9px;">{{ $component->unit_symbol }}</span></td>
+                <td class="text-center" style="color: #555; font-size: 11px;">{{ $component->quantity }} <span style="font-size: 9px;">{{ $component->unit_symbol }}</span></td>
                 <td class="text-center" style="color: #555; font-size: 11px;">
                     <span class="badge-status badge-delivered" style="opacity: 0.7;">Delivered</span>
                 </td>

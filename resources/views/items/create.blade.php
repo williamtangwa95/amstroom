@@ -28,6 +28,17 @@
                             </select>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Measurement Unit</label>
+                            <select name="unit_id" class="form-select">
+                                <option value="">-- Select Unit (Default: Piece / pc) --</option>
+                                @foreach($units as $u)
+                                <option value="{{ $u->id }}" {{ (old('unit_id') == $u->id || ($u->is_default && !old('unit_id'))) ? 'selected' : '' }}>
+                                    {{ $u->name }} ({{ $u->symbol }})
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Brand</label>
                             <input type="text" name="brand" class="form-control" value="{{ old('brand') }}" placeholder="e.g. HP, Dell, Logitech">
                         </div>

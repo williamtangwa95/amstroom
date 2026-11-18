@@ -18,7 +18,7 @@
             @if(auth()->user()->isShopAdmin())
                 Manage sellers in your shop
             @else
-                Manage Shop Admins and Sellers
+                Manage System Admins, Shop Admins and Sellers
             @endif
         </small>
     </div>

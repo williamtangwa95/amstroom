@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\MainStock;
 use App\Models\StockLog;
 use App\Models\Category;
+use App\Models\Unit;
 use App\Models\ShopStock;
 use App\Models\StockTransferItem;
 use App\Models\StockRequestItem;
@@ -34,15 +35,16 @@ class MainStockController extends Controller
             'stockBatchesCount'  => MainStock::count(),
         ];
 
-        $items = Item::with(['category', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
+        $items = Item::with(['category', 'unit', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
         $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
+        $units = Unit::orderBy('name')->get();
 
-        return view('main-stock.index', compact('stats', 'items', 'categories'));
+        return view('main-stock.index', compact('stats', 'items', 'categories', 'units'));
     }
 
     public function data(Request $request)
     {
-        $query = MainStock::with(['item.category']);
+        $query = MainStock::with(['item.category', 'item.unit']);
 
         $recordsTotal = MainStock::count();
 
@@ -153,10 +155,11 @@ class MainStockController extends Controller
 
             $buyPriceHtml = '<span style="font-size:.82rem;">TZS ' . number_format($stock->buying_price, 0) . '</span>';
             $sellPriceHtml = '<span style="font-size:.82rem;">TZS ' . number_format($stock->selling_price, 0) . '</span>';
-            $stockedQtyHtml = '<span style="font-size:.82rem;">' . $stock->stocked_quantity . '</span>';
+            $unitSymbol = $stock->unit_symbol;
+            $stockedQtyHtml = '<span style="font-size:.82rem;">' . $stock->stocked_quantity . ' <small style="color:var(--text-secondary);font-size:0.72rem;">' . e($unitSymbol) . '</small></span>';
 
             $remColor = $stock->remaining_quantity > 0 ? '#3fb950' : '#e94560';
-            $remainingQtyHtml = '<strong style="color:' . $remColor . ';">' . $stock->remaining_quantity . '</strong>';
+            $remainingQtyHtml = '<strong style="color:' . $remColor . ';">' . $stock->remaining_quantity . '</strong> <small style="color:var(--text-secondary);font-size:0.72rem;">' . e($unitSymbol) . '</small>';
 
             $dateHtml = '<span style="font-size:.75rem;color:var(--text-secondary);">' . ($stock->date_received ? $stock->date_received->format('M d, Y') : 'N/A') . '</span>';
 
@@ -226,9 +229,10 @@ class MainStockController extends Controller
 
     public function create()
     {
-        $items = Item::with(['category', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
+        $items = Item::with(['category', 'unit', 'mainStock'])->where('is_admin_item', false)->orderBy('item_name')->get();
         $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
-        return view('main-stock.create', compact('items', 'categories'));
+        $units = Unit::orderBy('name')->get();
+        return view('main-stock.create', compact('items', 'categories', 'units'));
     }
 
     public function store(Request $request, MainStoreStockService $stockService)
@@ -310,9 +314,11 @@ class MainStockController extends Controller
                             $categoryId = $prod['category_id'];
                         }
 
+                        $unitId = !empty($prod['unit_id']) ? $prod['unit_id'] : (!empty($prod['new_unit_id']) ? $prod['new_unit_id'] : null);
                         $item = Item::create([
                             'item_name'     => trim($prod['new_item_name']),
                             'category_id'   => $categoryId,
+                            'unit_id'       => !empty($unitId) ? (int)$unitId : null,
                             'brand'         => $prod['brand'] ?? null,
                             'model'         => $prod['model'] ?? null,
                             'specification' => $prod['specification'] ?? null,
@@ -322,6 +328,9 @@ class MainStockController extends Controller
                         $itemId = $item->id;
                     } else {
                         $itemId = $prod['item_id'];
+                        if (!empty($prod['unit_id'])) {
+                            Item::where('id', $itemId)->update(['unit_id' => (int)$prod['unit_id']]);
+                        }
                     }
 
                     $stockService->processStockAddition(
@@ -397,9 +406,11 @@ class MainStockController extends Controller
                 $categoryId = $request->category_id;
             }
 
+            $unitId = $request->input('unit_id');
             $item = Item::create([
                 'item_name'     => trim($request->new_item_name),
                 'category_id'   => $categoryId,
+                'unit_id'       => !empty($unitId) ? (int)$unitId : null,
                 'brand'         => $request->brand,
                 'model'         => $request->model,
                 'specification' => $request->specification,
@@ -409,6 +420,9 @@ class MainStockController extends Controller
             $itemId = $item->id;
         } else {
             $itemId = $request->item_id;
+            if ($request->filled('unit_id')) {
+                Item::where('id', $itemId)->update(['unit_id' => (int)$request->input('unit_id')]);
+            }
         }
 
         $result = $stockService->processStockAddition(

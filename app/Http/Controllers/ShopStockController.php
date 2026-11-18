@@ -127,9 +127,11 @@ class ShopStockController extends Controller
             ->distinct('item_id')
             ->count('item_id');
 
+        $units = \App\Models\Unit::orderBy('name')->get();
+
         $stocks = collect();
 
-        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'pendingPriceItemsCount', 'items', 'categories', 'totalStockValue', 'totalExpectedProfit', 'remainingStockValue', 'remainingExpectedProfit', 'soldStockValue', 'soldExpectedProfit', 'totalQuantity', 'totalRemainingQty', 'totalSoldQty'));
+        return view('shop-stock.index', compact('stocks', 'shops', 'shopId', 'lowStockItems', 'pendingPriceItemsCount', 'items', 'categories', 'units', 'totalStockValue', 'totalExpectedProfit', 'remainingStockValue', 'remainingExpectedProfit', 'soldStockValue', 'soldExpectedProfit', 'totalQuantity', 'totalRemainingQty', 'totalSoldQty'));
     }
 
     public function data(Request $request)
@@ -248,10 +250,10 @@ class ShopStockController extends Controller
         foreach ($pageGroupedStocks as $groupRow) {
             $allIds = array_map('intval', explode(',', $groupRow->all_ids_str));
 
-            $firstSt = ShopStock::with('item.category', 'shop')
+            $firstSt = ShopStock::with(['item.category', 'item.unit', 'shop'])
                 ->whereIn('id', $allIds)
                 ->where('remaining_quantity', '>', 0)
-                ->first() ?? ShopStock::with('item.category', 'shop')->find($groupRow->first_id);
+                ->first() ?? ShopStock::with(['item.category', 'item.unit', 'shop'])->find($groupRow->first_id);
             if (!$firstSt) continue;
 
             $totalQty = (int) $groupRow->total_quantity;
@@ -297,10 +299,11 @@ class ShopStockController extends Controller
 
             $categoryHtml = '<span style="background:rgba(188,140,255,.12);color:#bc8cff;padding:.2rem .5rem;border-radius:6px;font-size:.73rem;">' . e($firstSt->item?->category?->category_name ?? 'General') . '</span>';
 
+            $unitSymbol = $firstSt->unit_symbol ?? 'pc';
             if ($totalRemainingQty == 0) {
-                $remainingHtml = '<strong style="color:#e94560;font-size:.9rem;">0</strong> <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Out of Stock</span>';
+                $remainingHtml = '<strong style="color:#e94560;font-size:.9rem;">0</strong> <small style="color:var(--text-secondary);font-size:.72rem;">' . e($unitSymbol) . '</small> <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Out of Stock</span>';
             } else {
-                $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong>';
+                $remainingHtml = '<strong style="color:' . ($isLowStockGroup ? '#e94560' : '#3fb950') . ';font-size:.9rem;">' . $totalRemainingQty . '</strong> <small style="color:var(--text-secondary);font-size:.72rem;">' . e($unitSymbol) . '</small>';
                 if ($isLowStockGroup) {
                     $remainingHtml .= ' <i class="bi bi-exclamation-triangle-fill ms-1" style="color:#e94560;font-size:.75rem;" title="Low Stock!"></i>';
                 }
@@ -583,6 +586,7 @@ class ShopStockController extends Controller
                 'create_new_category' => $request->boolean('create_new_category'),
                 'item_id' => $request->item_id,
                 'new_item_name' => $request->new_item_name,
+                'unit_id' => $request->unit_id,
                 'category_id' => $request->category_id,
                 'new_category_name' => $request->new_category_name,
                 'brand' => $request->brand,
@@ -681,6 +685,7 @@ class ShopStockController extends Controller
                     $item = \App\Models\Item::create([
                         'item_name'     => $pData['new_item_name'],
                         'category_id'   => $categoryId,
+                        'unit_id'       => !empty($pData['unit_id']) ? (int)$pData['unit_id'] : null,
                         'brand'         => $pData['brand'] ?? null,
                         'model'         => $pData['model'] ?? null,
                         'specification' => $pData['specification'] ?? null,
@@ -822,6 +827,7 @@ class ShopStockController extends Controller
                         $item = \App\Models\Item::create([
                             'item_name'     => $prod['new_item_name'],
                             'category_id'   => $categoryId,
+                            'unit_id'       => !empty($prod['unit_id']) ? (int)$prod['unit_id'] : null,
                             'brand'         => $prod['brand'] ?? null,
                             'model'         => $prod['model'] ?? null,
                             'specification' => $prod['specification'] ?? null,
@@ -910,7 +916,7 @@ class ShopStockController extends Controller
                     }
 
                     // Notify owners of this stock addition
-                    $owners = \App\Models\User::where('role', 'owner')->get();
+                    $owners = \App\Models\User::whereIn('role', ['owner', 'system_admin'])->get();
                     foreach ($owners as $owner) {
                         \App\Models\Notification::create([
                             'user_id' => $owner->id,
@@ -1079,7 +1085,7 @@ class ShopStockController extends Controller
             }
 
             // Notify owners of this stock addition
-            $owners = \App\Models\User::where('role', 'owner')->get();
+            $owners = \App\Models\User::whereIn('role', ['owner', 'system_admin'])->get();
             foreach ($owners as $owner) {
                 \App\Models\Notification::create([
                     'user_id' => $owner->id,
@@ -1172,7 +1178,7 @@ class ShopStockController extends Controller
             }
 
             // Notify all owners
-            $owners = \App\Models\User::where('role', 'owner')->get();
+            $owners = \App\Models\User::whereIn('role', ['owner', 'system_admin'])->get();
             foreach ($owners as $owner) {
                 \App\Models\Notification::create([
                     'user_id' => $owner->id,
@@ -1265,7 +1271,7 @@ class ShopStockController extends Controller
 
             // Notify other roles of approval
             if ($user->isShopAdmin()) {
-                $owners = \App\Models\User::where('role', 'owner')->get();
+                $owners = \App\Models\User::whereIn('role', ['owner', 'system_admin'])->get();
                 foreach ($owners as $owner) {
                     \App\Models\Notification::create([
                         'user_id' => $owner->id,
@@ -1729,7 +1735,7 @@ class ShopStockController extends Controller
             }
             
             if ($isShopAdminOwnerStock) {
-                $owners = User::where('role', 'owner')->get();
+                $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
                 foreach ($owners as $owner) {
                     Notification::create([
                         'user_id' => $owner->id,
@@ -1932,7 +1938,7 @@ class ShopStockController extends Controller
                 $shopStock->update($updateData);
 
                 // Notify Owners
-                $owners = User::where('role', 'owner')->get();
+                $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
                 foreach ($owners as $owner) {
                     Notification::create([
                         'user_id' => $owner->id,
@@ -2291,7 +2297,7 @@ class ShopStockController extends Controller
         $itemName = $shopStock->item?->item_name ?? 'Item';
         $shopName = $user->shop?->shop_name ?? 'Shop';
 
-        $owners = User::where('role', 'owner')->get();
+        $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
         foreach ($owners as $owner) {
             Notification::create([
                 'user_id' => $owner->id,

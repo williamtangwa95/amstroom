@@ -31,6 +31,11 @@ class MainStock extends Model
         return $this->belongsTo(Item::class);
     }
 
+    public function getUnitSymbolAttribute(): string
+    {
+        return $this->item?->unit_symbol ?? 'pc';
+    }
+
     public function isLowStock(): bool
     {
         return $this->remaining_quantity <= 5;
