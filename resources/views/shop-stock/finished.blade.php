@@ -55,23 +55,55 @@
     </div>
 </div>
 
-@if(auth()->user()->isOwner())
-<div class="card mb-4">
-    <div class="card-body py-2">
-        <form method="GET" action="{{ route('shop-stock.finished') }}" class="row align-items-center g-2">
-            <div class="col-auto"><label class="form-label mb-0">Filter by Shop:</label></div>
-            <div class="col-auto">
-                <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All Shops</option>
-                    @foreach($shops as $s)
-                    <option value="{{ $s->id }}" {{ $shopId == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+<!-- Filter Bar -->
+<div class="card mb-3 border-0 shadow-sm" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+    <div class="card-body py-2.5 px-3">
+        <div class="row g-2 align-items-center">
+            @if(auth()->user()->isOwner())
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-shop me-1 text-accent"></i>Filter by Shop
+                </label>
+                <form method="GET" action="{{ route('shop-stock.finished') }}" id="shopFilterForm">
+                    <select name="shop_id" id="filterShop" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Shops</option>
+                        @foreach($shops as $s)
+                        <option value="{{ $s->id }}" {{ $shopId == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
+            @endif
+            <div class="col-12 col-sm-6 {{ auth()->user()->isOwner() ? 'col-md-3' : 'col-md-4' }}">
+                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-tag me-1 text-accent"></i>Filter by Category
+                </label>
+                <select id="filterCategory" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
                     @endforeach
                 </select>
             </div>
-        </form>
+            <div class="col-12 col-sm-6 {{ auth()->user()->isOwner() ? 'col-md-4' : 'col-md-5' }}">
+                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-box-seam me-1 text-accent"></i>Filter by Product
+                </label>
+                <select id="filterProduct" class="form-select form-select-sm">
+                    <option value="">All Products</option>
+                    @foreach($items as $it)
+                        <option value="{{ $it->id }}" data-category-id="{{ $it->category_id }}">{{ $it->item_name }}{{ $it->brand ? ' (' . $it->brand . ')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 {{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }} d-flex gap-2 justify-content-md-end align-items-end mt-2 mt-md-0" style="padding-top: 1.25rem;">
+                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100 w-md-auto" title="Reset Filters">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                </button>
+            </div>
+        </div>
     </div>
 </div>
-@endif
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-3 p-md-4">
@@ -180,10 +212,73 @@
                 url: "{{ route('shop-stock.finished-data') }}",
                 data: function(d) {
                     d.shop_id = $('select[name="shop_id"]').val();
+                    d.category_id = $('#filterCategory').val();
+                    d.item_id = $('#filterProduct').val();
                 }
             },
             columns: columns,
             order: [[2, 'asc']]
+        });
+
+        // ── Category & Product Filter Cascading ──────────────────────────
+        const allFinishedProductOptions = $('#filterProduct option').clone();
+
+        function refreshFinishedProductDropdown(categoryId, preserveSelectedId = null) {
+            const $prod = $('#filterProduct');
+            const wasSelect2 = $prod.hasClass('select2-hidden-accessible');
+            if (wasSelect2) {
+                $prod.select2('destroy');
+            }
+
+            $prod.empty();
+            allFinishedProductOptions.each(function() {
+                const optCatId = $(this).data('category-id');
+                const optVal = $(this).val();
+                if (!categoryId || optVal === '' || optCatId == categoryId) {
+                    $prod.append($(this).clone());
+                }
+            });
+
+            if (preserveSelectedId && $prod.find('option[value="' + preserveSelectedId + '"]').length > 0) {
+                $prod.val(preserveSelectedId);
+            } else {
+                $prod.val('');
+            }
+
+            if (wasSelect2 && window.initSearchableSelect) {
+                window.initSearchableSelect($prod);
+            }
+        }
+
+        $('#filterCategory').on('change', function() {
+            const selectedCatId = $(this).val();
+            const currentProdId = $('#filterProduct').val();
+            refreshFinishedProductDropdown(selectedCatId, currentProdId);
+            table.ajax.reload();
+        });
+
+        $('#filterProduct').on('change', function() {
+            const selectedProdId = $(this).val();
+            if (selectedProdId) {
+                const catId = $(this).find('option:selected').data('category-id');
+                if (catId && !$('#filterCategory').val()) {
+                    $('#filterCategory').val(catId);
+                    if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                        $('#filterCategory').trigger('change.select2');
+                    }
+                    refreshFinishedProductDropdown(catId, selectedProdId);
+                }
+            }
+            table.ajax.reload();
+        });
+
+        $('#btnResetFilters').on('click', function() {
+            $('#filterCategory').val('');
+            if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                $('#filterCategory').trigger('change.select2');
+            }
+            refreshFinishedProductDropdown('');
+            table.ajax.reload();
         });
 
         // Quick Restock Modal Handler

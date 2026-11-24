@@ -134,23 +134,18 @@ class ShopProductSwap extends Model
         if (!$user) return false;
         if (!$this->isPendingDestination()) return false;
 
-        return $user->isOwner() || ($user->isShopAdmin() && (int) $user->shop_id === (int) $this->destination_shop_id);
+        return $user->isShopAdmin() && (int) $user->shop_id === (int) $this->destination_shop_id;
     }
 
     public function canConfirmOwner(?User $user): bool
     {
-        if (!$user) return false;
-        if (!$this->isPendingOwner()) return false;
-
-        return $user->isOwner();
+        return false;
     }
 
     public function canCancel(?User $user): bool
     {
         if (!$user) return false;
-        if (!in_array($this->status, ['pending_destination', 'pending_owner'], true)) return false;
-
-        if ($user->isOwner()) return true;
+        if (!$this->isPendingDestination()) return false;
 
         if ($user->isShopAdmin()) {
             return (int) $user->shop_id === (int) $this->source_shop_id || (int) $user->shop_id === (int) $this->destination_shop_id;

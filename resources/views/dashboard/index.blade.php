@@ -14,71 +14,70 @@
 
     /* ── Hero Welcome Banner ── */
     .dash-hero {
-        background: linear-gradient(135deg, #0088cc 0%, #005f9e 55%, #003d7a 100%);
-        border-radius: 18px;
-        padding: 1.6rem 1.8rem;
-        margin-bottom: 1.5rem;
+        background: linear-gradient(135deg, #0077b6 0%, #005691 60%, #003a6c 100%);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 14px;
+        padding: .9rem 1.35rem;
+        margin-bottom: 1.25rem;
         position: relative;
         overflow: hidden;
         color: #fff;
-        box-shadow: 0 8px 30px rgba(0,136,204,.35);
+        box-shadow: 0 4px 16px rgba(0,86,145,.18);
     }
-    .dash-hero::before {
-        content: '';
-        position: absolute;
-        top: -40px; right: -40px;
-        width: 180px; height: 180px;
-        background: rgba(255,255,255,.07);
-        border-radius: 50%;
-        pointer-events: none;
-    }
-    .dash-hero::after {
-        content: '';
-        position: absolute;
-        bottom: -60px; right: 80px;
-        width: 250px; height: 250px;
-        background: rgba(255,255,255,.04);
-        border-radius: 50%;
-        pointer-events: none;
+    .dash-hero-top {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        flex-wrap: wrap;
     }
     .dash-hero-title {
-        font-size: 1.35rem;
-        font-weight: 800;
-        margin: 0 0 .2rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0;
         letter-spacing: -.01em;
+        line-height: 1.25;
     }
     .dash-hero-sub {
-        font-size: .82rem;
-        color: rgba(255,255,255,.75);
-        margin: 0 0 .5rem;
+        font-size: .76rem;
+        color: rgba(255,255,255,.78);
+        margin: .22rem 0 0;
+        line-height: 1.35;
     }
     .dash-hero-badge {
-        background: rgba(255,255,255,.15);
+        background: rgba(255,255,255,.12);
         backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,.2);
+        border: 1px solid rgba(255,255,255,.18);
         border-radius: 50px;
-        padding: .28rem .82rem;
-        font-size: .7rem;
-        font-weight: 700;
-        color: #fff;
+        padding: .16rem .58rem;
+        font-size: .64rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+        color: rgba(255,255,255,.95);
         display: inline-flex;
         align-items: center;
-        gap: .35rem;
+        gap: .3rem;
+        line-height: 1.2;
     }
     .dash-hero-date {
         flex-shrink: 0;
-        text-align: right;
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding-left: 1rem;
+        border-left: 1px solid rgba(255,255,255,.16);
+        text-align: left;
     }
     .dash-hero-day {
-        font-size: 2rem;
-        font-weight: 900;
+        font-size: 1.45rem;
+        font-weight: 700;
         line-height: 1;
+        letter-spacing: -.02em;
         color: #fff;
     }
     .dash-hero-meta {
-        font-size: .7rem;
-        color: rgba(255,255,255,.65);
-        line-height: 1.4;
+        font-size: .68rem;
+        color: rgba(255,255,255,.75);
+        line-height: 1.3;
     }
 
     /* ── Quick Access Section ── */
@@ -177,23 +176,6 @@
     .kpi-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 14px 30px rgba(0,0,0,.1);
-    }
-    .kpi-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3.5px;
-        background: var(--kpi-color, #0088cc);
-        border-radius: 16px 16px 0 0;
-    }
-    .kpi-glow {
-        position: absolute;
-        bottom: -20px; right: -20px;
-        width: 80px; height: 80px;
-        border-radius: 50%;
-        background: var(--kpi-color, #0088cc);
-        opacity: .06;
-        pointer-events: none;
     }
     .kpi-inner {
         display: flex;
@@ -389,10 +371,10 @@
        RESPONSIVE — MOBILE FIRST
        ═══════════════════════════════ */
     @media (max-width: 575.98px) {
-        .dash-hero { padding: 1rem; border-radius: 14px; }
-        .dash-hero-title { font-size: 1.05rem; }
-        .dash-hero-sub { font-size: .74rem; }
-        .dash-hero-day { font-size: 1.5rem; }
+        .dash-hero { padding: .8rem 1rem; border-radius: 12px; }
+        .dash-hero-title { font-size: .95rem; }
+        .dash-hero-sub { font-size: .72rem; }
+        .dash-hero-day { font-size: 1.25rem; }
 
         /* Quick access: 2-col on xs */
         .qa-grid   { grid-template-columns: repeat(2, 1fr) !important; }
@@ -416,13 +398,19 @@
     @php $user = auth()->user(); @endphp
 
     {{-- ── Hero Welcome Banner ── --}}
-    <div class="dash-hero mb-4">
-        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+    <div class="dash-hero mb-3">
+        <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
             <div style="flex:1; min-width:0;">
-                <h1 class="dash-hero-title">
-                    Good {{ date('H') < 12 ? 'Morning' : (date('H') < 17 ? 'Afternoon' : 'Evening') }},
-                    {{ explode(' ', $user->name)[0] }}! 👋
-                </h1>
+                <div class="dash-hero-top">
+                    <h1 class="dash-hero-title">
+                        Good {{ date('H') < 12 ? 'Morning' : (date('H') < 17 ? 'Afternoon' : 'Evening') }},
+                        {{ explode(' ', $user->name)[0] }}
+                    </h1>
+                    <span class="dash-hero-badge">
+                        <i class="bi bi-circle-fill" style="font-size:.4rem; color:#6ee7b7;"></i>
+                        Live Dashboard
+                    </span>
+                </div>
                 <p class="dash-hero-sub">
                     @if($user->isOwner())
                         Overview of your entire business — real-time insights at a glance.
@@ -432,12 +420,8 @@
                         Your personal dashboard — track your sales performance.
                     @endif
                 </p>
-                <span class="dash-hero-badge">
-                    <i class="bi bi-circle-fill" style="font-size:.45rem; color:#6ee7b7;"></i>
-                    Live Dashboard
-                </span>
             </div>
-            <div class="dash-hero-date d-none d-sm-flex flex-column align-items-end justify-content-center">
+            <div class="dash-hero-date d-none d-sm-flex">
                 <div class="dash-hero-day">{{ now()->format('d') }}</div>
                 <div class="dash-hero-meta">{{ now()->format('M Y') }}<br>{{ now()->format('l') }}</div>
             </div>
@@ -490,9 +474,8 @@
         <div class="row g-3 mb-3">
             <div class="col-6 col-xl-3">
                 <div class="kpi-card" style="--kpi-color:#0088cc;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
-                        <div class="kpi-icon" style="background:rgba(0,136,204,.12);color:#0088cc;"><i class="bi bi-shop-fill"></i></div>
+                        <div class="kpi-icon" style="background:rgba(0,136,204,.12);color:#0088cc;"><i class="bi bi-shop"></i></div>
                         <div class="kpi-body">
                             <p class="kpi-label">Total Shops</p>
                             <div class="kpi-value">{{ $totalShops }}</div>
@@ -503,11 +486,10 @@
             </div>
             <div class="col-6 col-xl-3">
                 <div class="kpi-card" style="--kpi-color:#8b5cf6;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="bi bi-people-fill"></i></div>
                         <div class="kpi-body">
-                            <p class="kpi-label">Employees</p>
+                            <p class="kpi-label">Users</p>
                             <div class="kpi-value">{{ $totalEmployees }}</div>
                             <p class="kpi-sub">Active team members</p>
                         </div>
@@ -516,7 +498,6 @@
             </div>
             <div class="col-6 col-xl-3">
                 <div class="kpi-card" style="--kpi-color:#059669;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(5,150,105,.12);color:#059669;"><i class="bi bi-box-seam-fill"></i></div>
                         <div class="kpi-body">
@@ -529,7 +510,6 @@
             </div>
             <div class="col-6 col-xl-3">
                 <div class="kpi-card" style="--kpi-color:#d97706;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;"><i class="bi bi-tags-fill"></i></div>
                         <div class="kpi-body">
@@ -546,7 +526,6 @@
         <div class="row g-3 mb-3">
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#d97706;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;"><i class="bi bi-building-fill"></i></div>
                         <div class="kpi-body">
@@ -559,7 +538,6 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#059669;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(5,150,105,.12);color:#059669;"><i class="bi bi-currency-dollar"></i></div>
                         <div class="kpi-body">
@@ -572,7 +550,6 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#0088cc;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(0,136,204,.12);color:#0088cc;"><i class="bi bi-graph-up-arrow"></i></div>
                         <div class="kpi-body">
@@ -589,7 +566,6 @@
         <div class="row g-3 mb-3">
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#d97706;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;"><i class="bi bi-clock-fill"></i></div>
                         <div class="kpi-body">
@@ -607,7 +583,6 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#ef4444;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="bi bi-exclamation-triangle-fill"></i></div>
                         <div class="kpi-body">
@@ -620,7 +595,6 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#8b5cf6;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="bi bi-receipt"></i></div>
                         <div class="kpi-body">
@@ -731,7 +705,6 @@
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-3">
                 <div class="kpi-card" style="--kpi-color:#059669;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(5,150,105,.12);color:#059669;"><i class="bi bi-calendar-check-fill"></i></div>
                         <div class="kpi-body">
@@ -744,7 +717,6 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card" style="--kpi-color:#0088cc;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(0,136,204,.12);color:#0088cc;"><i class="bi bi-currency-dollar"></i></div>
                         <div class="kpi-body">
@@ -757,7 +729,6 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card" style="--kpi-color:#8b5cf6;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="bi bi-person-badge-fill"></i></div>
                         <div class="kpi-body">
@@ -770,7 +741,6 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="kpi-card" style="--kpi-color:#d97706;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;"><i class="bi bi-shop-window"></i></div>
                         <div class="kpi-body">
@@ -786,7 +756,6 @@
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#d97706;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;"><i class="bi bi-layers-fill"></i></div>
                         <div class="kpi-body">
@@ -799,7 +768,6 @@
             </div>
             <div class="col-6 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#8b5cf6;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="bi bi-clock-fill"></i></div>
                         <div class="kpi-body">
@@ -812,7 +780,6 @@
             </div>
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#ef4444;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="bi bi-exclamation-triangle-fill"></i></div>
                         <div class="kpi-body">
@@ -869,7 +836,6 @@
         <div class="row g-3 mb-3">
             <div class="col-12 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#059669;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(5,150,105,.12);color:#059669;"><i class="bi bi-calendar-check-fill"></i></div>
                         <div class="kpi-body">
@@ -882,7 +848,6 @@
             </div>
             <div class="col-6 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#0088cc;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(0,136,204,.12);color:#0088cc;"><i class="bi bi-currency-dollar"></i></div>
                         <div class="kpi-body">
@@ -895,7 +860,6 @@
             </div>
             <div class="col-6 col-md-4">
                 <div class="kpi-card" style="--kpi-color:#8b5cf6;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="bi bi-cart-check-fill"></i></div>
                         <div class="kpi-body">
@@ -911,7 +875,6 @@
         <div class="row g-3 mb-3">
             <div class="col-6">
                 <div class="kpi-card" style="--kpi-color:#059669;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(5,150,105,.12);color:#059669;"><i class="bi bi-layers-fill"></i></div>
                         <div class="kpi-body">
@@ -924,7 +887,6 @@
             </div>
             <div class="col-6">
                 <div class="kpi-card" style="--kpi-color:#ef4444;">
-                    <div class="kpi-glow"></div>
                     <div class="kpi-inner">
                         <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="bi bi-exclamation-triangle-fill"></i></div>
                         <div class="kpi-body">

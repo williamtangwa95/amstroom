@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', 'Edit Employee')
-@section('page-title', 'Edit Employee')
+@section('title', 'Edit User')
+@section('page-title', 'Edit User')
 @section('breadcrumb')
-<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Employees</a></li>
+<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Users</a></li>
 <li class="breadcrumb-item active">Edit</li>
 @endsection
 @section('content')
@@ -107,18 +107,9 @@
                                 <option value="inactive" {{ old('status', $user->status) === 'inactive' ? 'selected' : '' }}>Disabled</option>
                             </select>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">New Password <small class="text-muted">(leave blank to keep current)</small></label>
-                            <input type="password" name="password" class="form-control" minlength="6">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Confirm New Password</label>
-                            <input type="password" name="password_confirmation" class="form-control" minlength="6">
-                        </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-accent"><i class="bi bi-check-circle me-1"></i>Update Employee</button>
+                        <button type="submit" class="btn btn-accent"><i class="bi bi-check-circle me-1"></i>Update User</button>
                         <a href="{{ route('users.index') }}" class="btn btn-outline-custom">Cancel</a>
                     </div>
                 </form>

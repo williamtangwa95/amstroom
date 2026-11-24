@@ -32,18 +32,23 @@ class ShopProductSwapController extends Controller
             'ownerApprover',
         ]);
 
-        // Branch scoping
-        if (!$user->isOwner()) {
+        // Role & Branch scoping
+        if ($user->isOwner()) {
+            // Owner only sees swaps once they are completed (confirmed or reverted)
+            $query->whereIn('status', ['confirmed', 'reverted']);
+
+            if ($request->filled('shop_id')) {
+                $filterShopId = (int) $request->shop_id;
+                $query->where(function ($q) use ($filterShopId) {
+                    $q->where('source_shop_id', $filterShopId)
+                      ->orWhere('destination_shop_id', $filterShopId);
+                });
+            }
+        } else {
             $shopId = (int) $user->shop_id;
             $query->where(function ($q) use ($shopId) {
                 $q->where('source_shop_id', $shopId)
                   ->orWhere('destination_shop_id', $shopId);
-            });
-        } elseif ($request->filled('shop_id')) {
-            $filterShopId = (int) $request->shop_id;
-            $query->where(function ($q) use ($filterShopId) {
-                $q->where('source_shop_id', $filterShopId)
-                  ->orWhere('destination_shop_id', $filterShopId);
             });
         }
 
@@ -62,7 +67,13 @@ class ShopProductSwapController extends Controller
 
         // Active tab filter
         $tab = $request->get('tab', 'all');
-        $validTabs = ['all', 'action_required', 'pending_destination', 'pending_owner', 'confirmed', 'history'];
+        $validTabs = $user->isOwner()
+            ? ['all', 'confirmed', 'reverted']
+            : ['all', 'action_required', 'pending_destination', 'confirmed', 'history'];
+
+        if ($user->isOwner() && $tab === 'history') {
+            $tab = 'reverted';
+        }
         if (!in_array($tab, $validTabs, true)) {
             $tab = 'all';
         }
@@ -70,30 +81,38 @@ class ShopProductSwapController extends Controller
         $baseCountQuery = clone $query;
 
         // Counts for tabs
-        $counts = [
-            'all'                 => (clone $baseCountQuery)->count(),
-            'pending_destination' => (clone $baseCountQuery)->where('status', 'pending_destination')->count(),
-            'pending_owner'       => (clone $baseCountQuery)->where('status', 'pending_owner')->count(),
-            'confirmed'           => (clone $baseCountQuery)->where('status', 'confirmed')->count(),
-            'history'             => (clone $baseCountQuery)->whereIn('status', ['cancelled', 'reverted'])->count(),
-        ];
+        if ($user->isOwner()) {
+            $counts = [
+                'all'                 => (clone $baseCountQuery)->count(),
+                'action_required'     => 0,
+                'pending_destination' => 0,
+                'confirmed'           => (clone $baseCountQuery)->where('status', 'confirmed')->count(),
+                'reverted'            => (clone $baseCountQuery)->where('status', 'reverted')->count(),
+                'history'             => (clone $baseCountQuery)->where('status', 'reverted')->count(),
+            ];
+        } else {
+            $counts = [
+                'all'                 => (clone $baseCountQuery)->count(),
+                'action_required'     => (clone $baseCountQuery)->where('status', 'pending_destination')->where('destination_shop_id', $user->shop_id)->count(),
+                'pending_destination' => (clone $baseCountQuery)->where('status', 'pending_destination')->count(),
+                'confirmed'           => (clone $baseCountQuery)->where('status', 'confirmed')->count(),
+                'reverted'            => (clone $baseCountQuery)->where('status', 'reverted')->count(),
+                'history'             => (clone $baseCountQuery)->whereIn('status', ['cancelled', 'reverted'])->count(),
+            ];
+        }
 
         // Specific tab filtering
         if ($tab === 'pending_destination') {
             $query->where('status', 'pending_destination');
-        } elseif ($tab === 'pending_owner') {
-            $query->where('status', 'pending_owner');
         } elseif ($tab === 'confirmed') {
             $query->where('status', 'confirmed');
+        } elseif ($tab === 'reverted') {
+            $query->where('status', 'reverted');
         } elseif ($tab === 'history') {
             $query->whereIn('status', ['cancelled', 'reverted']);
-        } elseif ($tab === 'action_required') {
-            if ($user->isOwner()) {
-                $query->where('status', 'pending_owner');
-            } else {
-                $query->where('status', 'pending_destination')
-                      ->where('destination_shop_id', $user->shop_id);
-            }
+        } elseif ($tab === 'action_required' && !$user->isOwner()) {
+            $query->where('status', 'pending_destination')
+                  ->where('destination_shop_id', $user->shop_id);
         }
 
         $swaps = $query->orderByDesc('id')->paginate(15)->withQueryString();
@@ -103,21 +122,19 @@ class ShopProductSwapController extends Controller
     }
 
     /**
-     * Show form to initiate a product swap proposal.
+     * Show form to initiate a product swap proposal (Shop Admin only).
      */
     public function create(Request $request)
     {
         $user = Auth::user();
 
-        if ($user->isOwner()) {
-            $shops = Shop::where('status', 'active')->orderBy('shop_name')->get();
-            $sourceShopId = (int) $request->get('source_shop_id', $shops->first()?->id);
-            $sourceShop = $shops->firstWhere('id', $sourceShopId) ?? $shops->first();
-        } else {
-            $shops = collect([$user->shop]);
-            $sourceShopId = (int) $user->shop_id;
-            $sourceShop = $user->shop;
+        if (!$user->isShopAdmin() || !$user->shop_id) {
+            abort(403, 'Only Shop Admins can initiate inter-shop product swaps.');
         }
+
+        $shops = collect([$user->shop]);
+        $sourceShopId = (int) $user->shop_id;
+        $sourceShop = $user->shop;
 
         if (!$sourceShop) {
             return redirect()->route('shop-swaps.index')->with('error', 'No active shop available to initiate a swap.');
@@ -201,15 +218,18 @@ class ShopProductSwapController extends Controller
     }
 
     /**
-     * Store and dispatch a new product swap proposal.
+     * Store and dispatch a new product swap proposal (Source Shop Admin only).
      */
     public function store(Request $request)
     {
         $user = Auth::user();
 
+        if (!$user->isShopAdmin() || !$user->shop_id) {
+            abort(403, 'Only Shop Admins can initiate inter-shop product swaps.');
+        }
+
         $request->validate([
-            'source_shop_id'       => 'required|exists:shops,id',
-            'destination_shop_id'  => 'required|exists:shops,id|different:source_shop_id',
+            'destination_shop_id'  => 'required|exists:shops,id',
             'source_item_id'       => 'required|exists:items,id',
             'source_quantity'      => 'required|integer|min:1',
             'destination_item_id'  => 'required|exists:items,id',
@@ -218,8 +238,14 @@ class ShopProductSwapController extends Controller
             'notes'                => 'nullable|string|max:500',
         ]);
 
-        $sourceShopId = $user->isOwner() ? (int) $request->source_shop_id : (int) $user->shop_id;
+        $sourceShopId = (int) $user->shop_id;
         $destShopId = (int) $request->destination_shop_id;
+
+        if ($destShopId === $sourceShopId) {
+            return back()->withInput()->withErrors([
+                'destination_shop_id' => 'Destination shop must be different from your source shop.',
+            ]);
+        }
 
         // 1. Verify source shop stock availability
         $sourceStock = ShopStock::where('shop_id', $sourceShopId)
@@ -261,28 +287,18 @@ class ShopProductSwapController extends Controller
             'initiated_by'         => $user->id,
         ]);
 
-        // Notify destination shop admins
+        // Notify destination shop admins to approve & confirm the swap
         $destAdmins = User::where('shop_id', $destShopId)->where('role', 'shop_admin')->get();
         foreach ($destAdmins as $admin) {
             Notification::create([
                 'user_id' => $admin->id,
-                'title'   => 'Incoming Product Swap Proposal',
-                'message' => "Shop '{$sourceShop->shop_name}' proposed to swap {$swap->source_quantity}x {$sourceItem->item_name} for your {$swap->destination_quantity}x {$destItem->item_name} (Swap #{$swap->swap_number}).",
-            ]);
-        }
-
-        // Notify owner and system admins
-        $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
-        foreach ($owners as $owner) {
-            Notification::create([
-                'user_id' => $owner->id,
-                'title'   => 'New Product Swap Proposal',
-                'message' => "Swap #{$swap->swap_number} proposed between {$sourceShop->shop_name} and {$destShop->shop_name}.",
+                'title'   => 'Incoming Product Swap Request',
+                'message' => "Shop '{$sourceShop->shop_name}' requested to swap {$swap->source_quantity}x {$sourceItem->item_name} for your {$swap->destination_quantity}x {$destItem->item_name} (Swap #{$swap->swap_number}). Approve to confirm and exchange stock.",
             ]);
         }
 
         return redirect()->route('shop-swaps.show', $swap)
-            ->with('success', "Product swap proposal #{$swap->swap_number} created and sent to {$destShop->shop_name} for approval!");
+            ->with('success', "Product swap request #{$swap->swap_number} sent to {$destShop->shop_name} for approval and confirmation!");
     }
 
     /**
@@ -334,63 +350,17 @@ class ShopProductSwapController extends Controller
     }
 
     /**
-     * Destination Shop Admin approves the swap proposal.
+     * Destination Shop Admin approves & immediately confirms the swap, executing atomic stock alteration across both shops.
      */
     public function approveDestination(Request $request, ShopProductSwap $shopProductSwap)
     {
         $user = Auth::user();
 
         if (!$shopProductSwap->canApproveDestination($user)) {
-            abort(403, 'Unauthorized to approve this swap for the destination shop.');
+            abort(403, 'Only the Destination Shop Admin can approve and confirm this swap.');
         }
 
-        // Re-check destination stock
-        $destStock = ShopStock::where('shop_id', $shopProductSwap->destination_shop_id)
-            ->where('item_id', $shopProductSwap->destination_item_id)
-            ->first();
-
-        if (!$destStock || $destStock->remaining_quantity < $shopProductSwap->destination_quantity) {
-            return back()->with('error', 'Cannot approve: your shop currently has insufficient stock of the requested item.');
-        }
-
-        $shopProductSwap->update([
-            'status'                  => 'pending_owner',
-            'destination_approved_by' => $user->id,
-            'destination_approved_at' => now(),
-        ]);
-
-        // Notify Owner & System Admins for final confirmation
-        $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
-        foreach ($owners as $owner) {
-            Notification::create([
-                'user_id' => $owner->id,
-                'title'   => 'Product Swap Awaiting Final Confirmation',
-                'message' => "Swap #{$shopProductSwap->swap_number} between {$shopProductSwap->sourceShop->shop_name} and {$shopProductSwap->destinationShop->shop_name} was approved by Destination Shop. Awaiting your confirmation to execute the stock exchange.",
-            ]);
-        }
-
-        // Notify initiator at Shop A
-        Notification::create([
-            'user_id' => $shopProductSwap->initiated_by,
-            'title'   => 'Product Swap Approved by Destination Shop',
-            'message' => "Destination shop '{$shopProductSwap->destinationShop->shop_name}' approved your swap proposal #{$shopProductSwap->swap_number}. It is now awaiting final confirmation from the Owner.",
-        ]);
-
-        return back()->with('success', "Product swap #{$shopProductSwap->swap_number} approved! Now awaiting final confirmation by the System Owner.");
-    }
-
-    /**
-     * System Owner / System Admin: Confirms swap and executes atomic stock alteration across both shops.
-     */
-    public function confirmOwner(Request $request, ShopProductSwap $shopProductSwap)
-    {
-        $user = Auth::user();
-
-        if (!$shopProductSwap->canConfirmOwner($user)) {
-            abort(403, 'Only the System Owner or System Admin can confirm and execute product swaps.');
-        }
-
-        // Verify stock in both shops
+        // Re-check stock in both shops before executing
         $sourceStock = ShopStock::where('shop_id', $shopProductSwap->source_shop_id)
             ->where('item_id', $shopProductSwap->source_item_id)
             ->first();
@@ -451,7 +421,7 @@ class ShopProductSwapController extends Controller
                 'transaction_type' => 'STOCK_TRANSFER',
                 'performed_by'     => $user->id,
                 'date'             => now()->toDateString(),
-                'notes'            => "Product Swap #{$shopProductSwap->swap_number} confirmed by Owner. Swapped out for {$shopProductSwap->destinationItem->item_name}.",
+                'notes'            => "Product Swap #{$shopProductSwap->swap_number} confirmed by Destination Shop Admin ({$user->name}). Swapped out for {$shopProductSwap->destinationItem->item_name}.",
             ]);
 
             StockLog::create([
@@ -462,31 +432,50 @@ class ShopProductSwapController extends Controller
                 'transaction_type' => 'STOCK_TRANSFER',
                 'performed_by'     => $user->id,
                 'date'             => now()->toDateString(),
-                'notes'            => "Product Swap #{$shopProductSwap->swap_number} confirmed by Owner. Received in exchange from {$shopProductSwap->destinationShop->shop_name}.",
+                'notes'            => "Product Swap #{$shopProductSwap->swap_number} confirmed by Destination Shop Admin ({$user->name}). Received in exchange from {$shopProductSwap->destinationShop->shop_name}.",
             ]);
 
-            // 6. Update Swap State
+            // 6. Update Swap State directly to confirmed
             $shopProductSwap->update([
-                'status'            => 'confirmed',
-                'owner_approved_by' => $user->id,
-                'owner_approved_at' => now(),
+                'status'                  => 'confirmed',
+                'destination_approved_by' => $user->id,
+                'destination_approved_at' => now(),
             ]);
         });
 
-        // Notify both branches
+        // Notify Owner & System Admins now that the swap is done
+        $owners = User::whereIn('role', ['owner', 'system_admin'])->get();
+        foreach ($owners as $owner) {
+            Notification::create([
+                'user_id' => $owner->id,
+                'title'   => 'Product Swap Completed',
+                'message' => "Swap #{$shopProductSwap->swap_number} completed: {$shopProductSwap->sourceShop->shop_name} swapped {$shopProductSwap->source_quantity}x {$shopProductSwap->sourceItem->item_name} for {$shopProductSwap->destination_quantity}x {$shopProductSwap->destinationItem->item_name} with {$shopProductSwap->destinationShop->shop_name} (confirmed by {$user->name}).",
+            ]);
+        }
+
+        // Notify both branches (excluding the approving admin)
         $notifyUsers = User::whereIn('shop_id', [$shopProductSwap->source_shop_id, $shopProductSwap->destination_shop_id])
             ->whereIn('role', ['shop_admin', 'seller'])
+            ->where('id', '!=', $user->id)
             ->get();
 
         foreach ($notifyUsers as $nu) {
             Notification::create([
                 'user_id' => $nu->id,
-                'title'   => 'Product Swap Executed & Confirmed',
-                'message' => "Product Swap #{$shopProductSwap->swap_number} has been confirmed by Owner. Stock has been adopted and updated in both {$shopProductSwap->sourceShop->shop_name} and {$shopProductSwap->destinationShop->shop_name}.",
+                'title'   => 'Product Swap Approved & Completed',
+                'message' => "Product Swap #{$shopProductSwap->swap_number} was approved and confirmed by {$user->name} ({$shopProductSwap->destinationShop->shop_name}). Stock has been updated in both {$shopProductSwap->sourceShop->shop_name} and {$shopProductSwap->destinationShop->shop_name}.",
             ]);
         }
 
-        return back()->with('success', "Product swap #{$shopProductSwap->swap_number} successfully confirmed! Stock has been updated in both branches.");
+        return back()->with('success', "Product swap #{$shopProductSwap->swap_number} approved & confirmed! Stock has been updated in both branches.");
+    }
+
+    /**
+     * Deprecated: Swaps are now confirmed directly by the Destination Shop Admin.
+     */
+    public function confirmOwner(Request $request, ShopProductSwap $shopProductSwap)
+    {
+        abort(403, 'Product swaps are now confirmed directly by the Destination Shop Admin.');
     }
 
     /**
@@ -635,7 +624,12 @@ class ShopProductSwapController extends Controller
     private function authorizeAccess(ShopProductSwap $swap): void
     {
         $user = Auth::user();
-        if ($user->isOwner()) return;
+        if ($user->isOwner()) {
+            if (in_array($swap->status, ['confirmed', 'reverted'], true)) {
+                return;
+            }
+            abort(403, 'Product swaps become visible to the Shop Owner once completed by the Shop Admins.');
+        }
 
         if ($user->isShopAdmin()) {
             if ((int) $user->shop_id === (int) $swap->source_shop_id || (int) $user->shop_id === (int) $swap->destination_shop_id) {

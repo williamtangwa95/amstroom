@@ -140,6 +140,8 @@ Route::middleware('auth')->group(function () {
         // Stock Transfers (view for owner + admin)
         Route::get('stock-transfers', [StockTransferController::class, 'index'])->name('stock-transfers.index');
         Route::get('stock-transfers/data', [StockTransferController::class, 'data'])->name('stock-transfers.data');
+        Route::get('stock-transfers/pending-reminders', [StockTransferController::class, 'pendingReminders'])->name('stock-transfers.pending-reminders');
+        Route::post('stock-transfers/pending-reminders/dismiss', [StockTransferController::class, 'dismissPendingReminders'])->name('stock-transfers.pending-reminders.dismiss');
         Route::get('stock-transfers/{stockTransfer}', [StockTransferController::class, 'show'])->name('stock-transfers.show');
 
         // Transfer item actions

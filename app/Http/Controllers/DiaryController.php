@@ -3,11 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\Diary;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DiaryController extends Controller
 {
+    /**
+     * Determine whether the user's shop has at least one active seller,
+     * enabling shared Shop Diary features alongside Personal Diary.
+     */
+    private function canUseShopDiary($user): bool
+    {
+        if ($user->isOwner() || !$user->shop_id) {
+            return false;
+        }
+
+        return User::where('shop_id', $user->shop_id)
+            ->where('role', 'seller')
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', 'active');
+            })
+            ->exists();
+    }
     /**
      * Determine if a user can manage (edit/delete) a diary entry.
      */
@@ -52,8 +70,8 @@ class DiaryController extends Controller
     {
         $query = Diary::with(['user', 'shop']);
 
-        if ($user->isOwner()) {
-            // Owner is strictly restricted to their own personal diary
+        if (!$this->canUseShopDiary($user)) {
+            // Owner, or shop without any seller: strictly show Personal Diary only
             $query->where('type', 'personal')->where('user_id', $user->id);
         } else {
             // Shop Admin or Seller
@@ -116,6 +134,8 @@ class DiaryController extends Controller
         $noFollowUp     = (int) (clone $query)->where('needs_follow_up', false)->count();
         $totalCost      = (float) (clone $query)->sum('cost');
 
+        $canUseShopDiary = $this->canUseShopDiary($user);
+
         return view('diary.index', compact(
             'totalEntries',
             'personalCount',
@@ -125,7 +145,8 @@ class DiaryController extends Controller
             'totalCost',
             'dateFrom',
             'dateTo',
-            'user'
+            'user',
+            'canUseShopDiary'
         ));
     }
 
@@ -189,7 +210,9 @@ class DiaryController extends Controller
         // Pagination
         $start   = (int) $request->input('start', 0);
         $length  = (int) $request->input('length', 15);
-        $diaries = $query->skip($start)->take($length)->get();
+        $diaries = $length > 0
+            ? $query->skip($start)->take($length)->get()
+            : $query->get();
 
         $data = $diaries->map(function ($diary) use ($user) {
             $canManage = $this->canManageDiary($user, $diary);
@@ -334,6 +357,10 @@ class DiaryController extends Controller
     {
         $user = Auth::user();
 
+        if ($request->filled('cost')) {
+            $request->merge(['cost' => str_replace(',', '', (string) $request->input('cost'))]);
+        }
+
         $rules = [
             'event_name'        => 'required|string|max:255',
             'event_description' => 'required|string|max:5000',
@@ -343,8 +370,10 @@ class DiaryController extends Controller
             'needs_follow_up'   => 'nullable|boolean',
         ];
 
-        if ($user->isOwner()) {
-            // Owner is restricted to personal diary only
+        $canUseShopDiary = $this->canUseShopDiary($user);
+
+        if (!$canUseShopDiary) {
+            // Owner or shop without any seller: restricted to personal diary only
             $rules['type'] = 'nullable|in:personal';
         } else {
             $rules['type'] = 'required|in:personal,shop';
@@ -352,7 +381,7 @@ class DiaryController extends Controller
 
         $validated = $request->validate($rules);
 
-        if ($user->isOwner()) {
+        if (!$canUseShopDiary) {
             $validated['type']    = 'personal';
             $validated['shop_id'] = null;
         } else {
@@ -384,6 +413,10 @@ class DiaryController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($request->filled('cost')) {
+            $request->merge(['cost' => str_replace(',', '', (string) $request->input('cost'))]);
+        }
+
         $rules = [
             'event_name'        => 'required|string|max:255',
             'event_description' => 'required|string|max:5000',
@@ -393,7 +426,9 @@ class DiaryController extends Controller
             'needs_follow_up'   => 'nullable|boolean',
         ];
 
-        if ($user->isOwner()) {
+        $canUseShopDiary = $this->canUseShopDiary($user);
+
+        if (!$canUseShopDiary) {
             $rules['type'] = 'nullable|in:personal';
         } else {
             $rules['type'] = 'required|in:personal,shop';
@@ -401,7 +436,7 @@ class DiaryController extends Controller
 
         $validated = $request->validate($rules);
 
-        if ($user->isOwner()) {
+        if (!$canUseShopDiary) {
             $validated['type']    = 'personal';
             $validated['shop_id'] = null;
         } else {

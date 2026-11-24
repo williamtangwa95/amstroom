@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\MainStock;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Models\ShopStock;
 use App\Models\StockLog;
 use App\Models\StockTransfer;
 use App\Models\StockTransferItem;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class StockTransferController extends Controller
 {
@@ -22,13 +26,26 @@ class StockTransferController extends Controller
     {
         $user = Auth::user();
 
-        $query = StockTransfer::query();
+        $shops = Shop::active()->orderBy('shop_name')->get();
+        $items = Item::where('is_admin_item', false)->orderBy('item_name')->get();
+        $dispatchers = User::whereIn('role', ['owner', 'system_admin'])
+            ->orWhereIn('id', StockTransfer::select('approved_by')->whereNotNull('approved_by')->distinct())
+            ->orderBy('name')
+            ->get();
 
+        $summaryQuery = StockTransfer::query();
         if ($user->isShopAdmin() || $user->isSeller()) {
-            $query->where('to_shop', $user->shop_id);
+            $summaryQuery->where('to_shop', $user->shop_id);
         }
 
-        return view('stock-transfers.index');
+        $stats = [
+            'total'    => (clone $summaryQuery)->count(),
+            'pending'  => (clone $summaryQuery)->whereIn('status', ['pending_receipt', 'partially_received'])->count(),
+            'received' => (clone $summaryQuery)->where('status', 'received')->count(),
+            'rejected' => (clone $summaryQuery)->where('status', 'rejected')->count(),
+        ];
+
+        return view('stock-transfers.index', compact('shops', 'items', 'dispatchers', 'stats'));
     }
 
     public function data(Request $request)
@@ -43,6 +60,36 @@ class StockTransferController extends Controller
         }
 
         $recordsTotal = (clone $query)->count();
+
+        // Filter by destination shop
+        $shopId = $request->input('shop_id', $request->input('to_shop'));
+        if (!empty($shopId)) {
+            $query->where('stock_transfers.to_shop', $shopId);
+        }
+
+        // Filter by item / product
+        $itemId = $request->input('item_id');
+        if (!empty($itemId)) {
+            $query->whereHas('items', function ($iq) use ($itemId) {
+                $iq->where('item_id', $itemId);
+            });
+        }
+
+        // Filter by dispatched by
+        $dispatchedBy = $request->input('dispatched_by', $request->input('approved_by'));
+        if (!empty($dispatchedBy)) {
+            $query->where('stock_transfers.approved_by', $dispatchedBy);
+        }
+
+        // Filter by status
+        $statusFilter = $request->input('status');
+        if (!empty($statusFilter)) {
+            if ($statusFilter === 'awaiting') {
+                $query->whereIn('stock_transfers.status', ['pending_receipt', 'partially_received']);
+            } else {
+                $query->where('stock_transfers.status', $statusFilter);
+            }
+        }
 
         $searchValue = trim($request->input('search.value', ''));
         if ($searchValue !== '') {
@@ -112,9 +159,22 @@ class StockTransferController extends Controller
         $data = [];
         foreach ($transfers as $index => $transfer) {
             $iteration = $start + $index + 1;
-            $transferDate = $transfer->transfer_date ? $transfer->transfer_date->format('M d, Y') : 'N/A';
-            $destinationShop = '<i class="bi bi-shop text-primary me-1"></i> ' . e($transfer->shop?->shop_name ?? 'N/A');
-            $dispatchedBy = e($transfer->approver?->name ?? 'System');
+            $dateLabel = $transfer->transfer_date ? $transfer->transfer_date->format('M d, Y') : 'N/A';
+            $isAwaiting = in_array($transfer->status, ['pending_receipt', 'partially_received'], true);
+            $waitSub = ($isAwaiting && $transfer->created_at)
+                ? '<div class="text-warning-emphasis" style="font-size:.69rem; font-weight:600; margin-top:2px;"><i class="bi bi-clock me-1"></i>' . e($transfer->created_at->diffForHumans()) . '</div>'
+                : ($transfer->created_at ? '<div class="text-muted" style="font-size:.69rem; margin-top:2px;">' . e($transfer->created_at->format('h:i A')) . '</div>' : '');
+            $transferDate = '<div class="fw-600 text-dark" style="white-space:nowrap;">' . e($dateLabel) . '</div>' . $waitSub;
+
+            $destinationShop = '<div class="d-inline-flex align-items-center gap-1 fw-600 text-dark">'
+                . '<span class="d-inline-flex align-items-center justify-content-center rounded-2" style="width:24px;height:24px;background:rgba(0,119,182,.1);color:#0077b6;flex-shrink:0;"><i class="bi bi-shop" style="font-size:.75rem;"></i></span>'
+                . '<span>' . e($transfer->shop?->shop_name ?? 'N/A') . '</span>'
+                . '</div>';
+
+            $dispatchedBy = '<div class="d-inline-flex align-items-center gap-1 text-secondary" style="font-size:.8rem; font-weight:500;">'
+                . '<i class="bi bi-person-circle text-muted"></i> '
+                . '<span>' . e($transfer->approver?->name ?? 'System') . '</span>'
+                . '</div>';
 
             $itemRows = [];
             foreach ($transfer->items as $tItem) {
@@ -122,15 +182,15 @@ class StockTransferController extends Controller
                 $qty = (int) $tItem->quantity;
                 $statusTag = '';
                 if ($tItem->status === 'pending') {
-                    $statusTag = ' <span class="badge bg-warning text-dark border ms-1" style="font-size:.65rem; padding:.15rem .35rem;">pending</span>';
+                    $statusTag = ' <span class="badge-soft-warning" style="font-size:.62rem; padding:.12rem .4rem;">pending</span>';
                 } elseif ($tItem->status === 'rejected') {
-                    $statusTag = ' <span class="badge bg-danger text-white border ms-1" style="font-size:.65rem; padding:.15rem .35rem;">rejected</span>';
+                    $statusTag = ' <span class="badge-soft-danger" style="font-size:.62rem; padding:.12rem .4rem;">rejected</span>';
                 }
 
-                $itemRows[] = '<div class="d-flex align-items-center mb-1 flex-wrap">'
-                    . '<i class="bi bi-box-seam text-secondary me-1" style="font-size:.8rem;"></i>'
-                    . '<span class="fw-600 text-dark me-1" title="' . e($itemName) . '">' . e($itemName) . '</span>'
-                    . '<span class="badge bg-secondary-subtle text-secondary border" style="font-size:.68rem; font-weight:600;">Qty: ' . $qty . '</span>'
+                $itemRows[] = '<div class="d-flex align-items-center gap-1 mb-1 flex-wrap" style="font-size:.78rem;">'
+                    . '<i class="bi bi-box-seam text-muted" style="font-size:.75rem;"></i>'
+                    . '<span class="fw-600 text-dark" title="' . e($itemName) . '">' . e($itemName) . '</span>'
+                    . '<span class="badge bg-light text-secondary border" style="font-size:.66rem; font-weight:700;">Qty: ' . $qty . '</span>'
                     . $statusTag
                     . '</div>';
             }
@@ -144,33 +204,40 @@ class StockTransferController extends Controller
                 $remaining = count($itemRows) - 3;
                 $itemsHtml = '<div class="d-flex flex-column py-1">'
                     . implode('', $visible)
-                    . '<span class="text-muted small fw-600" style="font-size:.72rem;">+' . $remaining . ' more item' . ($remaining > 1 ? 's' : '') . '</span>'
+                    . '<span class="text-primary fw-600" style="font-size:.71rem;">+' . $remaining . ' more item' . ($remaining > 1 ? 's' : '') . '</span>'
                     . '</div>';
             }
 
             if ($transfer->status === 'received') {
-                $statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.72rem;"><i class="bi bi-check-circle-fill me-1"></i>Received</span>';
+                $statusBadge = '<span class="badge-soft-success" style="font-size:.7rem;"><i class="bi bi-check-circle-fill"></i> Received</span>';
             } elseif ($transfer->status === 'rejected') {
-                $statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.72rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>';
+                $statusBadge = '<span class="badge-soft-danger" style="font-size:.7rem;"><i class="bi bi-x-circle-fill"></i> Rejected</span>';
             } elseif ($transfer->status === 'partially_received') {
-                $statusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.72rem;"><i class="bi bi-clock-fill me-1"></i>Partial</span>';
+                $statusBadge = '<span class="badge-soft-info" style="font-size:.7rem;"><i class="bi bi-pie-chart-fill"></i> Partial</span>';
             } else {
-                $statusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.72rem;"><i class="bi bi-hourglass-split me-1"></i>Pending Receipt</span>';
+                $statusBadge = '<span class="badge-soft-warning" style="font-size:.7rem;"><i class="bi bi-hourglass-split"></i> Pending Receipt</span>';
             }
 
             $showUrl = route('stock-transfers.show', $transfer);
             $deleteUrl = route('stock-transfers.destroy', $transfer);
 
-            $actions = '<a href="' . $showUrl . '" class="btn btn-sm btn-outline-custom"><i class="bi bi-eye me-1"></i> View</a>';
-            if ($isOwner) {
-                $actions .= ' <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-delete-transfer" data-url="' . $deleteUrl . '" data-id="' . $transfer->id . '" title="Delete transfer"><i class="bi bi-trash-fill me-1"></i> Delete</button>';
+            if ($user->isShopAdmin() && $isAwaiting) {
+                $viewBtn = '<a href="' . $showUrl . '" class="btn btn-sm btn-accent" style="padding:.28rem .68rem; font-size:.75rem;"><i class="bi bi-check2-circle me-1"></i> Review</a>';
+            } else {
+                $viewBtn = '<a href="' . $showUrl . '" class="btn btn-sm btn-outline-custom" style="padding:.28rem .68rem; font-size:.75rem;"><i class="bi bi-eye me-1"></i> View</a>';
             }
+
+            $actions = '<div class="action-btn-group justify-content-end">' . $viewBtn;
+            if ($isOwner) {
+                $actions .= '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-transfer" data-url="' . $deleteUrl . '" data-id="' . $transfer->id . '" title="Delete transfer" style="padding:.28rem .58rem; font-size:.75rem;"><i class="bi bi-trash-fill"></i></button>';
+            }
+            $actions .= '</div>';
 
             $row = [];
             if ($isOwner) {
-                $row['checkbox'] = '<input type="checkbox" class="transfer-checkbox" value="' . $transfer->id . '" style="cursor:pointer;">';
+                $row['checkbox'] = '<input type="checkbox" class="form-check-input transfer-checkbox" value="' . $transfer->id . '" style="cursor:pointer;">';
             }
-            $row['iteration'] = $iteration;
+            $row['iteration'] = '<span class="fw-700 text-muted">#' . $transfer->id . '</span>';
             $row['transfer_date'] = $transferDate;
             $row['destination_shop'] = $destinationShop;
             $row['items'] = $itemsHtml;
@@ -1022,6 +1089,154 @@ class StockTransferController extends Controller
                 $latestBatch->increment('remaining_quantity', $remainingToRestore);
             }
         }
+    }
+
+    /**
+     * Return pending stock transfers awaiting confirmation by the current Shop Admin.
+     */
+    public function pendingReminders(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json([
+                'due_transfers' => [],
+                'total_pending' => 0,
+                'ringtone_url'  => null,
+                'index_url'     => route('stock-transfers.index'),
+                'server_now_ts' => now()->timestamp,
+            ]);
+        }
+
+        $now = now();
+        $transfers = StockTransfer::with(['shop', 'approver', 'pendingItems.item.unit'])
+            ->withCount(['items', 'receivedItems', 'pendingItems'])
+            ->where('to_shop', $user->shop_id)
+            ->whereIn('status', ['pending_receipt', 'partially_received'])
+            ->whereHas('pendingItems')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $dueTransfers = [];
+        foreach ($transfers as $transfer) {
+            $cacheKey = "stock_transfer_reminder_snooze_{$user->id}_{$transfer->id}";
+            $snoozedUntil = Cache::get($cacheKey);
+            if ($snoozedUntil && (int) $snoozedUntil > $now->timestamp) {
+                continue;
+            }
+
+            $submittedAt = $transfer->created_at ?? $now;
+            $elapsedSeconds = max(0, (int) $submittedAt->diffInSeconds($now));
+
+            $pendingItems = $transfer->pendingItems;
+            $itemsPreview = $pendingItems->take(5)->map(function ($tItem) {
+                $item = $tItem->item;
+                $metaParts = array_filter([$item?->brand, $item?->model]);
+                return [
+                    'name'          => $item?->item_name ?? 'Product',
+                    'meta'          => implode(' · ', $metaParts),
+                    'image_url'     => $item && $item->image_path ? asset('media/' . $item->image_path) : null,
+                    'qty'           => (int) $tItem->quantity,
+                    'unit'          => $item?->unit?->symbol ?? 'pcs',
+                    'selling_price' => $tItem->selling_price !== null ? (float) $tItem->selling_price : null,
+                ];
+            })->values()->all();
+
+            $dueTransfers[] = [
+                'id'                   => $transfer->id,
+                'url'                  => route('stock-transfers.show', $transfer),
+                'status'               => $transfer->status,
+                'from_store'           => $transfer->from_store ?: 'Main Store',
+                'shop_name'            => $transfer->shop?->shop_name ?? 'Your Branch',
+                'dispatched_by'        => $transfer->approver?->name ?? 'Main Store',
+                'transfer_date'        => $transfer->transfer_date ? $transfer->transfer_date->format('M d, Y') : $submittedAt->format('M d, Y'),
+                'submitted_at_ts'      => $submittedAt->timestamp,
+                'submitted_at_display' => $submittedAt->format('M d, Y · h:i A'),
+                'elapsed_seconds'      => $elapsedSeconds,
+                'elapsed_human'        => $this->formatElapsedDuration($elapsedSeconds),
+                'total_items_count'    => (int) $transfer->items_count,
+                'received_items_count' => (int) $transfer->received_items_count,
+                'pending_items_count'  => (int) $transfer->pending_items_count,
+                'pending_total_qty'    => (int) $pendingItems->sum('quantity'),
+                'items_preview'        => $itemsPreview,
+                'extra_items_count'    => max(0, $pendingItems->count() - 5),
+            ];
+        }
+
+        $customRingtone = Setting::get('notification_sound_user_' . $user->id);
+        $ringtoneUrl = null;
+        if ($customRingtone && Storage::disk('public')->exists($customRingtone)) {
+            $ringtoneUrl = asset('media/' . $customRingtone);
+        }
+
+        return response()->json([
+            'due_transfers' => $dueTransfers,
+            'total_pending' => $transfers->count(),
+            'shop_name'     => $user->shop?->shop_name ?? 'Your Branch',
+            'ringtone_url'  => $ringtoneUrl,
+            'index_url'     => route('stock-transfers.index'),
+            'server_now_ts' => $now->timestamp,
+        ]);
+    }
+
+    /**
+     * Dismiss (snooze) pending stock transfer reminders for 3 hours for the current Shop Admin.
+     */
+    public function dismissPendingReminders(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validated = $request->validate([
+            'transfer_ids'   => 'required|array|min:1',
+            'transfer_ids.*' => 'integer',
+        ]);
+
+        $snoozeUntil = now()->addHours(3);
+        $validIds = StockTransfer::where('to_shop', $user->shop_id)
+            ->whereIn('id', $validated['transfer_ids'])
+            ->pluck('id');
+
+        foreach ($validIds as $transferId) {
+            $cacheKey = "stock_transfer_reminder_snooze_{$user->id}_{$transferId}";
+            Cache::put($cacheKey, $snoozeUntil->timestamp, $snoozeUntil);
+        }
+
+        return response()->json([
+            'success'       => true,
+            'snoozed_until' => $snoozeUntil->timestamp,
+            'snooze_hours'  => 3,
+        ]);
+    }
+
+    /**
+     * Helper: format elapsed seconds into a clear human-readable waiting duration.
+     */
+    private function formatElapsedDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return 'Just now';
+        }
+
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        $parts = [];
+        if ($days > 0) {
+            $parts[] = $days . ' ' . ($days === 1 ? 'day' : 'days');
+        }
+        if ($hours > 0) {
+            $parts[] = $hours . ' ' . ($hours === 1 ? 'hr' : 'hrs');
+        }
+        if ($days === 0 && $minutes > 0) {
+            $parts[] = $minutes . ' ' . ($minutes === 1 ? 'min' : 'mins');
+        }
+
+        return implode(', ', $parts) ?: 'Less than a minute';
     }
 
     /**

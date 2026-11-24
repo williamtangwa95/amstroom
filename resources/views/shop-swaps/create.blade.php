@@ -45,21 +45,10 @@
                     {{-- Step 1: Source Item (Shop A offers) --}}
                     <div class="p-3 rounded-3 mb-4 border" style="background:var(--input-bg); border-color:var(--input-border) !important;">
                         <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="badge bg-primary px-2.5 py-1.5 fw-700" style="font-size:.78rem;">
-                                <i class="bi bi-box-arrow-up-right me-1"></i> 1. Product Offered (Shop A: {{ $sourceShop->shop_name }})
+                            <span class="badge bg-primary px-2 py-1 fw-700" style="font-size:.78rem;">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> 1. Product Offered (Source Shop: {{ $sourceShop->shop_name }})
                             </span>
-                            @if(auth()->user()->isOwner())
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="small text-muted mb-0">Source Shop:</label>
-                                <select name="source_shop_id" id="sourceShopSelect" class="form-select form-select-sm" style="width: 190px;" onchange="window.location.href='{{ route('shop-swaps.create') }}?source_shop_id=' + this.value">
-                                    @foreach($shops as $s)
-                                    <option value="{{ $s->id }}" {{ $s->id == $sourceShop->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            @else
                             <input type="hidden" name="source_shop_id" id="sourceShopSelect" value="{{ $sourceShop->id }}">
-                            @endif
                         </div>
 
                         <div class="row g-3">
@@ -99,7 +88,7 @@
                     {{-- Step 2: Destination Shop & Requested Item --}}
                     <div class="p-3 rounded-3 mb-4 border" style="background:var(--input-bg); border-color:var(--input-border) !important;">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <span class="badge bg-info text-dark px-2.5 py-1.5 fw-700" style="font-size:.78rem;">
+                            <span class="badge bg-info text-dark px-2 py-1 fw-700" style="font-size:.78rem;">
                                 <i class="bi bi-box-arrow-in-down-left me-1"></i> 2. Product Requested (Destination Shop B)
                             </span>
 
@@ -189,10 +178,15 @@
                         </div>
                     </div>
 
+                    <div class="alert alert-info border-0 rounded-3 py-2 px-3 mb-3" style="font-size:.8rem;">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        Once you submit this request, the <strong>Destination Shop Admin</strong> will review and approve it to immediately confirm and exchange stock across both branches. The Shop Owner will see the completed swap once done.
+                    </div>
+
                     <div class="d-flex align-items-center justify-content-between pt-2 border-top">
                         <a href="{{ route('shop-swaps.index') }}" class="btn btn-outline-custom btn-sm">Cancel</a>
                         <button type="submit" class="btn btn-accent btn-sm shadow-sm" id="btnSubmitSwap">
-                            <i class="bi bi-send-check me-1"></i> Send Swap Proposal to Destination Shop
+                            <i class="bi bi-send-check me-1"></i> Send Swap Request to Destination Shop
                         </button>
                     </div>
                 </form>

@@ -147,6 +147,41 @@
     </div>
 </div>
 
+<!-- Filter Bar -->
+<div class="card mb-3 border-0 shadow-sm" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
+    <div class="card-body py-2.5 px-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-sm-6 col-md-4">
+                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-tag me-1 text-accent"></i>Filter by Category
+                </label>
+                <select id="filterCategory" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-5">
+                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
+                    <i class="bi bi-box-seam me-1 text-accent"></i>Filter by Product
+                </label>
+                <select id="filterProduct" class="form-select form-select-sm">
+                    <option value="">All Products</option>
+                    @foreach($items as $it)
+                        <option value="{{ $it->id }}" data-category-id="{{ $it->category_id }}">{{ $it->item_name }}{{ $it->brand ? ' (' . $it->brand . ')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end align-items-end mt-2 mt-md-0" style="padding-top: 1.25rem;">
+                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100 w-md-auto" title="Reset Filters">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex align-items-center justify-content-between mb-3 px-3 py-2 rounded border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-check2-square text-accent fs-5"></i>
@@ -764,10 +799,16 @@
             validateAllModalMainPrices();
         });
 
-        $('#mainStockTable').DataTable({
+        const table = $('#mainStockTable').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ route("main-stock.data") }}',
+            ajax: {
+                url: '{{ route("main-stock.data") }}',
+                data: function(d) {
+                    d.category_id = $('#filterCategory').val();
+                    d.item_id = $('#filterProduct').val();
+                }
+            },
             columns: [
                 { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false },
                 { data: 'no', name: 'no', orderable: false, searchable: false },
@@ -781,6 +822,67 @@
                 { data: 'actions', name: 'actions', orderable: false, searchable: false }
             ],
             order: [[8, 'desc']]
+        });
+
+        // ── Category & Product Filter Cascading ──────────────────────────
+        const allMainProductOptions = $('#filterProduct option').clone();
+
+        function refreshMainProductDropdown(categoryId, preserveSelectedId = null) {
+            const $prod = $('#filterProduct');
+            const wasSelect2 = $prod.hasClass('select2-hidden-accessible');
+            if (wasSelect2) {
+                $prod.select2('destroy');
+            }
+
+            $prod.empty();
+            allMainProductOptions.each(function() {
+                const optCatId = $(this).data('category-id');
+                const optVal = $(this).val();
+                if (!categoryId || optVal === '' || optCatId == categoryId) {
+                    $prod.append($(this).clone());
+                }
+            });
+
+            if (preserveSelectedId && $prod.find('option[value="' + preserveSelectedId + '"]').length > 0) {
+                $prod.val(preserveSelectedId);
+            } else {
+                $prod.val('');
+            }
+
+            if (wasSelect2 && window.initSearchableSelect) {
+                window.initSearchableSelect($prod);
+            }
+        }
+
+        $('#filterCategory').on('change', function() {
+            const selectedCatId = $(this).val();
+            const currentProdId = $('#filterProduct').val();
+            refreshMainProductDropdown(selectedCatId, currentProdId);
+            table.ajax.reload();
+        });
+
+        $('#filterProduct').on('change', function() {
+            const selectedProdId = $(this).val();
+            if (selectedProdId) {
+                const catId = $(this).find('option:selected').data('category-id');
+                if (catId && !$('#filterCategory').val()) {
+                    $('#filterCategory').val(catId);
+                    if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                        $('#filterCategory').trigger('change.select2');
+                    }
+                    refreshMainProductDropdown(catId, selectedProdId);
+                }
+            }
+            table.ajax.reload();
+        });
+
+        $('#btnResetFilters').on('click', function() {
+            $('#filterCategory').val('');
+            if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                $('#filterCategory').trigger('change.select2');
+            }
+            refreshMainProductDropdown('');
+            table.ajax.reload();
         });
 
         $('.toggle-components-btn').on('change', function() {

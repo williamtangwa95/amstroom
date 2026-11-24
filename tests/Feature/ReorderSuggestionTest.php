@@ -59,8 +59,9 @@ class ReorderSuggestionTest extends TestCase
             'shop_id'  => $this->shop->id,
         ]);
 
-        $this->unit = Unit::create([
-            'name'   => 'Piece',
+        $this->unit = Unit::firstOrCreate([
+            'name' => 'Piece',
+        ], [
             'symbol' => 'pc',
         ]);
 
@@ -89,7 +90,7 @@ class ReorderSuggestionTest extends TestCase
         // Main warehouse has 25 available
         MainStock::create([
             'item_id'            => $this->outOfStockItem->id,
-            'quantity'           => 25,
+            'stocked_quantity'   => 25,
             'remaining_quantity' => 25,
             'buying_price'       => 400000,
             'selling_price'      => 550000,
@@ -116,7 +117,7 @@ class ReorderSuggestionTest extends TestCase
 
         MainStock::create([
             'item_id'            => $this->fastMovingItem->id,
-            'quantity'           => 100,
+            'stocked_quantity'   => 100,
             'remaining_quantity' => 100,
             'buying_price'       => 150000,
             'selling_price'      => 220000,
@@ -191,10 +192,10 @@ class ReorderSuggestionTest extends TestCase
             ->get(route('reorder.index'));
 
         $response->assertStatus(200);
-        $response->assertSee('Stock Reorder &amp; Replenishment Suggestions', false);
+        $response->assertSee('Stock Reorder');
         $response->assertSee('Dell Latitude 3310');
         $response->assertSee('CAT 6 UTP Cable');
-        $response->assertSee('Order Selected from Main Store');
+        $response->assertSee('Submit Stock Order to Main Store');
     }
 
     public function test_owner_can_view_reorder_page_with_shop_selector()

@@ -13,7 +13,11 @@
             <i class="bi bi-arrow-left-right text-info me-2"></i>Inter-Shop Product Swaps (Stock Exchange)
         </h5>
         <small style="color:var(--text-secondary);">
-            Exchange items between shops for customer preferences or unit replacements with 3-party approval.
+            @if(auth()->user()->isOwner())
+                Completed inter-shop product exchanges performed and confirmed by branch Shop Admins.
+            @else
+                Request and approve inter-shop product exchanges directly between branch Shop Admins.
+            @endif
         </small>
     </div>
 
@@ -33,53 +37,89 @@
         </form>
         @endif
 
+        @if(auth()->user()->isShopAdmin())
         <a href="{{ route('shop-swaps.create') }}" class="btn btn-sm btn-accent shadow-sm">
             <i class="bi bi-plus-circle me-1"></i> Propose Product Swap
         </a>
+        @endif
     </div>
 </div>
 
-@if(session('success'))
-<div class="alert alert-success border-0 rounded-3 mb-3 d-flex align-items-center justify-content-between" style="font-size:.85rem;">
-    <div><i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}</div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-
-@if(session('error'))
-<div class="alert alert-danger border-0 rounded-3 mb-3 d-flex align-items-center justify-content-between" style="font-size:.85rem;">
-    <div><i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}</div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-
 {{-- Quick Summary Stats --}}
+@if(auth()->user()->isOwner())
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-4">
+        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'all'])) }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0284c7 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-600">Total Swaps Done</span>
+                        <span class="badge bg-primary-subtle text-primary rounded-pill"><i class="bi bi-arrow-left-right"></i></span>
+                    </div>
+                    <h3 class="fw-800 mb-0 text-primary">{{ $counts['all'] }}</h3>
+                    <small class="text-muted" style="font-size:.72rem;">Completed Branch Exchanges</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-6 col-sm-4">
+        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'confirmed'])) }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #10b981 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-600">Confirmed & Swapped</span>
+                        <span class="badge bg-success-subtle text-success rounded-pill"><i class="bi bi-check2-circle"></i></span>
+                    </div>
+                    <h3 class="fw-800 mb-0 text-success">{{ $counts['confirmed'] }}</h3>
+                    <small class="text-muted" style="font-size:.72rem;">Active in Branch Stocks</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-6 col-sm-4">
+        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'reverted'])) }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #6b7280 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-600">Reverted Swaps</span>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill"><i class="bi bi-arrow-counterclockwise"></i></span>
+                    </div>
+                    <h3 class="fw-800 mb-0 text-secondary">{{ $counts['reverted'] }}</h3>
+                    <small class="text-muted" style="font-size:.72rem;">Reversed by Owner</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+@else
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_destination'])) }}" class="text-decoration-none">
+        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'action_required'])) }}" class="text-decoration-none">
             <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #f59e0b !important;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="text-muted small fw-600">Pending Destination</span>
-                        <span class="badge bg-warning-subtle text-warning rounded-pill"><i class="bi bi-shop"></i></span>
+                        <span class="text-muted small fw-600">Needs My Approval</span>
+                        <span class="badge bg-warning-subtle text-warning rounded-pill"><i class="bi bi-bell-fill"></i></span>
                     </div>
-                    <h3 class="fw-800 mb-0 text-warning">{{ $counts['pending_destination'] }}</h3>
-                    <small class="text-muted" style="font-size:.72rem;">Awaiting Destination Shop</small>
+                    <h3 class="fw-800 mb-0 text-warning">{{ $counts['action_required'] }}</h3>
+                    <small class="text-muted" style="font-size:.72rem;">Incoming to Approve & Confirm</small>
                 </div>
             </div>
         </a>
     </div>
 
     <div class="col-6 col-lg-3">
-        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_owner'])) }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #8b5cf6 !important;">
+        <a href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_destination'])) }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0284c7 !important;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="text-muted small fw-600">Pending Owner Confirmation</span>
-                        <span class="badge bg-purple-subtle text-purple rounded-pill" style="background:#ede9fe;color:#8b5cf6;"><i class="bi bi-shield-lock"></i></span>
+                        <span class="text-muted small fw-600">Pending Approval</span>
+                        <span class="badge bg-primary-subtle text-primary rounded-pill"><i class="bi bi-shop"></i></span>
                     </div>
-                    <h3 class="fw-800 mb-0" style="color:#8b5cf6;">{{ $counts['pending_owner'] }}</h3>
-                    <small class="text-muted" style="font-size:.72rem;">Awaiting Owner Execution</small>
+                    <h3 class="fw-800 mb-0 text-primary">{{ $counts['pending_destination'] }}</h3>
+                    <small class="text-muted" style="font-size:.72rem;">Awaiting Destination Shop Admin</small>
                 </div>
             </div>
         </a>
@@ -115,24 +155,42 @@
         </a>
     </div>
 </div>
+@endif
 
 {{-- Navigation Tabs & Filter --}}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-custom p-2 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
         <ul class="nav nav-pills card-header-pills m-0" style="font-size:.82rem;">
+            @if(auth()->user()->isOwner())
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'all' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'all'])) }}">
+                    All Done ({{ $counts['all'] }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'confirmed' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'confirmed'])) }}">
+                    Confirmed ({{ $counts['confirmed'] }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $tab === 'reverted' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'reverted'])) }}">
+                    Reverted ({{ $counts['reverted'] }})
+                </a>
+            </li>
+            @else
             <li class="nav-item">
                 <a class="nav-link {{ $tab === 'all' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'all'])) }}">
                     All Swaps ({{ $counts['all'] }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ $tab === 'pending_destination' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_destination'])) }}">
-                    Pending Destination ({{ $counts['pending_destination'] }})
+                <a class="nav-link {{ $tab === 'action_required' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'action_required'])) }}">
+                    Needs My Approval ({{ $counts['action_required'] }})
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ $tab === 'pending_owner' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_owner'])) }}">
-                    Pending Owner ({{ $counts['pending_owner'] }})
+                <a class="nav-link {{ $tab === 'pending_destination' ? 'active' : '' }}" href="{{ route('shop-swaps.index', array_merge(request()->query(), ['tab' => 'pending_destination'])) }}">
+                    Pending ({{ $counts['pending_destination'] }})
                 </a>
             </li>
             <li class="nav-item">
@@ -145,6 +203,7 @@
                     History ({{ $counts['history'] }})
                 </a>
             </li>
+            @endif
         </ul>
 
         <form method="GET" action="{{ route('shop-swaps.index') }}" class="d-flex align-items-center gap-1">
@@ -201,7 +260,7 @@
                         <div class="fw-700 text-dark">
                             {{ $swap->sourceItem->item_name }}
                         </div>
-                        <div class="d-flex align-items-center gap-1 mt-0.5">
+                        <div class="d-flex align-items-center gap-1 mt-1">
                             <span class="badge bg-secondary-subtle text-secondary py-0 px-1" style="font-size:.68rem;">
                                 {{ $swap->source_quantity }} {{ $swap->sourceItem->unit_symbol }}
                             </span>
@@ -215,7 +274,7 @@
                             <i class="bi bi-shop me-1 text-info"></i>{{ $swap->destinationShop->shop_name }}
                         </div>
                         @if($swap->destinationApprover)
-                        <div class="text-muted" style="font-size:.72rem;">Approved by: {{ $swap->destinationApprover->name }}</div>
+                        <div class="text-muted" style="font-size:.72rem;">Confirmed by: {{ $swap->destinationApprover->name }}</div>
                         @else
                         <div class="text-muted" style="font-size:.72rem;">Awaiting Shop Admin</div>
                         @endif
@@ -226,7 +285,7 @@
                         <div class="fw-700 text-dark">
                             {{ $swap->destinationItem->item_name }}
                         </div>
-                        <div class="d-flex align-items-center gap-1 mt-0.5">
+                        <div class="d-flex align-items-center gap-1 mt-1">
                             <span class="badge bg-secondary-subtle text-secondary py-0 px-1" style="font-size:.68rem;">
                                 {{ $swap->destination_quantity }} {{ $swap->destinationItem->unit_symbol }}
                             </span>
@@ -247,13 +306,15 @@
                     {{-- Status Badge --}}
                     <td class="text-center">
                         @if($swap->status === 'pending_destination')
+                            @if($isMyDest)
+                            <span class="badge bg-warning text-dark py-1 px-2 fw-700" style="font-size:.72rem;">
+                                <i class="bi bi-bell-fill me-1"></i> Needs Your Approval
+                            </span>
+                            @else
                             <span class="badge bg-warning-subtle text-warning py-1 px-2 fw-700" style="font-size:.72rem;">
-                                <i class="bi bi-clock-history me-1"></i> Awaiting Shop B
+                                <i class="bi bi-clock-history me-1"></i> Awaiting Destination
                             </span>
-                        @elseif($swap->status === 'pending_owner')
-                            <span class="badge bg-purple-subtle text-purple py-1 px-2 fw-700" style="font-size:.72rem;background:#ede9fe;color:#8b5cf6;">
-                                <i class="bi bi-shield-check me-1"></i> Awaiting Owner
-                            </span>
+                            @endif
                         @elseif($swap->status === 'confirmed')
                             <span class="badge bg-success-subtle text-success py-1 px-2 fw-700" style="font-size:.72rem;">
                                 <i class="bi bi-check-circle-fill me-1"></i> Swapped (Confirmed)
@@ -272,7 +333,7 @@
                     {{-- Actions --}}
                     <td class="text-end">
                         <a href="{{ route('shop-swaps.show', $swap) }}" class="btn btn-xs btn-outline-custom" title="View Swap Details">
-                            <i class="bi bi-eye me-1"></i> View
+                            <i class="bi bi-eye me-1"></i> {{ ($swap->status === 'pending_destination' && $isMyDest) ? 'Review' : 'View' }}
                         </a>
                     </td>
                 </tr>
@@ -281,12 +342,16 @@
                     <td colspan="8" class="text-center py-5 text-muted">
                         <i class="bi bi-arrow-left-right fs-1 d-block mb-2 text-muted" style="opacity:0.4;"></i>
                         <h6 class="fw-700 mb-1">No Product Swaps Found</h6>
+                        @if(auth()->user()->isOwner())
+                        <small>Completed product swaps performed and confirmed by branch Shop Admins will appear here once done.</small>
+                        @else
                         <small>No product exchange requests match the selected criteria.</small>
                         <div class="mt-3">
                             <a href="{{ route('shop-swaps.create') }}" class="btn btn-sm btn-accent">
                                 <i class="bi bi-plus-circle me-1"></i> Propose a New Swap
                             </a>
                         </div>
+                        @endif
                     </td>
                 </tr>
                 @endforelse

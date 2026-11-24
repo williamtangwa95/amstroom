@@ -48,6 +48,17 @@ class MainStockController extends Controller
 
         $recordsTotal = MainStock::count();
 
+        if ($request->filled('category_id')) {
+            $query->whereHas('item', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+
+        $itemId = $request->input('item_id', $request->input('product_id'));
+        if (!empty($itemId)) {
+            $query->where('item_id', $itemId);
+        }
+
         $searchValue = trim($request->input('search.value', ''));
         if ($searchValue !== '') {
             $query->where(function ($q) use ($searchValue) {

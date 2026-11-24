@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         // Modify the role column enum on the users table to include 'system_admin'
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('owner', 'system_admin', 'shop_admin', 'seller') NOT NULL DEFAULT 'seller'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('owner', 'system_admin', 'shop_admin', 'seller') NOT NULL DEFAULT 'seller'");
+        }
     }
 
     /**
@@ -21,6 +23,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('owner', 'shop_admin', 'seller') NOT NULL DEFAULT 'seller'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('owner', 'shop_admin', 'seller') NOT NULL DEFAULT 'seller'");
+        }
     }
 };

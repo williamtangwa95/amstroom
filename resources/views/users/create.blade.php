@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee')
-@section('page-title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee')
+@section('title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register User')
+@section('page-title', auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register User')
 @section('breadcrumb')
-<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Employees</a></li>
+<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Users</a></li>
 <li class="breadcrumb-item active">{{ auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register' }}</li>
 @endsection
 @section('content')
@@ -14,7 +14,7 @@
                 @if(auth()->user()->isShopAdmin())
                     Add Seller — <span style="color:#58a6ff;">{{ auth()->user()->shop?->shop_name }}</span>
                 @else
-                    Employee Registration
+                    User Registration
                 @endif
             </div>
             <div class="card-body">
@@ -93,7 +93,7 @@
 
                         <div class="col-md-12">
                             <div class="alert alert-info" style="font-size:.83rem;">
-                                Default password is <strong>password</strong>. Employee can change it after login.
+                                Default password is <strong>password</strong>. User can change it after login.
                             </div>
                         </div>
 
@@ -106,7 +106,7 @@
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-accent">
                             <i class="bi bi-check-circle me-1"></i>
-                            {{ auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register Employee' }}
+                            {{ auth()->user()->isShopAdmin() ? 'Add Seller' : 'Register User' }}
                         </button>
                         <a href="{{ route('users.index') }}" class="btn btn-outline-custom">Cancel</a>
                     </div>

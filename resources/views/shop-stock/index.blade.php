@@ -107,19 +107,232 @@
     #shopStockTable .child-details-template {
         width: 100% !important;
         max-width: 100% !important;
-        min-width: 100% !important;
+        min-width: 0 !important;
         flex-basis: 100% !important;
         flex: 1 0 100% !important;
-        margin-top: 0.65rem !important;
+        margin-top: 0.6rem !important;
         clear: both !important;
         box-sizing: border-box !important;
         display: block;
+        text-align: left !important;
+        white-space: normal !important;
     }
     table.dataTable#shopStockTable .child-details-template > div,
     table.dataTable#shopStockTable tr.child .child-details-template > div {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
+    }
+
+    /* ── Smart Mobile & Desktop Stock Batches Panel ── */
+    .ss-batch-panel {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: .75rem;
+        margin: .35rem 0;
+        text-align: left !important;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    .ss-batch-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        margin-bottom: .65rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .ss-batch-panel-title {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .78rem;
+        font-weight: 700;
+        color: #005691;
+    }
+    .ss-batch-count-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: .12rem .5rem;
+        border-radius: 999px;
+        background: rgba(0, 119, 182, .1);
+        color: #005691;
+        font-size: .66rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .ss-batch-cards {
+        display: flex;
+        flex-direction: column;
+        gap: .65rem;
+    }
+    .ss-batch-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 11px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, .04);
+        text-align: left !important;
+    }
+    .ss-batch-card.is-empty {
+        opacity: .85;
+    }
+    .ss-batch-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .45rem;
+        flex-wrap: wrap;
+        padding: .6rem .75rem;
+        background: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .ss-batch-id-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        flex-wrap: wrap;
+    }
+    .ss-batch-id {
+        font-size: .8rem;
+        font-weight: 800;
+        color: #0077b6;
+    }
+    .ss-batch-type {
+        display: inline-flex;
+        align-items: center;
+        padding: .12rem .45rem;
+        border-radius: 6px;
+        font-size: .63rem;
+        font-weight: 700;
+    }
+    .ss-batch-type.is-admin {
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+    }
+    .ss-batch-type.is-owner {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+    .ss-batch-date {
+        font-size: .69rem;
+        color: #64748b;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        white-space: nowrap;
+    }
+    .ss-batch-qty-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-bottom: 1px solid #f1f5f9;
+        background: #fafbfc;
+    }
+    .ss-batch-qty-box {
+        padding: .5rem .4rem;
+        text-align: center;
+        border-right: 1px solid #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .1rem;
+    }
+    .ss-batch-qty-box:last-child {
+        border-right: none;
+    }
+    .ss-batch-qty-lbl {
+        font-size: .6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+    }
+    .ss-batch-qty-val {
+        font-size: .88rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+    .ss-batch-soldout {
+        display: inline-flex;
+        padding: .1rem .4rem;
+        border-radius: 5px;
+        background: #fee2e2;
+        color: #dc2626;
+        font-size: .64rem;
+        font-weight: 700;
+    }
+    .ss-batch-price-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: .45rem;
+        padding: .55rem .75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .ss-batch-price-grid.is-single {
+        grid-template-columns: 1fr;
+    }
+    .ss-batch-price-box {
+        padding: .42rem .55rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .ss-batch-price-box.is-selling {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+    .ss-batch-price-lbl {
+        font-size: .6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+    }
+    .ss-batch-price-val {
+        font-size: .78rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: .08rem;
+        word-break: break-word;
+    }
+    .ss-batch-price-box.is-selling .ss-batch-price-val {
+        color: #15803d;
+    }
+    .ss-batch-card-foot {
+        padding: .55rem .75rem;
+        background: #ffffff;
+    }
+    .ss-batch-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+    .ss-batch-comp-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        margin-left: auto;
+        font-size: .7rem;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+    }
+    .ss-batch-comp-toggle .form-check-input {
+        cursor: pointer;
+        width: 28px;
+        height: 15px;
+        margin-top: 0;
     }
     .hover-lift {
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -229,139 +442,459 @@
         text-overflow: clip !important;
         letter-spacing: -0.2px;
     }
+    /* ══════════════════════════════════════════════
+       SHOP INVENTORY TOP SECTION — Executive UI
+       ══════════════════════════════════════════════ */
+    .ss-hero {
+        background: linear-gradient(135deg, #0077b6 0%, #005691 60%, #003a6c 100%);
+        border-radius: 14px;
+        padding: 1rem 1.35rem;
+        color: #ffffff;
+        box-shadow: 0 4px 18px rgba(0, 86, 145, .18);
+        margin-bottom: 1.15rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .ss-hero-left {
+        flex: 1;
+        min-width: 220px;
+    }
+    .ss-hero-title-row {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        flex-wrap: wrap;
+    }
+    .ss-hero-title {
+        font-size: 1.08rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -.01em;
+        line-height: 1.25;
+        color: #ffffff;
+    }
+    .ss-hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .16rem .58rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .2);
+        color: #ffffff;
+        font-size: .64rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+    }
+    .ss-hero-sub {
+        font-size: .76rem;
+        color: rgba(255, 255, 255, .8);
+        margin: .22rem 0 0;
+        line-height: 1.35;
+    }
+    .ss-hero-alerts {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        flex-wrap: wrap;
+        margin-top: .55rem;
+    }
+    .ss-hero-alert-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .18rem .58rem;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, .22);
+        border: 1px solid rgba(253, 224, 71, .38);
+        color: #fef08a;
+        font-size: .69rem;
+        font-weight: 600;
+    }
+    .ss-hero-actions {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .ss-hero-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .38rem;
+        padding: .44rem .82rem;
+        border-radius: 9px;
+        font-size: .77rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all .15s ease;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+    .ss-hero-btn-glass {
+        background: rgba(255, 255, 255, .13);
+        border-color: rgba(255, 255, 255, .22);
+        color: #ffffff;
+    }
+    .ss-hero-btn-glass:hover {
+        background: rgba(255, 255, 255, .24);
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+    .ss-hero-btn-primary {
+        background: #ffffff;
+        color: #005691;
+        font-weight: 700;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, .14);
+    }
+    .ss-hero-btn-primary:hover {
+        background: #f0f9ff;
+        color: #003a6c;
+        transform: translateY(-1px);
+    }
+    .ss-hero-btn-emerald {
+        background: rgba(16, 185, 129, .24);
+        border-color: rgba(110, 231, 183, .4);
+        color: #d1fae5;
+    }
+    .ss-hero-btn-emerald:hover {
+        background: #10b981;
+        border-color: #10b981;
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    /* ── Price Alert Callout ── */
+    .ss-price-banner {
+        background: #ffffff;
+        border: 1px solid #fde68a;
+        border-left: 4px solid #d97706;
+        border-radius: 12px;
+        padding: .85rem 1.1rem;
+        box-shadow: 0 2px 10px rgba(217, 119, 6, .06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.15rem;
+    }
+    .ss-price-banner-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: #fef3c7;
+        color: #d97706;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Executive 6-Card KPI Grid (3x2 desktop, 2x3 mobile) ── */
+    .ss-kpi-card {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 13px;
+        padding: .85rem 1rem;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .035);
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        height: 100%;
+        overflow: hidden;
+        transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    .ss-kpi-card:hover {
+        border-color: rgba(0, 119, 182, .28);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, .06);
+        transform: translateY(-1px);
+    }
+    .ss-kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+    }
+    .ss-kpi-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .ss-kpi-label {
+        font-size: .65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        margin: 0;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ss-kpi-val {
+        font-size: clamp(.84rem, 1.35vw, 1.02rem);
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.2;
+        margin-top: .12rem;
+        letter-spacing: -.01em;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+    .ss-kpi-sub {
+        font-size: .68rem;
+        color: #64748b;
+        margin-top: .08rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Filter Bar Card ── */
+    .ss-filter-card {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        margin-bottom: 1.15rem;
+    }
+    .ss-filter-body {
+        padding: .95rem 1.15rem;
+    }
+    .ss-filter-label {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        font-size: .72rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: .32rem;
+    }
+    .ss-filter-label i {
+        color: #0077b6;
+    }
+
     @media (max-width: 767.98px) {
-        .shop-stock-header-container {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 0.85rem !important;
+        .ss-hero {
+            padding: .9rem 1rem;
         }
-        .shop-stock-header-actions {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 0.45rem !important;
+        .ss-hero-actions {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: .45rem;
+        }
+        .ss-hero-btn {
+            width: 100%;
+            padding: .45rem .6rem;
+            font-size: .75rem;
+        }
+        .ss-hero-btn-primary {
+            grid-column: 1 / -1;
+        }
+        .ss-kpi-card {
+            padding: .7rem .75rem;
+            gap: .55rem;
+        }
+        .ss-kpi-icon {
+            width: 34px;
+            height: 34px;
+            font-size: .92rem;
+            border-radius: 8px;
+        }
+        .ss-kpi-val {
+            font-size: .82rem;
+        }
+        .ss-kpi-label {
+            font-size: .6rem;
+        }
+        .ss-kpi-sub {
+            font-size: .63rem;
+        }
+        .ss-filter-body {
+            padding: .85rem .9rem;
+        }
+        #shopStockTable_wrapper,
+        #shopStockTable_wrapper .row > div {
+            overflow-x: hidden !important;
+            max-width: 100% !important;
+        }
+        table.table#shopStockTable,
+        #shopStockTable.table,
+        #shopStockTable {
+            min-width: 0 !important;
             width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
         }
-        .btn-action-custom {
+        table.dataTable#shopStockTable > tbody > tr.child td.child {
+            padding: 0.55rem 0.2rem !important;
             width: 100% !important;
-            justify-content: center !important;
-            font-size: 0.76rem !important;
-            padding: 0.42rem 0.5rem !important;
-            border-radius: 8px !important;
-            text-align: center !important;
+            max-width: 100% !important;
         }
-        .btn-action-custom i {
-            font-size: 0.85rem !important;
-        }
-        .shop-stock-badges {
-            grid-column: span 2 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 0.35rem !important;
+        table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details {
             width: 100% !important;
+            max-width: 100% !important;
         }
-        .shop-stock-badge-item {
-            width: 100% !important;
-            justify-content: center !important;
+        #shopStockTable th.iter-col,
+        #shopStockTable td.iter-col {
+            width: 56px !important;
+            padding-left: 1.75rem !important;
+            padding-right: 0.35rem !important;
         }
-        .stat-card.premium-stat-card {
-            padding: 0.45rem 0.5rem !important;
-            gap: 0.35rem !important;
+        #shopStockTable td.product-col,
+        #shopStockTable th.product-col {
+            width: auto !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
-        .stat-card.premium-stat-card .stat-icon {
-            width: 24px !important;
-            height: 24px !important;
-            font-size: 0.75rem !important;
-            border-radius: 6px !important;
+        #shopStockTable td.product-col .d-flex {
+            min-width: 0;
+            max-width: 100%;
         }
-        .stat-card.premium-stat-card .stat-value {
-            font-size: 0.72rem !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            letter-spacing: -0.3px !important;
+        #shopStockTable td.product-col .d-flex > div:last-child {
+            min-width: 0;
+            flex: 1;
         }
-        .stat-card.premium-stat-card .stat-label {
-            font-size: 0.60rem !important;
+        table.dataTable#shopStockTable > tbody > tr.child ul.dtr-details > li[data-dtr-index="0"] {
+            display: none !important;
+        }
+        .ss-batch-panel {
+            padding: .55rem !important;
+        }
+        .ss-batch-card-head {
+            padding: .5rem .65rem !important;
+        }
+        .ss-batch-price-grid {
+            padding: .5rem .65rem !important;
+            gap: .4rem !important;
+        }
+        .ss-batch-price-val {
+            font-size: .74rem !important;
+        }
+        .ss-batch-card-foot {
+            padding: .5rem .65rem !important;
+        }
+    }
+    @media (max-width: 374.98px) {
+        .ss-batch-price-grid {
+            grid-template-columns: 1fr !important;
         }
     }
 </style>
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 shop-stock-header-container">
-    <div>
-        <h5 class="mb-0 fw-700" style="color: var(--text-primary); font-size: 1.25rem;">Shop Inventory</h5>
-        <small style="color: var(--text-secondary); font-size: 0.82rem;">Available products in retail shops</small>
-    </div>
-    <div class="d-flex flex-wrap align-items-center gap-2 shop-stock-header-actions">
-        @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="btn-action-custom btn-action-success shadow-xs">
-            <i class="bi bi-file-earmark-arrow-down-fill"></i> Download Stock
-        </a>
-        <button type="button" class="btn-action-custom btn-action-secondary shadow-xs" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal">
-            <i class="bi bi-file-earmark-excel-fill text-success"></i> Upload Stock
-        </button>
-        <button type="button" class="btn-action-custom btn-action-purple shadow-xs" data-bs-toggle="modal" data-bs-target="#categoryComponentsModal">
-            <i class="bi bi-sliders"></i> Components
-        </button>
-        @endif
+{{-- ── Executive Header Banner ── --}}
+@php
+    $isOwnerUser = auth()->user()->isOwner();
+    $isShopAdminUser = auth()->user()->isShopAdmin();
+@endphp
+<div class="ss-hero">
+    <div class="ss-hero-left">
+        <div class="ss-hero-title-row">
+            <h1 class="ss-hero-title">Shop Inventory</h1>
+            <span class="ss-hero-pill">
+                <i class="bi bi-shop"></i>
+                {{ $isOwnerUser ? 'All Retail Branches' : (auth()->user()->shop?->shop_name ?? 'My Branch') }}
+            </span>
+        </div>
+        <p class="ss-hero-sub">Available products, live stock valuation, and batch tracking across retail shops.</p>
 
-        @if(auth()->user()->isShopAdmin())
-            @if(auth()->user()->allow_stock_addition)
-            <button type="button" class="btn-action-custom btn-action-emerald shadow-xs" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
-                <i class="bi bi-plus-lg"></i> Owner Stock
-            </button>
-            @endif
-            <button type="button" class="btn-action-custom btn-action-blue shadow-xs" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
-                <i class="bi bi-plus-circle-fill"></i> Admin Stock
-            </button>
-        @endif
-
-        <div class="shop-stock-badges">
+        @if($lowStockItems > 0 || (isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0))
+        <div class="ss-hero-alerts">
             @if($lowStockItems > 0)
-            <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-2 fw-600 shadow-xs shop-stock-badge-item" style="font-size: 0.75rem; background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
-                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ $lowStockItems }} item(s) low in stock!
-            </div>
+            <span class="ss-hero-alert-pill">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ $lowStockItems }} low stock
+            </span>
             @endif
             @if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
-            <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-2 fw-600 shadow-xs shop-stock-badge-item" style="font-size: 0.75rem; background: rgba(245, 158, 11, 0.18); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4);" title="Main Store selling price changed affecting shop stock buying price">
-                <i class="bi bi-exclamation-circle-fill text-warning me-1"></i> {{ $pendingPriceItemsCount }} price update(s) required!
-            </div>
+            <span class="ss-hero-alert-pill" title="Main Store selling price changed affecting shop stock buying price">
+                <i class="bi bi-exclamation-circle-fill"></i> {{ $pendingPriceItemsCount }} price update{{ $pendingPriceItemsCount > 1 ? 's' : '' }} required
+            </span>
             @endif
         </div>
+        @endif
     </div>
+
+    @if($isOwnerUser || $isShopAdminUser)
+    <div class="ss-hero-actions">
+        <a href="{{ route('shop-stock.export-available', request()->only('shop_id')) }}" class="ss-hero-btn ss-hero-btn-glass" title="Export available stock to Excel">
+            <i class="bi bi-download"></i>
+            <span>Download Stock</span>
+        </a>
+        <button type="button" class="ss-hero-btn ss-hero-btn-glass" data-bs-toggle="modal" data-bs-target="#uploadShopStockModal" title="Import stock via Excel">
+            <i class="bi bi-file-earmark-excel"></i>
+            <span>Upload Stock</span>
+        </button>
+        <button type="button" class="ss-hero-btn ss-hero-btn-glass" data-bs-toggle="modal" data-bs-target="#categoryComponentsModal" title="Manage category components">
+            <i class="bi bi-sliders"></i>
+            <span>Components</span>
+        </button>
+
+        @if($isShopAdminUser)
+            @if(auth()->user()->allow_stock_addition)
+            <button type="button" class="ss-hero-btn ss-hero-btn-emerald" data-bs-toggle="modal" data-bs-target="#addOwnerStockModal">
+                <i class="bi bi-plus-lg"></i>
+                <span>Owner Stock</span>
+            </button>
+            @endif
+            <button type="button" class="ss-hero-btn ss-hero-btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminStockModal">
+                <i class="bi bi-plus-circle-fill"></i>
+                <span>Admin Stock</span>
+            </button>
+        @endif
+    </div>
+    @endif
 </div>
 
 @if(isset($pendingPriceItemsCount) && $pendingPriceItemsCount > 0)
-<div class="alert alert-warning alert-dismissible fade show border-warning-subtle d-flex align-items-center justify-content-between mb-4 p-3 rounded-3 shadow-xs" role="alert" style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
-    <div class="d-flex align-items-center gap-2.5">
-        <div class="d-flex align-items-center justify-content-center rounded-2 p-2" style="background: rgba(245, 158, 11, 0.2);">
-            <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+<div class="ss-price-banner alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-center gap-3 min-w-0" style="flex:1;">
+        <div class="ss-price-banner-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
         </div>
-        <div>
-            <h6 class="fw-bold mb-0" style="font-size: 0.92rem; color: #b45309;"><i class="bi bi-bell-fill me-1"></i> Price Action Needed: Buying Price Updated from Main Store</h6>
-            <span class="small" style="font-size: 0.8rem; color: #92400e;">Main Store updated selling prices, changing the buying price for <strong>{{ $pendingPriceItemsCount }} shop stock item(s)</strong>. Affected items are displayed at the top of the table below. Please review and update their shop selling prices.</span>
+        <div class="min-w-0">
+            <div class="fw-700 text-dark" style="font-size:.86rem;">Price Action Needed: Buying Price Updated from Main Store</div>
+            <div class="text-secondary" style="font-size:.76rem; line-height:1.4;">
+                Main Store updated selling prices affecting <strong>{{ $pendingPriceItemsCount }} shop stock item(s)</strong>. Affected items appear at the top of the table below for price review.
+            </div>
         </div>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <a href="#shopStockTable" class="btn btn-sm btn-warning text-dark fw-bold px-3 py-1.5 shadow-xs hover-lift" style="font-size: 0.8rem;">
-            <i class="bi bi-arrow-down-circle-fill me-1"></i> Review {{ $pendingPriceItemsCount }} Item(s) Below
+    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <a href="#shopStockTable" class="btn btn-sm btn-warning text-dark fw-600 px-3" style="border-radius:8px; font-size:.76rem;">
+            <i class="bi bi-arrow-down-circle-fill me-1"></i> Review {{ $pendingPriceItemsCount }} Item(s)
         </a>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="position:static; padding:.4rem;"></button>
     </div>
 </div>
 @endif
 
 @if(session('import_errors'))
-<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="background: rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
-    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed! Please correct the following errors and try again:</h6>
+<div class="alert alert-danger alert-dismissible fade show mb-3 rounded-3 border-0 shadow-sm" role="alert">
+    <h6 class="fw-bold mb-2" style="font-size:.86rem;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed — Please fix the following errors:</h6>
     <ul class="mb-0 ps-3 small" style="max-height: 200px; overflow-y: auto;">
         @foreach(session('import_errors') as $err)
         <li>{{ $err }}</li>
         @endforeach
     </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: invert(1);"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 @endif
 
-@if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
+@if($isOwnerUser || $isShopAdminUser)
 @php
     $totalStockValue = $totalStockValue ?? 0;
     $totalExpectedProfit = $totalExpectedProfit ?? 0;
@@ -374,104 +907,137 @@
     $totalSoldQty = $totalSoldQty ?? 0;
 @endphp
 
-<div class="row row-cols-2 row-cols-sm-3 row-cols-lg-6 g-2 mb-4">
-    <!-- Stock Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
+{{-- ── KPI Summary Grid (3x2 Desktop, 2x3 Mobile) ── --}}
+<div class="row g-2 g-md-3 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(0, 119, 182, .1); color: #0077b6;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0">TZS {{ number_format($totalStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Value ({{ number_format($totalQuantity) }} units)">Stock Value <span class="small">({{ number_format($totalQuantity) }})</span></div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Total Stock Value</p>
+                <div class="ss-kpi-val" title="TZS {{ number_format($totalStockValue, 0) }}">TZS {{ number_format($totalStockValue, 0) }}</div>
+                <div class="ss-kpi-sub">{{ number_format($totalQuantity) }} total units stocked</div>
             </div>
         </div>
     </div>
 
-    <!-- Remaining Stock Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-box-seam"></i>
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(139, 92, 246, .11); color: #7c3aed;">
+                <i class="bi bi-box-seam-fill"></i>
             </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0">TZS {{ number_format($remainingStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remaining Stock ({{ number_format($totalRemainingQty) }} units)">Remaining <span class="small">({{ number_format($totalRemainingQty) }})</span></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sold Stock Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-cart-check"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-danger">TZS {{ number_format($soldStockValue, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Sold Stock Value ({{ number_format($totalSoldQty) }} units)">Sold Value <span class="small">({{ number_format($totalSoldQty) }})</span></div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Remaining Value</p>
+                <div class="ss-kpi-val" title="TZS {{ number_format($remainingStockValue, 0) }}">TZS {{ number_format($remainingStockValue, 0) }}</div>
+                <div class="ss-kpi-sub">{{ number_format($totalRemainingQty) }} units in stock</div>
             </div>
         </div>
     </div>
 
-    <!-- Expected Profit from Stock Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(239, 68, 68, .1); color: #dc2626;">
+                <i class="bi bi-cart-check-fill"></i>
+            </div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Sold Stock Value</p>
+                <div class="ss-kpi-val text-danger" title="TZS {{ number_format($soldStockValue, 0) }}">TZS {{ number_format($soldStockValue, 0) }}</div>
+                <div class="ss-kpi-sub">{{ number_format($totalSoldQty) }} units sold</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(16, 185, 129, .12); color: #059669;">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-success">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Stock Value)">Exp. Profit (Stock)</div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Exp. Profit (Total Stock)</p>
+                <div class="ss-kpi-val text-success" title="TZS {{ number_format($totalExpectedProfit, 0) }}">TZS {{ number_format($totalExpectedProfit, 0) }}</div>
+                <div class="ss-kpi-sub">Projected full-stock margin</div>
             </div>
         </div>
     </div>
 
-    <!-- Expected Profit from Remaining Stock Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-piggy-bank"></i>
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(245, 158, 11, .12); color: #d97706;">
+                <i class="bi bi-piggy-bank-fill"></i>
             </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important;">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Expected Profit (Remaining Stock)">Exp. Profit (Rem.)</div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Exp. Profit (Remaining)</p>
+                <div class="ss-kpi-val" style="color: #d97706;" title="TZS {{ number_format($remainingExpectedProfit, 0) }}">TZS {{ number_format($remainingExpectedProfit, 0) }}</div>
+                <div class="ss-kpi-sub">Unrealized stock margin</div>
             </div>
         </div>
     </div>
 
-    <!-- Profit for Sold Stock Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(255, 183, 0, 0.15); color: var(--accent-gold); width: 28px; height: 28px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0;">
+    <div class="col-6 col-md-4">
+        <div class="ss-kpi-card">
+            <div class="ss-kpi-icon" style="background: rgba(234, 88, 12, .11); color: #ea580c;">
                 <i class="bi bi-coin"></i>
             </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: #ff9f00 !important;">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Profit for Sold Stock">Profit (Sold)</div>
+            <div class="ss-kpi-body">
+                <p class="ss-kpi-label">Profit (Sold Stock)</p>
+                <div class="ss-kpi-val" style="color: #ea580c;" title="TZS {{ number_format($soldExpectedProfit, 0) }}">TZS {{ number_format($soldExpectedProfit, 0) }}</div>
+                <div class="ss-kpi-sub">Margin on sold units</div>
             </div>
         </div>
     </div>
 </div>
+@endif
 
-@if(auth()->user()->isOwner())
-<div class="card mb-4">
-    <div class="card-body py-2">
-        <form method="GET" action="{{ route('shop-stock.index') }}" class="row align-items-center g-2">
-            <div class="col-auto"><label class="form-label mb-0">Filter by Shop:</label></div>
-            <div class="col-auto">
-                <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All Shops</option>
-                    @foreach($shops as $s)
-                    <option value="{{ $s->id }}" {{ $shopId == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+{{-- ── Filter Bar Card ── --}}
+<div class="ss-filter-card">
+    <div class="ss-filter-body">
+        <div class="row g-2 align-items-end">
+            @if($isOwnerUser)
+            <div class="col-12 col-sm-6 col-md-3">
+                <label for="filterShop" class="ss-filter-label">
+                    <i class="bi bi-shop"></i>Filter by Shop
+                </label>
+                <form method="GET" action="{{ route('shop-stock.index') }}" id="shopFilterForm">
+                    <select name="shop_id" id="filterShop" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Shops</option>
+                        @foreach($shops as $s)
+                        <option value="{{ $s->id }}" {{ $shopId == $s->id ? 'selected' : '' }}>{{ $s->shop_name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
+            @endif
+            <div class="col-12 col-sm-6 {{ $isOwnerUser ? 'col-md-3' : 'col-md-5' }}">
+                <label for="filterCategory" class="ss-filter-label">
+                    <i class="bi bi-tag"></i>Filter by Category
+                </label>
+                <select id="filterCategory" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->category_name }}</option>
                     @endforeach
                 </select>
             </div>
-        </form>
+            <div class="col-12 col-sm-6 {{ $isOwnerUser ? 'col-md-4' : 'col-md-5' }}">
+                <label for="filterProduct" class="ss-filter-label">
+                    <i class="bi bi-box-seam"></i>Filter by Product
+                </label>
+                <select id="filterProduct" class="form-select form-select-sm">
+                    <option value="">All Products</option>
+                    @foreach($items as $it)
+                        <option value="{{ $it->id }}" data-category-id="{{ $it->category_id }}">{{ $it->item_name }}{{ $it->brand ? ' (' . $it->brand . ')' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 {{ $isOwnerUser ? 'col-md-2' : 'col-md-2' }}">
+                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100" title="Reset Filters" style="height:31px;">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                </button>
+            </div>
+        </div>
     </div>
 </div>
-@endif
-@endif
 
 <div class="d-flex align-items-center justify-content-between mb-3 px-3 py-2 rounded border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
     <div class="d-flex align-items-center gap-2">
@@ -494,19 +1060,19 @@
         <table class="table table-hover align-middle w-100" id="shopStockTable">
             <thead>
                 <tr>
-                    <th data-priority="1000" class="no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="3">Shop</th>
-                    <th data-priority="1">Product Details</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="4">Initial Qty</th>
-                    <th data-priority="3">Remaining Qty</th>
-                    <th data-priority="4">Alert Threshold</th>
+                    <th data-priority="1000" class="min-tablet-l no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="10" class="min-tablet-l">Shop</th>
+                    <th data-priority="1" class="all product-col">Product Details</th>
+                    <th data-priority="5" class="min-tablet-l">Category</th>
+                    <th data-priority="6" class="min-tablet-l">Initial Qty</th>
+                    <th data-priority="2" class="min-tablet-l">Remaining Qty</th>
+                    <th data-priority="7" class="min-tablet-l">Alert Threshold</th>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th data-priority="3">Buying Price</th>
+                    <th data-priority="4" class="min-tablet-l">Buying Price</th>
                     @endif
-                    <th data-priority="3">Selling Price</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                    <th data-priority="3" class="min-tablet-l">Selling Price</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -1200,21 +1766,21 @@
         const isShopAdmin = {{ auth()->user()->isShopAdmin() ? 'true' : 'false' }};
 
         var columns = [
-            { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false },
-            { data: 'iteration', name: 'iteration' },
-            { data: 'shop', name: 'shop' },
-            { data: 'product', name: 'product' },
-            { data: 'category', name: 'category' },
-            { data: 'initial_qty', name: 'initial_qty' },
-            { data: 'remaining_qty', name: 'remaining_qty' },
-            { data: 'alert_threshold', name: 'alert_threshold' }
+            { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false, responsivePriority: 1000, className: 'min-tablet-l text-center' },
+            { data: 'iteration', name: 'iteration', responsivePriority: 1, className: 'all iter-col text-center' },
+            { data: 'shop', name: 'shop', responsivePriority: 10, className: 'min-tablet-l' },
+            { data: 'product', name: 'product', responsivePriority: 1, className: 'all product-col' },
+            { data: 'category', name: 'category', responsivePriority: 5, className: 'min-tablet-l' },
+            { data: 'initial_qty', name: 'initial_qty', responsivePriority: 6, className: 'min-tablet-l' },
+            { data: 'remaining_qty', name: 'remaining_qty', responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'alert_threshold', name: 'alert_threshold', responsivePriority: 7, className: 'min-tablet-l' }
         ];
 
         if (isOwner || isShopAdmin) {
-            columns.push({ data: 'buying_price', name: 'buying_price' });
+            columns.push({ data: 'buying_price', name: 'buying_price', responsivePriority: 4, className: 'min-tablet-l' });
         }
-        columns.push({ data: 'selling_price', name: 'selling_price' });
-        columns.push({ data: 'actions', name: 'actions', orderable: false, searchable: false });
+        columns.push({ data: 'selling_price', name: 'selling_price', responsivePriority: 3, className: 'min-tablet-l' });
+        columns.push({ data: 'actions', name: 'actions', orderable: false, searchable: false, responsivePriority: 3, className: 'min-tablet-l text-end' });
 
         const table = $('#shopStockTable').DataTable({
             processing: true,
@@ -1226,10 +1792,73 @@
                 url: "{{ route('shop-stock.data') }}",
                 data: function(d) {
                     d.shop_id = $('select[name="shop_id"]').val();
+                    d.category_id = $('#filterCategory').val();
+                    d.item_id = $('#filterProduct').val();
                 }
             },
             columns: columns,
             order: [[3, 'asc']]
+        });
+
+        // ── Category & Product Filter Cascading ──────────────────────────
+        const allShopProductOptions = $('#filterProduct option').clone();
+
+        function refreshShopProductDropdown(categoryId, preserveSelectedId = null) {
+            const $prod = $('#filterProduct');
+            const wasSelect2 = $prod.hasClass('select2-hidden-accessible');
+            if (wasSelect2) {
+                $prod.select2('destroy');
+            }
+
+            $prod.empty();
+            allShopProductOptions.each(function() {
+                const optCatId = $(this).data('category-id');
+                const optVal = $(this).val();
+                if (!categoryId || optVal === '' || optCatId == categoryId) {
+                    $prod.append($(this).clone());
+                }
+            });
+
+            if (preserveSelectedId && $prod.find('option[value="' + preserveSelectedId + '"]').length > 0) {
+                $prod.val(preserveSelectedId);
+            } else {
+                $prod.val('');
+            }
+
+            if (wasSelect2 && window.initSearchableSelect) {
+                window.initSearchableSelect($prod);
+            }
+        }
+
+        $('#filterCategory').on('change', function() {
+            const selectedCatId = $(this).val();
+            const currentProdId = $('#filterProduct').val();
+            refreshShopProductDropdown(selectedCatId, currentProdId);
+            table.ajax.reload();
+        });
+
+        $('#filterProduct').on('change', function() {
+            const selectedProdId = $(this).val();
+            if (selectedProdId) {
+                const catId = $(this).find('option:selected').data('category-id');
+                if (catId && !$('#filterCategory').val()) {
+                    $('#filterCategory').val(catId);
+                    if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                        $('#filterCategory').trigger('change.select2');
+                    }
+                    refreshShopProductDropdown(catId, selectedProdId);
+                }
+            }
+            table.ajax.reload();
+        });
+
+        $('#btnResetFilters').on('click', function() {
+            $('#filterCategory').val('');
+            if ($('#filterCategory').hasClass('select2-hidden-accessible')) {
+                $('#filterCategory').trigger('change.select2');
+            }
+            refreshShopProductDropdown('');
+            table.ajax.reload();
         });
         // ── Edit Alert Threshold ──────────────────────────────────────────
         let alertEditIds = [];

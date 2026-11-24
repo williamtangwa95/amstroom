@@ -422,44 +422,89 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            padding: 1.25rem;
+            padding: 1rem 1.05rem;
             border-bottom: 1px solid var(--sidebar-border);
             display: flex;
-            align-items: center;
-            gap: .75rem;
-            background: var(--sidebar-solid);
+            align-items: flex-start;
+            gap: .72rem;
+            background: linear-gradient(180deg, rgba(0, 119, 182, 0.98) 0%, var(--sidebar-solid) 100%);
+        }
+
+        .sidebar-brand .brand-icon,
+        .sidebar-brand .brand-logo-img {
+            width: 40px;
+            height: 40px;
+            background: #ffffff;
+            border-radius: 11px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+            flex-shrink: 0;
+            margin-top: .08rem;
         }
 
         .sidebar-brand .brand-icon {
-            width: 42px;
-            height: 42px;
-            background: #ffffff;
-            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            color: #0088cc;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
+            font-size: 1.15rem;
+            color: #0077b6;
+        }
+
+        .sidebar-brand .brand-logo-img {
+            object-fit: contain;
+            padding: 3px;
         }
 
         .sidebar-brand .brand-text {
-            line-height: 1.2;
+            flex: 1;
+            min-width: 0;
+            line-height: 1.25;
         }
 
         .sidebar-brand .brand-name {
-            font-size: 1rem;
-            font-weight: 800;
+            font-size: .9rem;
+            font-weight: 700;
             color: #ffffff;
             letter-spacing: -.01em;
+            line-height: 1.25;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .sidebar-brand .brand-sub {
-            font-size: .7rem;
-            color: #ffb700;
-            font-weight: 700;
-            letter-spacing: .02em;
+            font-size: .68rem;
+            color: #ffd166;
+            font-weight: 600;
+            letter-spacing: .015em;
+            line-height: 1.3;
+            margin-top: .18rem;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        .sidebar-brand .brand-loc {
+            display: inline-flex;
+            align-items: flex-start;
+            gap: .28rem;
+            margin-top: .38rem;
+            padding: .18rem .48rem;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            font-size: .64rem;
+            font-weight: 500;
+            line-height: 1.3;
+            color: rgba(255, 255, 255, 0.94);
+            white-space: normal;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .sidebar-brand .brand-loc i {
+            font-size: .62rem;
+            color: #ffd166;
+            flex-shrink: 0;
+            margin-top: .12rem;
         }
 
         .sidebar-nav {
@@ -571,6 +616,365 @@
             display: flex;
             align-items: center;
             gap: .5rem;
+        }
+
+        /* ── User Profile Trigger & Dropdown Menu ── */
+        .user-profile-badge {
+            background: #ffffff;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 999px;
+            padding: .28rem .55rem .28rem .32rem;
+            font-size: .78rem;
+            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            gap: .55rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .user-profile-badge:hover,
+        .user-profile-badge:focus-visible,
+        .user-profile-badge[aria-expanded="true"],
+        .show > .user-profile-badge {
+            background: #f8fafc;
+            border-color: rgba(0, 119, 182, 0.45) !important;
+            color: var(--text-primary);
+            box-shadow: 0 3px 10px rgba(0, 119, 182, 0.12) !important;
+            outline: none;
+        }
+
+        .user-profile-badge::after {
+            display: none !important;
+        }
+
+        .upb-avatar-wrap {
+            position: relative;
+            flex-shrink: 0;
+            display: inline-flex;
+        }
+
+        .upb-avatar-img,
+        .upb-avatar-initials {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .upb-avatar-img {
+            object-fit: cover;
+            border: 1.5px solid #e2e8f0;
+        }
+
+        .upb-avatar-initials {
+            background: linear-gradient(135deg, #0077b6, #004e89);
+            color: #ffffff;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upb-status-dot {
+            position: absolute;
+            right: -1px;
+            bottom: -1px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 2px solid #ffffff;
+        }
+
+        .upb-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.15;
+            min-width: 0;
+            text-align: left;
+        }
+
+        .upb-name {
+            font-size: .79rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .upb-role {
+            font-size: .63rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #64748b;
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .upb-chevron {
+            font-size: .66rem;
+            color: #94a3b8;
+            transition: transform 0.2s ease, color 0.2s ease;
+            flex-shrink: 0;
+            margin-right: .1rem;
+        }
+
+        .user-profile-badge[aria-expanded="true"] .upb-chevron,
+        .show > .user-profile-badge .upb-chevron {
+            transform: rotate(180deg);
+            color: #0077b6;
+        }
+
+        /* Dropdown Menu Panel */
+        .user-profile-menu {
+            width: 300px;
+            max-width: calc(100vw - 1.5rem);
+            padding: 0;
+            margin-top: .55rem !important;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.05);
+            overflow: hidden;
+            z-index: 10000;
+        }
+
+        .user-profile-menu.show {
+            animation: upmFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes upmFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-6px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .upm-header {
+            padding: 1rem 1.05rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+        }
+
+        .upm-avatar-img,
+        .upm-avatar-initials {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .upm-avatar-img {
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+        }
+
+        .upm-avatar-initials {
+            background: linear-gradient(135deg, #0077b6, #003a6c);
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 119, 182, 0.22);
+        }
+
+        .upm-user-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .upm-user-name {
+            font-size: .88rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .upm-user-email {
+            font-size: .73rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: .08rem;
+        }
+
+        .upm-badges {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: .35rem;
+            margin-top: .45rem;
+        }
+
+        .upm-shop-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .28rem;
+            padding: .15rem .5rem;
+            border-radius: 20px;
+            font-size: .65rem;
+            font-weight: 600;
+            color: #475569;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            max-width: 145px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .upm-list {
+            padding: .45rem;
+            display: flex;
+            flex-direction: column;
+            gap: .2rem;
+        }
+
+        .upm-item {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .58rem .68rem;
+            border-radius: 10px;
+            width: 100%;
+            text-align: left;
+            text-decoration: none;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            white-space: normal;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .upm-item:hover,
+        .upm-item:focus {
+            background: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        .upm-item:active {
+            background: #e2e8f0;
+            color: var(--text-primary);
+        }
+
+        .upm-item-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .95rem;
+            flex-shrink: 0;
+        }
+
+        .upm-icon-profile {
+            background: rgba(0, 119, 182, 0.1);
+            color: #0077b6;
+        }
+
+        .upm-icon-security {
+            background: rgba(16, 185, 129, 0.11);
+            color: #059669;
+        }
+
+        .upm-icon-logout {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .upm-item-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .upm-item-title {
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.25;
+        }
+
+        .upm-item-sub {
+            font-size: .71rem;
+            color: #64748b;
+            line-height: 1.25;
+            margin-top: .08rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .upm-item-arrow {
+            font-size: .72rem;
+            color: #94a3b8;
+            flex-shrink: 0;
+            transition: transform 0.15s ease, color 0.15s ease;
+        }
+
+        .upm-item:hover .upm-item-arrow {
+            transform: translateX(2px);
+            color: #475569;
+        }
+
+        .upm-footer {
+            padding: .45rem;
+            border-top: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+
+        .upm-item-danger .upm-item-title {
+            color: #dc2626;
+        }
+
+        .upm-item-danger:hover,
+        .upm-item-danger:focus {
+            background: #fef2f2;
+        }
+
+        .upm-item-danger:hover .upm-icon-logout {
+            background: #dc2626;
+            color: #ffffff;
+        }
+
+        @media (max-width: 767.98px) {
+            .user-profile-badge {
+                padding: .22rem .42rem .22rem .22rem;
+                gap: .35rem;
+            }
+            .upb-avatar-img,
+            .upb-avatar-initials {
+                width: 28px;
+                height: 28px;
+            }
         }
 
         .role-pill {
@@ -1164,17 +1568,20 @@
     <div id="sidebar">
         <div class="sidebar-brand">
             @if(!empty($appBranding['logo']))
-            <img src="{{ $appBranding['logo'] }}" alt="Logo" class="brand-logo-img rounded-3 shadow-sm" style="width:42px;height:42px;object-fit:contain;background:#ffffff;padding:3px;flex-shrink:0;">
+                <img src="{{ $appBranding['logo'] }}" alt="Logo" class="brand-logo-img">
             @else
-            <div class="brand-icon"><i class="bi bi-pc-display-horizontal"></i></div>
+                <div class="brand-icon"><i class="bi bi-pc-display-horizontal"></i></div>
             @endif
-            <div class="brand-text overflow-hidden me-auto">
-                <div class="brand-name text-truncate" title="{{ $appBranding['name'] }}">{{ $appBranding['name'] }}</div>
-                <div class="brand-sub text-truncate" title="{{ $appBranding['slogan'] }}">{{ $appBranding['slogan'] }}</div>
+            <div class="brand-text">
+                <div class="brand-name">{{ $appBranding['name'] }}</div>
+                @if(!empty($appBranding['slogan']))
+                    <div class="brand-sub">{{ $appBranding['slogan'] }}</div>
+                @endif
                 @if(!empty($appBranding['location']))
-                <div class="brand-loc text-truncate" style="font-size: .65rem; color: rgba(255, 255, 255, 0.95); font-weight: 500; display: flex; align-items: center; gap: 3px; margin-top: 1px;" title="{{ $appBranding['location'] }}">
-                    <i class="bi bi-geo-alt-fill" style="font-size:.62rem; color:#ffb700;"></i> {{ $appBranding['location'] }}
-                </div>
+                    <div class="brand-loc">
+                        <i class="bi bi-geo-alt-fill"></i>
+                        <span>{{ $appBranding['location'] }}</span>
+                    </div>
                 @endif
             </div>
 
@@ -1183,7 +1590,7 @@
             </button>
         </div>
 
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" id="sidebarAccordion">
             <div class="nav-section-label">Main</div>
 
             <div class="nav-item-custom">
@@ -1194,7 +1601,7 @@
 
             <div class="nav-item-custom">
                 <a href="{{ route('chats.index') }}" class="nav-link-custom {{ request()->routeIs('chats.*') ? 'active' : '' }}">
-                    <i class="bi bi-chat-dots-fill text-warning"></i> Live Chat
+                    <i class="bi bi-chat-dots-fill text-white"></i> Live Chat
                     <span class="nav-badge bg-danger text-white d-none" id="chatGlobalBadge" style="background-color: var(--accent-red) !important; color: #fff !important;">0</span>
                 </a>
             </div>
@@ -1217,7 +1624,7 @@
                     <span><i class="bi bi-box-seam-fill"></i> Products & Shops</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isProductsActive ? 'show' : '' }}" id="productsCollapseOwner">
+                <div class="collapse {{ $isProductsActive ? 'show' : '' }}" id="productsCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('items.index') }}" class="nav-link-custom {{ request()->routeIs('items.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-box-seam"></i> Products
@@ -1232,7 +1639,7 @@
                             <i class="bi bi-shop"></i> Shops
                         </a>
                         <a href="{{ route('users.index') }}" class="nav-link-custom {{ request()->routeIs('users.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-people"></i> Employees
+                            <i class="bi bi-people"></i> Users
                         </a>
                     </div>
                 </div>
@@ -1249,7 +1656,7 @@
                     <span><i class="bi bi-layers-fill"></i> Stocks & Warehouse</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isStocksActive ? 'show' : '' }}" id="stocksCollapseOwner">
+                <div class="collapse {{ $isStocksActive ? 'show' : '' }}" id="stocksCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('main-stock.index') }}" class="nav-link-custom {{ request()->routeIs('main-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-building"></i> Main Store Stock
@@ -1259,8 +1666,6 @@
                         </a>
                         <a href="{{ route('shop-swaps.index') }}" class="nav-link-custom {{ request()->routeIs('shop-swaps.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right text-info"></i> Product Swaps
-                            @php $pendingSwaps = \App\Models\ShopProductSwap::where('status', 'pending_owner')->count() @endphp
-                            @if($pendingSwaps > 0) <span class="nav-badge bg-warning text-dark">{{ $pendingSwaps }}</span> @endif
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -1291,7 +1696,7 @@
                     <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSalesActive ? 'show' : '' }}" id="salesCollapseOwner">
+                <div class="collapse {{ $isSalesActive ? 'show' : '' }}" id="salesCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') && !request()->has('status') && !request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-cart-check"></i> Sales List
@@ -1323,7 +1728,7 @@
                     <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isDocsActive ? 'show' : '' }}" id="docsCollapseOwner">
+                <div class="collapse {{ $isDocsActive ? 'show' : '' }}" id="docsCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
@@ -1349,7 +1754,7 @@
                     <span><i class="bi bi-graph-up-arrow"></i> Reports</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isReportsActive ? 'show' : '' }}" id="reportsCollapseOwner">
+                <div class="collapse {{ $isReportsActive ? 'show' : '' }}" id="reportsCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-graph-up-arrow"></i> Sales Report
@@ -1390,7 +1795,7 @@
                     <span><i class="bi bi-gear-fill"></i> System</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSystemActive ? 'show' : '' }}" id="systemCollapseOwner">
+                <div class="collapse {{ $isSystemActive ? 'show' : '' }}" id="systemCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('stock-logs.index') }}" class="nav-link-custom {{ request()->routeIs('stock-logs.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-clock-history"></i> Audit Logs
@@ -1419,13 +1824,13 @@
                     <span><i class="bi bi-shop"></i> Management</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isManagementActive ? 'show' : '' }}" id="productsCollapseAdmin">
+                <div class="collapse {{ $isManagementActive ? 'show' : '' }}" id="productsCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('shops.show', auth()->user()->shop_id ?? 0) }}" class="nav-link-custom {{ request()->routeIs('shops.show') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-shop"></i> Shop Profile
                         </a>
                         <a href="{{ route('users.index') }}" class="nav-link-custom {{ request()->routeIs('users.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-people"></i> My Employees
+                            <i class="bi bi-people"></i> My Users
                         </a>
                     </div>
                 </div>
@@ -1442,7 +1847,7 @@
                     <span><i class="bi bi-layers-fill"></i> Stocks & Transfers</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isStocksActiveAdmin ? 'show' : '' }}" id="stocksCollapseAdmin">
+                <div class="collapse {{ $isStocksActiveAdmin ? 'show' : '' }}" id="stocksCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-layers"></i> Shop Stock
@@ -1481,7 +1886,7 @@
                     <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSalesActiveAdmin ? 'show' : '' }}" id="salesCollapseAdmin">
+                <div class="collapse {{ $isSalesActiveAdmin ? 'show' : '' }}" id="salesCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}" class="nav-link-custom {{ request()->routeIs('sales.*') && !request()->has('status') && !request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-cart-check"></i> Sales List
@@ -1515,7 +1920,7 @@
                     <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isDocsActiveAdmin ? 'show' : '' }}" id="docsCollapseAdmin">
+                <div class="collapse {{ $isDocsActiveAdmin ? 'show' : '' }}" id="docsCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
@@ -1541,7 +1946,7 @@
                     <span><i class="bi bi-graph-up-arrow"></i> Reports</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isReportsActiveAdmin ? 'show' : '' }}" id="reportsCollapseAdmin">
+                <div class="collapse {{ $isReportsActiveAdmin ? 'show' : '' }}" id="reportsCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('reports.sales') }}" class="nav-link-custom {{ request()->routeIs('reports.sales') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-graph-up-arrow"></i> Sales Report
@@ -1582,7 +1987,7 @@
                     <span><i class="bi bi-gear-fill"></i> System</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSystemActiveAdmin ? 'show' : '' }}" id="systemCollapseAdmin">
+                <div class="collapse {{ $isSystemActiveAdmin ? 'show' : '' }}" id="systemCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-journal-text"></i> User Activity Logs
@@ -1606,7 +2011,7 @@
                     <span><i class="bi bi-layers-fill"></i> Stocks</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isStocksActiveSeller ? 'show' : '' }}" id="stocksCollapseSeller">
+                <div class="collapse {{ $isStocksActiveSeller ? 'show' : '' }}" id="stocksCollapseSeller" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('shop-stock.index') }}" class="nav-link-custom {{ request()->routeIs('shop-stock.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-layers"></i> Available Stock
@@ -1626,7 +2031,7 @@
                     <span><i class="bi bi-cart-check-fill"></i> Sales & Operations</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSalesActiveSeller ? 'show' : '' }}" id="salesCollapseSeller">
+                <div class="collapse {{ $isSalesActiveSeller ? 'show' : '' }}" id="salesCollapseSeller" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.create') }}" class="nav-link-custom {{ request()->is('sales/create') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-plus-circle"></i> New Sale
@@ -1658,7 +2063,7 @@
                     <span><i class="bi bi-file-earmark-text-fill"></i> Documents</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isDocsActiveSeller ? 'show' : '' }}" id="docsCollapseSeller">
+                <div class="collapse {{ $isDocsActiveSeller ? 'show' : '' }}" id="docsCollapseSeller" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
@@ -1684,7 +2089,7 @@
                     <span><i class="bi bi-gear-fill"></i> System</span>
                     <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s;"></i>
                 </a>
-                <div class="collapse {{ $isSystemActiveSeller ? 'show' : '' }}" id="systemCollapseSeller">
+                <div class="collapse {{ $isSystemActiveSeller ? 'show' : '' }}" id="systemCollapseSeller" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
                         <a href="{{ route('activity-logs.index') }}" class="nav-link-custom {{ request()->routeIs('activity-logs.index') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-journal-text"></i> User Activity Logs
@@ -1779,30 +2184,100 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->shop)
-                <div class="user-badge flex-shrink-0" title="{{ auth()->user()->shop->shop_name }}">
-                    <i class="bi bi-shop text-primary"></i>
-                    <span class="fw-600 d-none d-md-inline text-truncate" style="max-width: 140px; vertical-align: middle;">{{ auth()->user()->shop->shop_name }}</span>
-                </div>
-                @endif
-
-                <a href="{{ route('profile.edit') }}" class="user-badge text-decoration-none flex-shrink-0" title="Manage Profile: {{ auth()->user()->name }}">
-                    @if(auth()->user()->avatar_path)
-                    <img src="{{ asset('media/' . auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid var(--accent); flex-shrink: 0;">
-                    @else
-                    <i class="bi bi-person-circle text-primary" style="flex-shrink: 0;"></i>
-                    @endif
-                    <span class="fw-600 text-dark d-none d-md-inline text-truncate" style="max-width: 130px; vertical-align: middle;">{{ auth()->user()->name }}</span>
-                    <span class="role-pill role-{{ auth()->user()->role }} d-none d-lg-inline flex-shrink-0">{{ str_replace('_', ' ', auth()->user()->role) }}</span>
-                </a>
-
-                <form method="POST" action="{{ route('logout') }}" class="m-0 p-0 flex-shrink-0">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-custom d-flex align-items-center gap-1" title="Logout">
-                        <i class="bi bi-box-arrow-right"></i>
-                        <span class="d-none d-sm-inline">Logout</span>
+                {{-- User Profile Dropdown --}}
+                @php
+                    $navUser = auth()->user();
+                    $navUserInitials = collect(explode(' ', trim($navUser->name)))
+                        ->filter()
+                        ->take(2)
+                        ->map(fn($part) => strtoupper(substr($part, 0, 1)))
+                        ->implode('') ?: 'U';
+                    $navUserRoleLabel = str_replace('_', ' ', strtoupper($navUser->role));
+                @endphp
+                <div class="dropdown flex-shrink-0" id="userProfileDropdownContainer">
+                    <button class="user-profile-badge dropdown-toggle border-0" type="button" id="userProfileDropdownBtn"
+                            data-bs-toggle="dropdown" aria-expanded="false"
+                            title="Account menu ({{ $navUser->name }})">
+                        <span class="upb-avatar-wrap">
+                            @if($navUser->avatar_path)
+                                <img src="{{ asset('media/' . $navUser->avatar_path) }}" alt="{{ $navUser->name }}" class="upb-avatar-img">
+                            @else
+                                <span class="upb-avatar-initials">{{ $navUserInitials }}</span>
+                            @endif
+                            <span class="upb-status-dot" aria-hidden="true"></span>
+                        </span>
+                        <span class="upb-meta d-none d-md-flex">
+                            <span class="upb-name">{{ $navUser->name }}</span>
+                            <span class="upb-role">{{ $navUserRoleLabel }}</span>
+                        </span>
+                        <i class="bi bi-chevron-down upb-chevron"></i>
                     </button>
-                </form>
+
+                    <div class="dropdown-menu dropdown-menu-end user-profile-menu" aria-labelledby="userProfileDropdownBtn">
+                        {{-- Identity Header --}}
+                        <div class="upm-header">
+                            @if($navUser->avatar_path)
+                                <img src="{{ asset('media/' . $navUser->avatar_path) }}" alt="{{ $navUser->name }}" class="upm-avatar-img">
+                            @else
+                                <div class="upm-avatar-initials">{{ $navUserInitials }}</div>
+                            @endif
+                            <div class="upm-user-info">
+                                <div class="upm-user-name">{{ $navUser->name }}</div>
+                                <div class="upm-user-email">{{ $navUser->email }}</div>
+                                <div class="upm-badges">
+                                    <span class="role-pill role-{{ $navUser->role }}">{{ $navUserRoleLabel }}</span>
+                                    @if($navUser->shop)
+                                        <span class="upm-shop-pill" title="{{ $navUser->shop->shop_name }}">
+                                            <i class="bi bi-shop"></i>
+                                            <span class="text-truncate">{{ $navUser->shop->shop_name }}</span>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Account Actions --}}
+                        <div class="upm-list">
+                            <a href="{{ route('profile.edit') }}" class="dropdown-item upm-item">
+                                <span class="upm-item-icon upm-icon-profile">
+                                    <i class="bi bi-person-gear"></i>
+                                </span>
+                                <span class="upm-item-text">
+                                    <span class="upm-item-title d-block">View &amp; Edit Profile</span>
+                                    <span class="upm-item-sub d-block">Update name, phone, email &amp; photo</span>
+                                </span>
+                                <i class="bi bi-chevron-right upm-item-arrow"></i>
+                            </a>
+
+                            <a href="{{ route('profile.edit') }}#passwordSection" class="dropdown-item upm-item">
+                                <span class="upm-item-icon upm-icon-security">
+                                    <i class="bi bi-shield-lock"></i>
+                                </span>
+                                <span class="upm-item-text">
+                                    <span class="upm-item-title d-block">Change Password</span>
+                                    <span class="upm-item-sub d-block">Manage personal login credentials</span>
+                                </span>
+                                <i class="bi bi-chevron-right upm-item-arrow"></i>
+                            </a>
+                        </div>
+
+                        {{-- Sign Out Footer --}}
+                        <div class="upm-footer">
+                            <form method="POST" action="{{ route('logout') }}" class="m-0 p-0">
+                                @csrf
+                                <button type="submit" class="dropdown-item upm-item upm-item-danger">
+                                    <span class="upm-item-icon upm-icon-logout">
+                                        <i class="bi bi-box-arrow-right"></i>
+                                    </span>
+                                    <span class="upm-item-text">
+                                        <span class="upm-item-title d-block">Sign Out</span>
+                                        <span class="upm-item-sub d-block">End your active session</span>
+                                    </span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1864,6 +2339,536 @@
             </div>
         </div>
     </div>
+
+    @if(auth()->check() && auth()->user()->isShopAdmin())
+    {{-- ── Shop Admin: Pending Stock Transfer Confirmation Reminder Modal ── --}}
+    <div class="modal fade" id="pendingTransferReminderModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="pendingTransferReminderLabel" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-dialog-centered modal-lg ptr-modal-dialog">
+            <div class="modal-content ptr-modal-content">
+                {{-- Executive Header Banner --}}
+                <div class="modal-header ptr-modal-header">
+                    <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+                        <div class="ptr-header-icon">
+                            <i class="bi bi-truck"></i>
+                            <span class="ptr-pulse-dot" aria-hidden="true"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="ptr-eyebrow-pill">
+                                    <i class="bi bi-bell-fill"></i> Action Required
+                                </span>
+                                <span class="ptr-count-pill" id="ptrPendingCountBadge">1 Pending Dispatch</span>
+                            </div>
+                            <h6 class="modal-title mb-0 ptr-modal-title" id="pendingTransferReminderLabel">Incoming Stock Awaiting Receipt Confirmation</h6>
+                            <p class="ptr-modal-sub mb-0" id="ptrModalSubtitle">Verify physical stock delivered from Main Store and confirm receipt to update branch inventory.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ptr-dismiss-trigger ms-2" aria-label="Dismiss for 3 hours" title="Dismiss for 3 hours"></button>
+                </div>
+
+                {{-- Summary KPI Strip --}}
+                <div class="ptr-summary-strip">
+                    <div class="ptr-summary-cell">
+                        <span class="ptr-summary-label"><i class="bi bi-receipt"></i> Pending Dispatches</span>
+                        <span class="ptr-summary-val" id="ptrStatDispatches">1 Transfer</span>
+                    </div>
+                    <div class="ptr-summary-cell">
+                        <span class="ptr-summary-label"><i class="bi bi-boxes"></i> Awaiting Products</span>
+                        <span class="ptr-summary-val" id="ptrStatItems">0 Items &middot; 0 Pcs</span>
+                    </div>
+                    <div class="ptr-summary-cell">
+                        <span class="ptr-summary-label"><i class="bi bi-hourglass-split"></i> Longest Wait</span>
+                        <span class="ptr-summary-val ptr-summary-wait" id="ptrStatOldest">—</span>
+                    </div>
+                </div>
+
+                {{-- Transfers Detailed Feed --}}
+                <div class="modal-body ptr-modal-body">
+                    <div id="ptrTransfersList" class="ptr-list"></div>
+                </div>
+
+                {{-- Action Footer --}}
+                <div class="modal-footer ptr-modal-footer">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="ptr-btn-dismiss ptr-dismiss-trigger" id="btnDismissTransferReminder">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Dismiss for 3 Hours</span>
+                        </button>
+                        <span class="ptr-snooze-note d-none d-sm-inline">Re-alerts automatically if unconfirmed</span>
+                    </div>
+                    <a href="{{ route('stock-transfers.index') }}" class="ptr-btn-primary" id="btnOpenTransferDetails">
+                        <span>Review &amp; Confirm Now</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .ptr-modal-dialog {
+            max-width: 650px;
+        }
+        .ptr-modal-content {
+            border: 1px solid rgba(15, 23, 42, .08);
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28), 0 4px 16px rgba(15, 23, 42, .08);
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .ptr-modal-header {
+            padding: 1.15rem 1.35rem;
+            background: linear-gradient(135deg, #0077b6 0%, #005691 58%, #003a6c 100%);
+            border-bottom: none;
+            align-items: flex-start;
+            color: #ffffff;
+        }
+        .ptr-header-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 13px;
+            background: rgba(255, 255, 255, .14);
+            border: 1px solid rgba(255, 255, 255, .22);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .ptr-pulse-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            border: 2px solid #005691;
+            animation: ptrPulse 1.6s infinite;
+        }
+        @keyframes ptrPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, .65); }
+            70%  { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        .ptr-eyebrow-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .14rem .55rem;
+            border-radius: 999px;
+            background: rgba(245, 158, 11, .22);
+            border: 1px solid rgba(253, 224, 71, .35);
+            color: #fef08a;
+            font-size: .64rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .ptr-count-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: .14rem .55rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .14);
+            border: 1px solid rgba(255, 255, 255, .22);
+            color: #ffffff;
+            font-size: .65rem;
+            font-weight: 600;
+        }
+        .ptr-modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.3;
+            margin-top: .32rem;
+            letter-spacing: -.01em;
+        }
+        .ptr-modal-sub {
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .82);
+            margin-top: .16rem;
+            line-height: 1.35;
+        }
+
+        /* Summary KPI Strip */
+        .ptr-summary-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .ptr-summary-cell {
+            padding: .7rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .14rem;
+            border-right: 1px solid #f1f5f9;
+        }
+        .ptr-summary-cell:last-child {
+            border-right: none;
+        }
+        .ptr-summary-label {
+            font-size: .65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+        }
+        .ptr-summary-val {
+            font-size: .84rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .ptr-summary-wait.is-urgent {
+            color: #dc2626;
+        }
+        .ptr-summary-wait.is-warn {
+            color: #b45309;
+        }
+
+        /* Transfers Body & Cards */
+        .ptr-modal-body {
+            padding: 1rem 1.25rem;
+            max-height: 410px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        .ptr-list {
+            display: flex;
+            flex-direction: column;
+            gap: .85rem;
+        }
+        .ptr-card {
+            display: block;
+            text-decoration: none;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 13px;
+            overflow: hidden;
+            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .ptr-card:hover {
+            border-color: #0077b6;
+            box-shadow: 0 8px 22px rgba(0, 119, 182, .12);
+            transform: translateY(-1px);
+            color: #0f172a;
+        }
+        .ptr-card-head {
+            padding: .8rem 1rem;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            flex-wrap: wrap;
+        }
+        .ptr-card-id-group {
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+            flex-wrap: wrap;
+        }
+        .ptr-card-num {
+            font-size: .88rem;
+            font-weight: 700;
+            color: #0f172a;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+        }
+        .ptr-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .28rem;
+            padding: .16rem .52rem;
+            border-radius: 6px;
+            font-size: .65rem;
+            font-weight: 700;
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .ptr-status-pill.is-partial {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+        .ptr-elapsed-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .32rem;
+            padding: .22rem .62rem;
+            border-radius: 999px;
+            font-size: .7rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .ptr-elapsed-warn {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .ptr-elapsed-urgent {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        /* Metadata Row inside Card */
+        .ptr-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: .5rem;
+            padding: .65rem 1rem;
+            background: #fafbfc;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .ptr-meta-item {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .ptr-meta-k {
+            font-size: .63rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #94a3b8;
+        }
+        .ptr-meta-v {
+            font-size: .75rem;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: .08rem;
+        }
+
+        /* Detailed Manifest Rows */
+        .ptr-manifest {
+            padding: .55rem 1rem .65rem;
+        }
+        .ptr-manifest-title {
+            font-size: .64rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #64748b;
+            margin-bottom: .4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ptr-manifest-list {
+            display: flex;
+            flex-direction: column;
+            gap: .38rem;
+        }
+        .ptr-manifest-row {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .42rem .55rem;
+            border-radius: 9px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+        }
+        .ptr-prod-thumb {
+            width: 32px;
+            height: 32px;
+            border-radius: 7px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+            color: #64748b;
+            font-size: .85rem;
+        }
+        .ptr-prod-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 2px;
+        }
+        .ptr-prod-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .ptr-prod-name {
+            font-size: .78rem;
+            font-weight: 600;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.25;
+        }
+        .ptr-prod-meta {
+            font-size: .68rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ptr-prod-qty {
+            flex-shrink: 0;
+            text-align: right;
+        }
+        .ptr-qty-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+            padding: .16rem .5rem;
+            border-radius: 6px;
+            background: rgba(0, 119, 182, .09);
+            color: #005691;
+            font-size: .72rem;
+            font-weight: 700;
+        }
+        .ptr-price-sub {
+            display: block;
+            font-size: .65rem;
+            color: #64748b;
+            margin-top: .1rem;
+        }
+        .ptr-more-row {
+            font-size: .71rem;
+            font-weight: 600;
+            color: #64748b;
+            text-align: center;
+            padding: .25rem 0 0;
+        }
+
+        /* Card Bottom Action Bar */
+        .ptr-card-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .62rem 1rem;
+            background: #f0f9ff;
+            border-top: 1px solid #e0f2fe;
+            font-size: .76rem;
+            font-weight: 600;
+            color: #005691;
+            transition: background-color .15s ease;
+        }
+        .ptr-card:hover .ptr-card-cta {
+            background: #e0f2fe;
+        }
+        .ptr-card:hover .ptr-card-cta i {
+            transform: translateX(3px);
+        }
+        .ptr-card-cta i {
+            transition: transform .15s ease;
+        }
+
+        /* Footer */
+        .ptr-modal-footer {
+            padding: .9rem 1.25rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+        .ptr-snooze-note {
+            font-size: .71rem;
+            color: #94a3b8;
+        }
+        .ptr-btn-dismiss {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .48rem .9rem;
+            border-radius: 9px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .ptr-btn-dismiss:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+        .ptr-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            padding: .52rem 1.15rem;
+            border-radius: 9px;
+            border: none;
+            background: linear-gradient(135deg, #0077b6, #005691);
+            color: #ffffff;
+            text-decoration: none;
+            font-size: .8rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, .25);
+            transition: all .15s ease;
+        }
+        .ptr-btn-primary:hover {
+            background: linear-gradient(135deg, #00669e, #004473);
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 119, 182, .32);
+        }
+
+        @media (max-width: 575.98px) {
+            .ptr-modal-header {
+                padding: .95rem 1rem;
+            }
+            .ptr-summary-strip {
+                grid-template-columns: 1fr;
+            }
+            .ptr-summary-cell {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: .52rem 1rem;
+                border-right: none;
+                border-bottom: 1px solid #f1f5f9;
+            }
+            .ptr-summary-cell:last-child {
+                border-bottom: none;
+            }
+            .ptr-meta-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .ptr-modal-body {
+                padding: .85rem .9rem;
+            }
+            .ptr-modal-footer {
+                padding: .8rem .95rem;
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+            .ptr-btn-dismiss,
+            .ptr-btn-primary {
+                justify-content: center;
+                width: 100%;
+            }
+        }
+    </style>
+    @endif
 
     <style>
         .product-img-wrapper:hover .img-zoom-overlay {
@@ -2525,6 +3530,408 @@
                 }, 10000);
             });
         })();
+
+        @if(auth()->check() && auth()->user()->isShopAdmin())
+        // ── Shop Admin: Pending Stock Transfer Confirmation Reminder Popup ──
+        (function() {
+            const USER_ID = {{ (int) auth()->id() }};
+            const SNOOZE_HOURS = 3;
+            const SNOOZE_MS = SNOOZE_HOURS * 60 * 60 * 1000;
+            const STORAGE_KEY = 'amstroom_transfer_reminder_snooze_u' + USER_ID;
+            const POLL_INTERVAL_MS = 30000;
+
+            let currentDueTransfers = [];
+            let currentRingtoneUrl = null;
+            let isModalOpen = false;
+            let liveElapsedTimer = null;
+            let pendingAudioUnlock = false;
+
+            function escapeHtmlPtr(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function getLocalSnoozes() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    const now = Date.now();
+                    const cleaned = {};
+                    Object.keys(parsed).forEach(function(id) {
+                        if (parsed[id] && parsed[id] > now) {
+                            cleaned[id] = parsed[id];
+                        }
+                    });
+                    return cleaned;
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            function saveLocalSnoozes(ids) {
+                try {
+                    const map = getLocalSnoozes();
+                    const until = Date.now() + SNOOZE_MS;
+                    ids.forEach(function(id) {
+                        map[String(id)] = until;
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+                } catch (e) {
+                    // ignore storage errors
+                }
+            }
+
+            function formatElapsedClient(seconds) {
+                seconds = Math.max(0, Math.floor(seconds));
+                if (seconds < 60) return 'Just now';
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                const parts = [];
+                if (days > 0) parts.push(days + ' ' + (days === 1 ? 'day' : 'days'));
+                if (hours > 0) parts.push(hours + ' ' + (hours === 1 ? 'hr' : 'hrs'));
+                if (days === 0 && mins > 0) parts.push(mins + ' ' + (mins === 1 ? 'min' : 'mins'));
+                return parts.join(', ') || 'Less than a minute';
+            }
+
+            function scheduleChimeNotes(ctx) {
+                const notes = [
+                    { freq: 880,  delay: 0,    dur: 0.25 },
+                    { freq: 1175, delay: 0.14, dur: 0.28 },
+                    { freq: 1318, delay: 0.28, dur: 0.42 }
+                ];
+                notes.forEach(function(n) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    const startAt = ctx.currentTime + n.delay;
+                    osc.frequency.setValueAtTime(n.freq, startAt);
+                    gain.gain.setValueAtTime(0.001, startAt);
+                    gain.gain.linearRampToValueAtTime(0.28, startAt + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startAt + n.dur);
+                    osc.start(startAt);
+                    osc.stop(startAt + n.dur);
+                });
+            }
+
+            function playReminderChime(fallbackRingtoneUrl) {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const ctx = new AudioCtx();
+                    if (ctx.state === 'running') {
+                        scheduleChimeNotes(ctx);
+                    } else {
+                        ctx.resume().then(function() {
+                            if (ctx.state === 'running') {
+                                scheduleChimeNotes(ctx);
+                            } else {
+                                scheduleSoundOnFirstGesture(fallbackRingtoneUrl || null);
+                            }
+                        }).catch(function() {
+                            scheduleSoundOnFirstGesture(fallbackRingtoneUrl || null);
+                        });
+                    }
+                } catch (e) {
+                    scheduleSoundOnFirstGesture(fallbackRingtoneUrl || null);
+                }
+            }
+
+            function playTransferReminderSound(ringtoneUrl) {
+                if (ringtoneUrl) {
+                    const audio = new Audio(ringtoneUrl);
+                    audio.play().catch(function() {
+                        playReminderChime(ringtoneUrl);
+                    });
+                } else {
+                    playReminderChime(null);
+                }
+            }
+
+            function scheduleSoundOnFirstGesture(ringtoneUrl) {
+                if (pendingAudioUnlock) return;
+                pendingAudioUnlock = true;
+                const unlockHandler = function() {
+                    pendingAudioUnlock = false;
+                    document.removeEventListener('pointerdown', unlockHandler);
+                    document.removeEventListener('keydown', unlockHandler);
+                    if (isModalOpen) {
+                        playTransferReminderSound(ringtoneUrl);
+                    }
+                };
+                document.addEventListener('pointerdown', unlockHandler, { once: true });
+                document.addEventListener('keydown', unlockHandler, { once: true });
+            }
+
+            function getCurrentViewingTransferId() {
+                const match = window.location.pathname.match(/\/stock-transfers\/(\d+)(?:\/|$)/);
+                return match ? parseInt(match[1], 10) : null;
+            }
+
+            function formatTzsPtr(amount) {
+                if (amount === null || amount === undefined || isNaN(amount)) return '';
+                return 'TZS ' + Number(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+
+            function renderTransfers(transfers, indexUrl, shopName) {
+                const $list = $('#ptrTransfersList');
+                const count = transfers.length;
+                const totalPendingItems = transfers.reduce(function(acc, t) { return acc + (t.pending_items_count || 0); }, 0);
+                const totalPendingQty = transfers.reduce(function(acc, t) { return acc + (t.pending_total_qty || 0); }, 0);
+                const oldestTransfer = transfers[0];
+
+                $('#ptrPendingCountBadge').text(count + ' Pending ' + (count === 1 ? 'Dispatch' : 'Dispatches'));
+                if (shopName) {
+                    $('#ptrModalSubtitle').text(shopName + ' — Verify physical delivery from Main Store and confirm items to update branch inventory.');
+                }
+
+                $('#ptrStatDispatches').text(count + ' ' + (count === 1 ? 'Transfer' : 'Transfers'));
+                $('#ptrStatItems').text(totalPendingItems + ' ' + (totalPendingItems === 1 ? 'Item' : 'Items') + ' · ' + totalPendingQty + ' Pcs');
+
+                if (oldestTransfer) {
+                    const $oldestEl = $('#ptrStatOldest');
+                    $oldestEl
+                        .text(oldestTransfer.elapsed_human)
+                        .attr('data-oldest-ts', oldestTransfer.submitted_at_ts || 0)
+                        .removeClass('is-warn is-urgent')
+                        .addClass((oldestTransfer.elapsed_seconds || 0) >= 3 * 3600 ? 'is-urgent' : 'is-warn');
+                }
+
+                if (count === 1) {
+                    $('#btnOpenTransferDetails')
+                        .attr('href', transfers[0].url)
+                        .find('span').text('Inspect & Confirm Transfer #' + transfers[0].id);
+                } else {
+                    $('#btnOpenTransferDetails')
+                        .attr('href', indexUrl)
+                        .find('span').text('Review All Pending (' + count + ')');
+                }
+
+                let html = '';
+                transfers.forEach(function(t) {
+                    const elapsedSec = t.elapsed_seconds || 0;
+                    const isUrgent = elapsedSec >= 3 * 3600;
+                    const elapsedClass = isUrgent ? 'ptr-elapsed-urgent' : 'ptr-elapsed-warn';
+                    const isPartial = t.status === 'partially_received';
+                    const statusLabel = isPartial ? 'Partially Received' : 'Pending Receipt';
+                    const confirmedProgress = (t.received_items_count || 0) + ' / ' + (t.total_items_count || t.pending_items_count) + ' confirmed';
+
+                    let itemsHtml = '';
+                    (t.items_preview || []).forEach(function(it) {
+                        const thumbHtml = it.image_url
+                            ? `<img src="${escapeHtmlPtr(it.image_url)}" alt="${escapeHtmlPtr(it.name)}">`
+                            : `<i class="bi bi-box-seam"></i>`;
+                        const priceHtml = it.selling_price !== null
+                            ? `<span class="ptr-price-sub">${formatTzsPtr(it.selling_price)} / unit</span>`
+                            : '';
+                        const metaHtml = it.meta
+                            ? `<div class="ptr-prod-meta">${escapeHtmlPtr(it.meta)}</div>`
+                            : '';
+
+                        itemsHtml += `
+                            <div class="ptr-manifest-row">
+                                <div class="ptr-prod-thumb">${thumbHtml}</div>
+                                <div class="ptr-prod-info">
+                                    <div class="ptr-prod-name">${escapeHtmlPtr(it.name)}</div>
+                                    ${metaHtml}
+                                </div>
+                                <div class="ptr-prod-qty">
+                                    <span class="ptr-qty-pill">Qty: ${it.qty} ${escapeHtmlPtr(it.unit || 'pcs')}</span>
+                                    ${priceHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    if (t.extra_items_count > 0) {
+                        itemsHtml += `<div class="ptr-more-row">+ ${t.extra_items_count} additional product${t.extra_items_count > 1 ? 's' : ''} inside this transfer</div>`;
+                    }
+
+                    html += `
+                        <a href="${t.url}" class="ptr-card" data-transfer-id="${t.id}" data-submitted-ts="${t.submitted_at_ts || 0}">
+                            <div class="ptr-card-head">
+                                <div class="ptr-card-id-group">
+                                    <span class="ptr-card-num">
+                                        <i class="bi bi-receipt-cutoff text-primary"></i>
+                                        Transfer #${t.id}
+                                    </span>
+                                    <span class="ptr-status-pill ${isPartial ? 'is-partial' : ''}">
+                                        <i class="bi ${isPartial ? 'bi-pie-chart-fill' : 'bi-hourglass-split'}"></i>
+                                        ${statusLabel}
+                                    </span>
+                                </div>
+                                <span class="ptr-elapsed-badge ${elapsedClass}" data-elapsed-badge="1">
+                                    <i class="bi bi-clock-fill"></i>
+                                    <span class="ptr-elapsed-text">Waiting ${escapeHtmlPtr(t.elapsed_human)}</span>
+                                </span>
+                            </div>
+
+                            <div class="ptr-meta-grid">
+                                <div class="ptr-meta-item">
+                                    <span class="ptr-meta-k">Dispatched By</span>
+                                    <span class="ptr-meta-v" title="${escapeHtmlPtr(t.dispatched_by)}">${escapeHtmlPtr(t.dispatched_by)}</span>
+                                </div>
+                                <div class="ptr-meta-item">
+                                    <span class="ptr-meta-k">Submitted On</span>
+                                    <span class="ptr-meta-v" title="${escapeHtmlPtr(t.submitted_at_display)}">${escapeHtmlPtr(t.submitted_at_display)}</span>
+                                </div>
+                                <div class="ptr-meta-item">
+                                    <span class="ptr-meta-k">Receipt Progress</span>
+                                    <span class="ptr-meta-v">${confirmedProgress}</span>
+                                </div>
+                            </div>
+
+                            <div class="ptr-manifest">
+                                <div class="ptr-manifest-title">
+                                    <span>Products Awaiting Confirmation</span>
+                                    <span>${t.pending_items_count} item${t.pending_items_count > 1 ? 's' : ''} &middot; ${t.pending_total_qty} pcs</span>
+                                </div>
+                                <div class="ptr-manifest-list">${itemsHtml}</div>
+                            </div>
+
+                            <div class="ptr-card-cta">
+                                <span>Open Transfer #${t.id} to inspect &amp; confirm receipt</span>
+                                <i class="bi bi-arrow-right"></i>
+                            </div>
+                        </a>
+                    `;
+                });
+
+                $list.html(html);
+            }
+
+            function refreshLiveElapsedLabels(serverClockOffsetSec) {
+                const nowSec = Math.floor(Date.now() / 1000) + serverClockOffsetSec;
+                $('#ptrTransfersList .ptr-card').each(function() {
+                    const submittedTs = parseInt($(this).attr('data-submitted-ts'), 10);
+                    if (!submittedTs) return;
+                    const diff = Math.max(0, nowSec - submittedTs);
+                    const $badge = $(this).find('[data-elapsed-badge]');
+                    $badge.find('.ptr-elapsed-text').text('Waiting ' + formatElapsedClient(diff));
+                    if (diff >= 3 * 3600) {
+                        $badge.removeClass('ptr-elapsed-warn').addClass('ptr-elapsed-urgent');
+                    }
+                });
+
+                const $oldestEl = $('#ptrStatOldest');
+                const oldestTs = parseInt($oldestEl.attr('data-oldest-ts'), 10);
+                if (oldestTs) {
+                    const oldestDiff = Math.max(0, nowSec - oldestTs);
+                    $oldestEl
+                        .text(formatElapsedClient(oldestDiff))
+                        .removeClass('is-warn is-urgent')
+                        .addClass(oldestDiff >= 3 * 3600 ? 'is-urgent' : 'is-warn');
+                }
+            }
+
+            function showReminderToast(message) {
+                const $toast = $(`
+                    <div class="toast align-items-center text-white bg-dark border-0 shadow" role="alert" style="position:fixed;bottom:22px;right:22px;z-index:1090;border-radius:10px;font-size:.8rem;">
+                        <div class="d-flex">
+                            <div class="toast-body"><i class="bi bi-clock-history text-warning me-2"></i>${escapeHtmlPtr(message)}</div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `);
+                $('body').append($toast);
+                const bsToast = new bootstrap.Toast($toast[0], { delay: 3500 });
+                bsToast.show();
+                $toast[0].addEventListener('hidden.bs.toast', function() { $toast.remove(); });
+            }
+
+            function checkPendingTransferReminders() {
+                if (isModalOpen) return;
+                // Do not stack over another open modal
+                if ($('.modal.show').length > 0) return;
+
+                $.ajax({
+                    url: "{{ route('stock-transfers.pending-reminders') }}",
+                    type: 'GET',
+                    success: function(response) {
+                        const rawDue = response.due_transfers || [];
+                        const localSnoozes = getLocalSnoozes();
+                        const viewingTransferId = getCurrentViewingTransferId();
+                        const serverOffset = (response.server_now_ts || Math.floor(Date.now() / 1000)) - Math.floor(Date.now() / 1000);
+
+                        const dueTransfers = rawDue.filter(function(t) {
+                            if (viewingTransferId && t.id === viewingTransferId) return false;
+                            const snoozedUntil = localSnoozes[String(t.id)];
+                            return !snoozedUntil || Date.now() >= snoozedUntil;
+                        });
+
+                        if (dueTransfers.length === 0) return;
+
+                        currentDueTransfers = dueTransfers;
+                        currentRingtoneUrl = response.ringtone_url || null;
+
+                        renderTransfers(dueTransfers, response.index_url || "{{ route('stock-transfers.index') }}", response.shop_name || '');
+
+                        const modalEl = document.getElementById('pendingTransferReminderModal');
+                        if (!modalEl) return;
+
+                        isModalOpen = true;
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                        playTransferReminderSound(currentRingtoneUrl);
+
+                        if (liveElapsedTimer) clearInterval(liveElapsedTimer);
+                        liveElapsedTimer = setInterval(function() {
+                            if (isModalOpen) refreshLiveElapsedLabels(serverOffset);
+                        }, 30000);
+                    }
+                });
+            }
+
+            $(document).on('click', '.ptr-dismiss-trigger', function() {
+                const ids = currentDueTransfers.map(function(t) { return t.id; });
+                if (ids.length > 0) {
+                    saveLocalSnoozes(ids);
+                    $.ajax({
+                        url: "{{ route('stock-transfers.pending-reminders.dismiss') }}",
+                        type: 'POST',
+                        data: {
+                            transfer_ids: ids,
+                            _token: "{{ csrf_token() }}"
+                        }
+                    });
+                }
+
+                const modalEl = document.getElementById('pendingTransferReminderModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                showReminderToast('Reminder dismissed. We will remind you again in 3 hours if still unconfirmed.');
+            });
+
+            const reminderModalEl = document.getElementById('pendingTransferReminderModal');
+            if (reminderModalEl) {
+                reminderModalEl.addEventListener('hidden.bs.modal', function() {
+                    isModalOpen = false;
+                    if (liveElapsedTimer) {
+                        clearInterval(liveElapsedTimer);
+                        liveElapsedTimer = null;
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+                setTimeout(checkPendingTransferReminders, 900);
+                setInterval(function() {
+                    if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
+                        checkPendingTransferReminders();
+                    }
+                }, POLL_INTERVAL_MS);
+            });
+        })();
+        @endif
     </script>
 
     @stack('scripts')

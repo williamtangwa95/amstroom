@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', 'Employee Management')
-@section('page-title', 'Employee Management')
+@section('title', 'User Management')
+@section('page-title', 'User Management')
 @section('breadcrumb')
-<li class="breadcrumb-item active">Employees</li>
+<li class="breadcrumb-item active">Users</li>
 @endsection
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
@@ -11,7 +11,7 @@
             @if(auth()->user()->isShopAdmin() && $shopName)
                 {{ $shopName }} — Sellers
             @else
-                Employees
+                Users
             @endif
         </h5>
         <small style="color:var(--text-secondary);">
@@ -24,20 +24,9 @@
     </div>
     <a href="{{ route('users.create') }}" class="btn btn-accent">
         <i class="bi bi-person-plus-fill me-1"></i>
-        @if(auth()->user()->isShopAdmin()) Add Seller @else Register Employee @endif
+        @if(auth()->user()->isShopAdmin()) Add Seller @else Register User @endif
     </a>
 </div>
-
-@if(session('success'))
-<div class="alert alert-success border-0 rounded-3 mb-3" style="font-size:.83rem;">
-    <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}
-</div>
-@endif
-@if(session('error'))
-<div class="alert alert-danger border-0 rounded-3 mb-3" style="font-size:.83rem;">
-    <i class="bi bi-exclamation-circle-fill me-1"></i> {{ session('error') }}
-</div>
-@endif
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-3 p-md-4">

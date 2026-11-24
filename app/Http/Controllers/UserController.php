@@ -125,7 +125,7 @@ class UserController extends Controller
             }
 
             if ($canManageUser && $u->role !== 'owner' && $u->id !== $auth->id) {
-                $toggleConfirm = $u->status === 'active' ? 'Disable employee account?' : 'Enable employee account?';
+                $toggleConfirm = $u->status === 'active' ? 'Disable user account?' : 'Enable user account?';
                 $toggleText = $u->status === 'active' ? 'They will not be able to log in or reset password.' : 'They will be able to log in and use the application.';
                 $toggleTitle = $u->status === 'active' ? 'Disable' : 'Enable';
                 $toggleIcon = $u->status === 'active' ? '<i class="bi bi-person-dash" style="color:var(--text-secondary);"></i>' : '<i class="bi bi-person-check" style="color:#3fb950;"></i>';
@@ -147,7 +147,7 @@ class UserController extends Controller
                     $actions .= '<form method="POST" action="' . route('users.destroy', $u) . '" id="del-user-' . $u->id . '" class="d-inline">
                         ' . csrf_field() . method_field('DELETE') . '
                         <button type="button" class="btn btn-xs btn-outline-custom"
-                            data-confirm="Delete employee account?"
+                            data-confirm="Delete user account?"
                             data-form="del-user-' . $u->id . '"
                             title="Delete">
                             <i class="bi bi-trash" style="color:#e94560;"></i>
@@ -242,7 +242,7 @@ class UserController extends Controller
         ]);
 
         return redirect()->route('users.index')
-            ->with('success', 'Employee registered successfully.');
+            ->with('success', 'User registered successfully.');
     }
 
     public function show(User $user)
@@ -307,7 +307,7 @@ class UserController extends Controller
         $user->update($data);
 
         return redirect()->route('users.index')
-            ->with('success', 'Employee updated successfully.');
+            ->with('success', 'User updated successfully.');
     }
 
     public function toggleStatus(User $user)
@@ -325,7 +325,7 @@ class UserController extends Controller
         $newStatus = $user->status === 'active' ? 'inactive' : 'active';
         $user->update(['status' => $newStatus]);
 
-        $message = $newStatus === 'active' ? 'Employee account has been enabled.' : 'Employee account has been disabled.';
+        $message = $newStatus === 'active' ? 'User account has been enabled.' : 'User account has been disabled.';
 
         return back()->with('success', $message);
     }
@@ -374,12 +374,12 @@ class UserController extends Controller
         }
 
         if ($user->hasDependencies()) {
-            return back()->with('error', 'Cannot delete employee account because they have associated records (sales, stock actions, or other dependencies).');
+            return back()->with('error', 'Cannot delete user account because they have associated records (sales, stock actions, or other dependencies).');
         }
 
         $user->delete();
         return redirect()->route('users.index')
-            ->with('success', 'Employee deleted successfully.');
+            ->with('success', 'User deleted successfully.');
     }
 
     /**

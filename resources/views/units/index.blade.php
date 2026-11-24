@@ -176,6 +176,7 @@ $(function () {
         ],
         order: [[1, 'asc']],
         pageLength: 15,
+        lengthMenu: [[10, 15, 25, 50, 100, -1], [10, 15, 25, 50, 100, 'All']],
         language: {
             search: '',
             searchPlaceholder: 'Search units…',

@@ -26,17 +26,6 @@
     </div>
 
     <div class="card-body p-3 p-md-4">
-        @if(session('success'))
-            <div class="alert alert-success mb-3 border-0 rounded-3" style="font-size:.83rem;">
-                <i class="bi bi-check-circle-fill me-1"></i> {{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger mb-3 border-0 rounded-3" style="font-size:.83rem;">
-                <i class="bi bi-exclamation-circle-fill me-1"></i> {{ session('error') }}
-            </div>
-        @endif
-
         {{-- Pending notification banner for shop admin --}}
         @if(auth()->user()->isShopAdmin())
             @php

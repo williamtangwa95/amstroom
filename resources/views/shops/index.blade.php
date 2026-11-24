@@ -27,7 +27,7 @@
                     <th data-priority="1">Shop Name</th>
                     <th data-priority="3">Location</th>
                     <th data-priority="3">Phone</th>
-                    <th data-priority="2">Employees</th>
+                    <th data-priority="2">Users</th>
                     <th data-priority="2">Sales</th>
                     <th data-priority="2">Status</th>
                     <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>

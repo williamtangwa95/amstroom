@@ -1,8 +1,8 @@
 @extends('layouts.app')
 @section('title', $user->name)
-@section('page-title', 'Employee Profile')
+@section('page-title', 'User Profile')
 @section('breadcrumb')
-<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Employees</a></li>
+<li class="breadcrumb-item"><a href="{{ route('users.index') }}">Users</a></li>
 <li class="breadcrumb-item active">{{ $user->name }}</li>
 @endsection
 @section('content')
@@ -46,7 +46,7 @@
                         <td>{{ $user->defects->count() }} item(s)</td>
                     </tr>
                 </table>
-                <a href="{{ route('users.index') }}" class="btn btn-outline-custom">Back to Employees</a>
+                <a href="{{ route('users.index') }}" class="btn btn-outline-custom">Back to Users</a>
             </div>
         </div>
     </div>

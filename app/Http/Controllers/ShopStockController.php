@@ -84,18 +84,17 @@ class ShopStockController extends Controller
         $categories = collect();
         if ($user->isOwner()) {
             $categories = \App\Models\Category::where('is_admin_category', false)->orderBy('category_name')->get();
+            $items = \App\Models\Item::where('is_admin_item', false)->orderBy('item_name')->get();
         } elseif ($user->isShopAdmin() || $user->isSeller()) {
-            if ($user->isShopAdmin()) {
-                $items = \App\Models\Item::with(['shopStocks' => function ($q) use ($user) {
-                    $q->where('shop_id', $user->shop_id);
-                }, 'mainStocks'])->where(function ($q) use ($user) {
-                    $q->where('is_admin_item', false)
-                      ->orWhere(function ($sq) use ($user) {
-                          $sq->where('is_admin_item', true)
-                             ->where('shop_id', $user->shop_id);
-                      });
-                })->orderBy('item_name')->get();
-            }
+            $items = \App\Models\Item::with(['shopStocks' => function ($q) use ($user) {
+                $q->where('shop_id', $user->shop_id);
+            }, 'mainStocks'])->where(function ($q) use ($user) {
+                $q->where('is_admin_item', false)
+                  ->orWhere(function ($sq) use ($user) {
+                      $sq->where('is_admin_item', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            })->orderBy('item_name')->get();
 
             $categories = \App\Models\Category::where(function ($q) use ($user) {
                 $q->where('is_admin_category', false)
@@ -147,6 +146,17 @@ class ShopStockController extends Controller
 
         if ($user->isOwner()) {
             $query->where('shop_stocks.is_admin_stock', false);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->whereHas('item', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+
+        $itemId = $request->input('item_id', $request->input('product_id'));
+        if (!empty($itemId)) {
+            $query->where('shop_stocks.item_id', $itemId);
         }
 
         $searchValue = trim($request->input('search.value', ''));
@@ -332,8 +342,11 @@ class ShopStockController extends Controller
             $sellingPriceHtml = 'TZS ' . number_format($displaySp, 0);
 
             // Build batch details sub-table HTML inside child template (showing all batches including remaining_quantity = 0 for physical verification)
-            $childTableHtml = '<div class="child-details-template d-none" style="width:100% !important;"><div class="p-2.5 p-sm-3 my-2 rounded border w-100" style="background:var(--body-bg); border-color:var(--card-border) !important; box-sizing: border-box !important;">';
-            $childTableHtml .= '<h6 class="fw-700 mb-2 small text-accent"><i class="bi bi-layers-fill me-1"></i> Stock Batches Breakdown (' . $totalBatchesCount . ' Batch' . ($totalBatchesCount > 1 ? 'es' : '') . ')</h6>';
+            $childTableHtml = '<div class="child-details-template d-none text-start" style="width:100% !important;"><div class="ss-batch-panel">';
+            $childTableHtml .= '<div class="ss-batch-panel-head">'
+                . '<span class="ss-batch-panel-title"><i class="bi bi-layers-fill"></i> Stock Batches</span>'
+                . '<span class="ss-batch-count-pill">' . $totalBatchesCount . ' Batch' . ($totalBatchesCount > 1 ? 'es' : '') . '</span>'
+                . '</div>';
 
             // ── DESKTOP TABLE (md and up) ─────────────────────────────────
             $childTableHtml .= '<div class="d-none d-md-block"><div class="table-responsive">';
@@ -347,6 +360,7 @@ class ShopStockController extends Controller
 
             foreach ($allStocks as $batch) {
                 $canDeleteBatch = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id && $batch->is_admin_stock);
+                $canTransferBatch = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) && $batch->is_admin_stock && $batch->remaining_quantity > 0;
                 $batchTypeTag = $batch->is_admin_stock
                     ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
                     : '<span class="badge bg-secondary" style="font-size:0.65rem;">Owner Stock</span>';
@@ -413,42 +427,35 @@ class ShopStockController extends Controller
             $childTableHtml .= '</tbody></table></div></div>'; // end desktop table
 
             // ── MOBILE CARDS (below md) ───────────────────────────────────
-            $childTableHtml .= '<div class="d-md-none">';
+            $childTableHtml .= '<div class="d-md-none ss-batch-cards">';
             foreach ($allStocks as $batch) {
                 $canDeleteBatch = auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id && $batch->is_admin_stock);
+                $canTransferBatch = (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) && $batch->is_admin_stock && $batch->remaining_quantity > 0;
                 $batchTypeTag = $batch->is_admin_stock
-                    ? '<span class="badge bg-info text-dark" style="font-size:0.65rem;">Admin Stock</span>'
-                    : '<span class="badge bg-secondary" style="font-size:0.65rem;">Owner Stock</span>';
+                    ? '<span class="ss-batch-type is-admin">Admin Stock</span>'
+                    : '<span class="ss-batch-type is-owner">Owner Stock</span>';
 
                 $soldBatchQty    = max(0, $batch->quantity - $batch->remaining_quantity);
                 $isZeroRemaining = ($batch->remaining_quantity <= 0);
                 $remainingDisplay = $isZeroRemaining
-                    ? '<span class="badge bg-danger" style="font-size:0.72rem;">0 (Sold Out)</span>'
-                    : '<strong class="text-success">' . $batch->remaining_quantity . '</strong>';
+                    ? '<span class="ss-batch-soldout">Sold Out</span>'
+                    : '<span class="ss-batch-qty-val text-success">' . number_format($batch->remaining_quantity) . '</span>';
 
                 // Mobile action buttons (labeled)
-                $mobileBatchActions = '<div class="d-flex align-items-center gap-2 flex-wrap mt-1">';
+                $mobileBatchActions = '<div class="ss-batch-actions">';
                 $mobileBatchActions .= '<a href="' . route('shop-stock.show', $batch) . '" class="btn btn-xs btn-outline-custom"><i class="bi bi-eye me-1"></i>View</a>';
                 if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
                     $mobileBatchActions .= '<a href="' . route('shop-stock.edit', $batch) . '" class="btn btn-xs btn-outline-custom"><i class="bi bi-pencil me-1"></i>Edit</a>';
                 }
                 if ($canDeleteBatch) {
                     if ($batch->quantity != $batch->remaining_quantity) {
-                        $mobileBatchActions .= '<button type="button" class="btn btn-xs btn-outline-secondary" disabled><i class="bi bi-trash me-1"></i>Delete</button>';
+                        $mobileBatchActions .= '<button type="button" class="btn btn-xs btn-outline-secondary" disabled title="Cannot delete: sales have occurred"><i class="bi bi-trash me-1"></i>Delete</button>';
                     } else {
                         $mobileBatchActions .= '<form action="' . route('shop-stock.destroy', $batch) . '" method="POST" class="d-inline delete-stock-form">'
                             . csrf_field() . method_field('DELETE')
                             . '<button type="button" class="btn btn-xs btn-outline-danger confirm-delete-btn"><i class="bi bi-trash me-1"></i>Delete</button>'
                             . '</form>';
                     }
-                }
-                if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
-                    $batchChecked = $batch->allow_components ? 'checked' : '';
-                    $mobileBatchActions .= '<div class="d-flex align-items-center gap-1">'
-                        . '<span style="font-size:0.72rem;color:var(--text-secondary);">Components</span>'
-                        . '<div class="form-check form-switch mb-0">'
-                        . '<input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $batch->id . '" style="cursor:pointer;width:28px;height:14px;" ' . $batchChecked . '>'
-                        . '</div></div>';
                 }
                 if ($canTransferBatch) {
                     $mobileBatchActions .= '<button type="button" class="btn btn-xs btn-outline-warning btn-transfer-to-owner" '
@@ -460,23 +467,45 @@ class ShopStockController extends Controller
                         . 'data-buying-price="' . (float)$batch->buying_price . '" '
                         . 'data-selling-price="' . (float)$batch->selling_price . '" '
                         . 'title="Transfer Admin Stock to Owner Stock">'
-                        . '<i class="bi bi-arrow-left-right me-1"></i>Transfer to Owner'
+                        . '<i class="bi bi-arrow-left-right me-1"></i>To Owner'
                         . '</button>';
+                }
+                if (auth()->user()->isOwner() || (auth()->user()->isShopAdmin() && auth()->user()->shop_id == $batch->shop_id)) {
+                    $batchChecked = $batch->allow_components ? 'checked' : '';
+                    $mobileBatchActions .= '<label class="ss-batch-comp-toggle">'
+                        . '<span>Components</span>'
+                        . '<span class="form-check form-switch mb-0">'
+                        . '<input class="form-check-input toggle-components-btn" type="checkbox" data-id="' . $batch->id . '" ' . $batchChecked . '>'
+                        . '</span></label>';
                 }
                 $mobileBatchActions .= '</div>';
 
-                $childTableHtml .= '<div class="border rounded p-3 mb-2" style="font-size:0.78rem;background:var(--card-bg);border-color:var(--card-border)!important;width:100%!important;box-sizing:border-box!important;' . ($isZeroRemaining ? 'opacity:0.85;' : '') . '">';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Batch #:</span><span class="fw-700 text-primary">#' . $batch->id . '</span></div>';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Date Received:</span><span class="fw-600">' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</span></div>';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Stock Type:</span><div>' . $batchTypeTag . '</div></div>';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Initial Qty:</span><span class="fw-600">' . $batch->quantity . '</span></div>';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Sold Qty:</span><span class="fw-600 text-info">' . $soldBatchQty . '</span></div>';
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Remaining Qty:</span><div>' . $remainingDisplay . '</div></div>';
-                if (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) {
-                    $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Buying Price:</span><span class="fw-600">TZS ' . number_format($batch->buying_price, 0) . '</span></div>';
+                $showBuying = auth()->user()->isOwner() || auth()->user()->isShopAdmin();
+
+                $childTableHtml .= '<div class="ss-batch-card' . ($isZeroRemaining ? ' is-empty' : '') . '">';
+                // Card header: Batch # + Type on left, Date on right
+                $childTableHtml .= '<div class="ss-batch-card-head">'
+                    . '<div class="ss-batch-id-wrap"><span class="ss-batch-id">Batch #' . $batch->id . '</span>' . $batchTypeTag . '</div>'
+                    . '<span class="ss-batch-date"><i class="bi bi-calendar3"></i> ' . ($batch->date_received ? $batch->date_received->format('M d, Y') : 'N/A') . '</span>'
+                    . '</div>';
+
+                // 3-column Qty strip
+                $childTableHtml .= '<div class="ss-batch-qty-grid">'
+                    . '<div class="ss-batch-qty-box"><span class="ss-batch-qty-lbl">Initial</span><span class="ss-batch-qty-val">' . number_format($batch->quantity) . '</span></div>'
+                    . '<div class="ss-batch-qty-box"><span class="ss-batch-qty-lbl">Sold</span><span class="ss-batch-qty-val text-primary">' . number_format($soldBatchQty) . '</span></div>'
+                    . '<div class="ss-batch-qty-box"><span class="ss-batch-qty-lbl">Remaining</span>' . $remainingDisplay . '</div>'
+                    . '</div>';
+
+                // Pricing strip
+                $childTableHtml .= '<div class="ss-batch-price-grid' . ($showBuying ? '' : ' is-single') . '">';
+                if ($showBuying) {
+                    $childTableHtml .= '<div class="ss-batch-price-box"><span class="ss-batch-price-lbl">Buying Price</span><span class="ss-batch-price-val">TZS ' . number_format($batch->buying_price, 0) . '</span></div>';
                 }
-                $childTableHtml .= '<div class="d-flex align-items-center py-1.5 border-bottom" style="border-color:var(--card-border)!important;"><span class="fw-700 text-muted" style="font-size:0.75rem; width:115px; min-width:115px; flex-shrink:0;">Selling Price:</span><span class="fw-600 text-success">TZS ' . number_format($batch->selling_price, 0) . '</span></div>';
-                $childTableHtml .= '<div class="pt-2"><div class="fw-700 text-muted mb-1" style="font-size:0.75rem;">Batch Actions</div>' . $mobileBatchActions . '</div>';
+                $childTableHtml .= '<div class="ss-batch-price-box is-selling"><span class="ss-batch-price-lbl">Selling Price</span><span class="ss-batch-price-val">TZS ' . number_format($batch->selling_price, 0) . '</span></div>';
+                $childTableHtml .= '</div>';
+
+                // Footer actions
+                $childTableHtml .= '<div class="ss-batch-card-foot">' . $mobileBatchActions . '</div>';
                 $childTableHtml .= '</div>'; // end batch card
             }
             $childTableHtml .= '</div>'; // end mobile cards
@@ -2582,7 +2611,32 @@ class ShopStockController extends Controller
             ->mergeBindings($lowStockQuery->toBase())
             ->count();
 
-        return view('shop-stock.finished', compact('shops', 'shopId', 'finishedCount', 'lowStockItems'));
+        $items = collect();
+        $categories = collect();
+        if ($user->isOwner()) {
+            $categories = \App\Models\Category::where('is_admin_category', false)->orderBy('category_name')->get();
+            $items = \App\Models\Item::where('is_admin_item', false)->orderBy('item_name')->get();
+        } elseif ($user->isShopAdmin() || $user->isSeller()) {
+            $items = \App\Models\Item::with(['shopStocks' => function ($q) use ($user) {
+                $q->where('shop_id', $user->shop_id);
+            }, 'mainStocks'])->where(function ($q) use ($user) {
+                $q->where('is_admin_item', false)
+                  ->orWhere(function ($sq) use ($user) {
+                      $sq->where('is_admin_item', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            })->orderBy('item_name')->get();
+
+            $categories = \App\Models\Category::where(function ($q) use ($user) {
+                $q->where('is_admin_category', false)
+                  ->orWhere(function ($sq) use ($user) {
+                      $sq->where('is_admin_category', true)
+                         ->where('shop_id', $user->shop_id);
+                  });
+            })->orderBy('category_name')->get();
+        }
+
+        return view('shop-stock.finished', compact('shops', 'shopId', 'finishedCount', 'lowStockItems', 'categories', 'items'));
     }
 
     public function finishedData(Request $request)
@@ -2598,6 +2652,17 @@ class ShopStockController extends Controller
 
         if ($user->isOwner()) {
             $query->where('shop_stocks.is_admin_stock', false);
+        }
+
+        if ($request->filled('category_id')) {
+            $query->whereHas('item', function ($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+
+        $itemId = $request->input('item_id', $request->input('product_id'));
+        if (!empty($itemId)) {
+            $query->where('shop_stocks.item_id', $itemId);
         }
 
         // Only include items where overall remaining quantity in the shop is 0

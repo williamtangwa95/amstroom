@@ -5,15 +5,88 @@
 <li class="breadcrumb-item"><a href="{{ route('shop-stock.index') }}">Shop Stock</a></li>
 <li class="breadcrumb-item active">Details</li>
 @endsection
+
+@push('styles')
+<style>
+    .ss-detail-card {
+        overflow: hidden;
+        border-radius: 14px;
+    }
+    .ss-detail-header {
+        display: flex;
+        align-items: flex-start;
+        gap: .5rem;
+        flex-wrap: wrap;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .ss-meta-list {
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+    }
+    .ss-meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .7rem .95rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: .85rem;
+    }
+    .ss-meta-row:last-child {
+        border-bottom: none;
+    }
+    .ss-meta-label {
+        font-size: .72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        max-width: 48%;
+        line-height: 1.3;
+    }
+    .ss-meta-value {
+        flex: 1;
+        min-width: 0;
+        text-align: right;
+        color: var(--text-primary);
+        font-weight: 600;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    @media (max-width: 479.98px) {
+        .ss-meta-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: .2rem;
+            padding: .65rem .85rem;
+        }
+        .ss-meta-label {
+            max-width: 100%;
+        }
+        .ss-meta-value {
+            width: 100%;
+            text-align: left;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card mb-4">
-            <div class="card-header"><i class="bi bi-layers-fill me-2" style="color:#3fb950;"></i>{{ $shopStock->item->item_name }} @ {{ $shopStock->shop->shop_name }}</div>
-            <div class="card-body">
+    <div class="col-12 col-lg-7 col-xl-6">
+        <div class="card mb-4 ss-detail-card">
+            <div class="card-header ss-detail-header">
+                <i class="bi bi-layers-fill flex-shrink-0" style="color:#3fb950; margin-top:2px;"></i>
+                <span class="min-w-0">{{ $shopStock->item->item_name }} &commat; {{ $shopStock->shop->shop_name }}</span>
+            </div>
+            <div class="card-body p-3 p-md-4">
                 @if($shopStock->item->image_path)
                     <div class="text-center mb-3">
-                        <div class="product-img-wrapper overflow-hidden rounded position-relative d-inline-block" style="max-height: 200px; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage('{{ asset('media/' . $shopStock->item->image_path) }}', '{{ e($shopStock->item->item_name) }}')" title="Click to zoom image">
+                        <div class="product-img-wrapper overflow-hidden rounded position-relative d-inline-block" style="max-height: 200px; max-width: 100%; cursor: pointer; border: 1px solid var(--card-border);" onclick="zoomProductImage('{{ asset('media/' . $shopStock->item->image_path) }}', '{{ e($shopStock->item->item_name) }}')" title="Click to zoom image">
                             <img src="{{ asset('media/' . $shopStock->item->image_path) }}" alt="{{ $shopStock->item->item_name }}" class="img-fluid rounded product-img-thumb p-1" style="max-height: 190px; object-fit: contain; transition: transform 0.25s ease;">
                             <div class="img-zoom-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0, 0, 0, 0.4); opacity: 0; transition: opacity 0.2s ease;">
                                 <i class="bi bi-zoom-in text-white fs-3"></i>
@@ -27,31 +100,54 @@
                     </div>
                 @endif
 
-                <table class="table table-borderless" style="font-size:.85rem;">
-                    <tr><th style="color:var(--text-secondary);width:40%;">Shop</th><td><strong>{{ $shopStock->shop->shop_name }}</strong></td></tr>
-                    <tr><th style="color:var(--text-secondary);">Category</th><td>{{ $shopStock->item->category->category_name }}</td></tr>
-                    @php
-                        $msStock = \App\Models\MainStock::where('item_id', $shopStock->item_id)->orderByDesc('date_received')->first();
-                        $displayBp = (auth()->user()->isOwner() && $msStock) ? $msStock->buying_price : $shopStock->buying_price;
-                        $displaySp = (auth()->user()->isOwner() && $msStock) ? $msStock->selling_price : $shopStock->selling_price;
-                    @endphp
+                @php
+                    $msStock = \App\Models\MainStock::where('item_id', $shopStock->item_id)->orderByDesc('date_received')->first();
+                    $displayBp = (auth()->user()->isOwner() && $msStock) ? $msStock->buying_price : $shopStock->buying_price;
+                    $displaySp = (auth()->user()->isOwner() && $msStock) ? $msStock->selling_price : $shopStock->selling_price;
+                @endphp
+
+                <div class="ss-meta-list">
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Shop</span>
+                        <span class="ss-meta-value fw-700">{{ $shopStock->shop->shop_name }}</span>
+                    </div>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Category</span>
+                        <span class="ss-meta-value">{{ $shopStock->item->category->category_name }}</span>
+                    </div>
                     @if(auth()->user()->isOwner())
-                    <tr><th style="color:var(--text-secondary);">Main Store Buying Price (BP)</th><td><strong style="color:var(--text-secondary);">TZS {{ number_format($displayBp, 0) }}</strong></td></tr>
-                    <tr><th style="color:var(--text-secondary);">Main Store Selling Price (SP)</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($displaySp, 0) }}</strong></td></tr>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Main Store Buying Price (BP)</span>
+                        <span class="ss-meta-value" style="color:var(--text-secondary);">TZS {{ number_format($displayBp, 0) }}</span>
+                    </div>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Main Store Selling Price (SP)</span>
+                        <span class="ss-meta-value" style="color:#059669; font-size:1rem; font-weight:700;">TZS {{ number_format($displaySp, 0) }}</span>
+                    </div>
                     @else
-                    <tr><th style="color:var(--text-secondary);">Selling Price</th><td><strong style="color:#3fb950;font-size:1.05rem;">TZS {{ number_format($shopStock->selling_price, 0) }}</strong></td></tr>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Selling Price</span>
+                        <span class="ss-meta-value" style="color:#059669; font-size:1rem; font-weight:700;">TZS {{ number_format($shopStock->selling_price, 0) }}</span>
+                    </div>
                     @endif
-                    <tr><th style="color:var(--text-secondary);">Initial Qty</th><td>{{ $shopStock->quantity }}</td></tr>
-                    <tr><th style="color:var(--text-secondary);">Remaining Qty</th>
-                        <td>
-                            <strong style="color:{{ $shopStock->isLowStock() ? '#e94560' : '#3fb950' }};font-size:1.1rem;">{{ $shopStock->remaining_quantity }}</strong>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Initial Qty</span>
+                        <span class="ss-meta-value">{{ number_format($shopStock->quantity) }}</span>
+                    </div>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Remaining Qty</span>
+                        <span class="ss-meta-value">
+                            <strong style="color:{{ $shopStock->isLowStock() ? '#e94560' : '#059669' }}; font-size:1.05rem;">{{ number_format($shopStock->remaining_quantity) }}</strong>
                             @if($shopStock->isLowStock())
-                            <span class="badge badge-rejected ms-2">Low Stock Alert</span>
+                            <span class="badge-soft-danger ms-1" style="font-size:.68rem;">Low Stock Alert</span>
                             @endif
-                        </td>
-                    </tr>
-                    <tr><th style="color:var(--text-secondary);">Date Received</th><td>{{ $shopStock->date_received ? $shopStock->date_received->format('F d, Y') : '—' }}</td></tr>
-                </table>
+                        </span>
+                    </div>
+                    <div class="ss-meta-row">
+                        <span class="ss-meta-label">Date Received</span>
+                        <span class="ss-meta-value">{{ $shopStock->date_received ? $shopStock->date_received->format('F d, Y') : '—' }}</span>
+                    </div>
+                </div>
 
                 <form method="POST" action="{{ route('items.upload-image', $shopStock->item) }}" enctype="multipart/form-data" class="mt-3 pt-3 border-top">
                     @csrf
@@ -95,20 +191,20 @@
                 </div>
 
                 <div class="p-3 rounded mt-3" style="background:var(--input-bg);border:1px solid var(--input-border);">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
+                    <div class="d-flex align-items-center justify-content-between gap-3">
+                        <div style="flex:1; min-width:0;">
                             <label class="form-label fw-600 mb-0">Custom Components on Sell</label>
                             <small class="form-text text-muted d-block" style="font-size:0.75rem;">Allow adding/customizing component items when selling this stock at POS.</small>
                         </div>
-                        <div class="form-check form-switch mb-0">
+                        <div class="form-check form-switch mb-0 flex-shrink-0">
                             <input class="form-check-input toggle-components-btn" type="checkbox" data-id="{{ $shopStock->id }}" style="cursor:pointer; width: 34px; height: 18px;" {{ $shopStock->allow_components ? 'checked' : '' }}>
                         </div>
                     </div>
                 </div>
 
                 @if(auth()->user()->isShopAdmin() && $shopStock->is_admin_stock)
-                <div class="p-3 rounded mt-3 d-flex align-items-center justify-content-between" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
-                    <div>
+                <div class="p-3 rounded mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
+                    <div style="flex:1; min-width:180px;">
                         <strong class="text-danger d-block" style="font-size:0.85rem;">Delete Stock Batch</strong>
                         <small class="text-muted d-block" style="font-size:0.75rem;">
                             Submit a request to the owner to delete this stock batch.

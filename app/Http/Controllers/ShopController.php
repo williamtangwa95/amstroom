@@ -147,14 +147,22 @@ class ShopController extends Controller
         }
 
         $shop->load([
-            'users',
+            'users' => function ($q) {
+                $q->orderByRaw("CASE role WHEN 'shop_admin' THEN 1 WHEN 'seller' THEN 2 ELSE 3 END")
+                  ->orderBy('name');
+            },
             'shopStocks' => function ($q) {
-                $q->where('is_admin_stock', false)->with('item.category');
+                $q->where('is_admin_stock', false)
+                  ->with(['item.category', 'item.unit'])
+                  ->orderByDesc('remaining_quantity');
             }
         ]);
         $sales_total = $shop->sales()->where('is_admin_stock', false)->sum('total_amount');
-        $stock_count = $shop->shopStocks()->where('is_admin_stock', false)->sum('remaining_quantity');
-        return view('shops.show', compact('shop', 'sales_total', 'stock_count'));
+        $sales_count = $shop->sales()->where('is_admin_stock', false)->count();
+        $stock_count = $shop->shopStocks->sum('remaining_quantity');
+        $low_stock_count = $shop->shopStocks->filter(fn ($s) => $s->isLowStock())->count();
+
+        return view('shops.show', compact('shop', 'sales_total', 'sales_count', 'stock_count', 'low_stock_count'));
     }
 
     public function edit(Shop $shop)
@@ -228,6 +236,6 @@ class ShopController extends Controller
         $user = User::findOrFail($request->user_id);
         $user->update(['shop_id' => $shop->id]);
 
-        return back()->with('success', 'Employee assigned to shop successfully.');
+        return back()->with('success', 'User assigned to shop successfully.');
     }
 }

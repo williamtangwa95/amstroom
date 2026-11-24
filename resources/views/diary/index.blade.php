@@ -5,12 +5,142 @@
 <li class="breadcrumb-item active">Daily Diary</li>
 @endsection
 
+@push('styles')
+<style>
+    /* ── Diary Executive KPI Cards ── */
+    .diary-kpi-grid {
+        display: grid;
+        gap: .85rem;
+        margin-bottom: 1.25rem;
+    }
+    .diary-kpi-grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .diary-kpi-grid-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .diary-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .diary-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .diary-kpi-card.is-clickable {
+        cursor: pointer;
+    }
+
+    .diary-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+    .diary-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .diary-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .diary-kpi-val {
+        font-size: clamp(1rem, 1.4vw, 1.28rem);
+        font-weight: 800;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .diary-kpi-val.is-currency {
+        font-size: clamp(.92rem, 1.2vw, 1.12rem);
+        white-space: normal;
+        word-break: break-word;
+    }
+    .diary-kpi-sub {
+        font-size: .71rem;
+        color: #94a3b8;
+        margin-top: .2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1199.98px) {
+        .diary-kpi-grid-5 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 991.98px) {
+        .diary-kpi-grid-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 767.98px) {
+        .diary-kpi-grid {
+            gap: .65rem;
+        }
+        .diary-kpi-grid-5 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .diary-kpi-grid-5 .diary-kpi-cost {
+            grid-column: 1 / -1;
+        }
+        .diary-kpi-card {
+            padding: .85rem .9rem;
+            gap: .7rem;
+            border-radius: 12px;
+        }
+        .diary-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .diary-kpi-grid-4 {
+            grid-template-columns: 1fr;
+        }
+        .diary-kpi-grid-5 {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h5 class="mb-0 fw-700">Daily Diary</h5>
         <small style="color:var(--text-secondary);">
-            @if(auth()->user()->isOwner())
+            @if(!$canUseShopDiary)
                 Personal diary logs — private records for you only
             @else
                 Personal diary logs &amp; Shop diary records for team collaboration
@@ -25,119 +155,110 @@
 </div>
 
 {{-- Summary Cards --}}
-<div class="row g-2 g-md-3 mb-4">
-    @if(auth()->user()->isOwner())
-        <div class="col-6 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Total Entries</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:rgba(88,166,255,0.15);color:#58a6ff;">
-                        <i class="bi bi-journal-text fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardTotalEntries" style="color:#58a6ff;">{{ number_format($totalEntries) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Personal Entries</div>
-            </div>
+@if(!$canUseShopDiary)
+<div class="diary-kpi-grid diary-kpi-grid-4">
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="all" title="Show all entries">
+        <div class="diary-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-journal-text"></i>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Follow-up</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:rgba(227,179,65,0.15);color:#e3b341;">
-                        <i class="bi bi-bell-fill fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardFollowUp" style="color:#e3b341;">{{ number_format($followUpCount) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Needs Follow-up</div>
-            </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Total Entries</p>
+            <div class="diary-kpi-val" id="cardTotalEntries" style="color:#0077b6;">{{ number_format($totalEntries) }}</div>
+            <div class="diary-kpi-sub">Personal Entries</div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Closed</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:rgba(63,185,80,0.15);color:#3fb950;">
-                        <i class="bi bi-check-circle-fill fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardNoFollowUp" style="color:#3fb950;">{{ number_format($noFollowUp) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">No Follow-up Needed</div>
-            </div>
+    </div>
+
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="followup" title="Filter entries needing follow-up">
+        <div class="diary-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-bell-fill"></i>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Total Cost</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px;height:34px;background:rgba(233,69,96,0.15);color:#e94560;">
-                        <i class="bi bi-cash-stack fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0 text-truncate" id="cardTotalCost" style="color:#e94560;">TZS {{ number_format($totalCost, 0) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Combined Recorded Cost</div>
-            </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Follow-up</p>
+            <div class="diary-kpi-val" id="cardFollowUp" style="color:#d97706;">{{ number_format($followUpCount) }}</div>
+            <div class="diary-kpi-sub">Needs Follow-up</div>
         </div>
-    @else
-        <div class="col-6 col-md-2">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Total</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:rgba(88,166,255,0.15);color:#58a6ff;">
-                        <i class="bi bi-journal-text fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardTotalEntries" style="color:#58a6ff;">{{ number_format($totalEntries) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">All Accessible</div>
-            </div>
+    </div>
+
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="closed" title="Filter entries with no follow-up">
+        <div class="diary-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-check-circle-fill"></i>
         </div>
-        <div class="col-6 col-md-2">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Personal</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:rgba(163,113,247,0.15);color:#a371f7;">
-                        <i class="bi bi-person-fill fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardPersonalCount" style="color:#a371f7;">{{ number_format($personalCount) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">My Private Logs</div>
-            </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Closed</p>
+            <div class="diary-kpi-val" id="cardNoFollowUp" style="color:#059669;">{{ number_format($noFollowUp) }}</div>
+            <div class="diary-kpi-sub">No Follow-up Needed</div>
         </div>
-        <div class="col-6 col-md-2">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Shop</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:rgba(56,139,253,0.15);color:#388bfd;">
-                        <i class="bi bi-shop fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardShopCount" style="color:#388bfd;">{{ number_format($shopCount) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Shared Records</div>
-            </div>
+    </div>
+
+    <div class="diary-kpi-card diary-kpi-cost">
+        <div class="diary-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-cash-stack"></i>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Follow-up</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:rgba(227,179,65,0.15);color:#e3b341;">
-                        <i class="bi bi-bell-fill fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0" id="cardFollowUp" style="color:#e3b341;">{{ number_format($followUpCount) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Needs Follow-up</div>
-            </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Total Cost</p>
+            <div class="diary-kpi-val is-currency" id="cardTotalCost" style="color:#e11d48;">TZS {{ number_format($totalCost, 0) }}</div>
+            <div class="diary-kpi-sub">Combined Recorded Cost</div>
         </div>
-        <div class="col-12 col-md-3">
-            <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.70rem;">Total Cost</span>
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:rgba(233,69,96,0.15);color:#e94560;">
-                        <i class="bi bi-cash-stack fs-6"></i>
-                    </div>
-                </div>
-                <div class="fw-800 fs-5 mb-0 text-truncate" id="cardTotalCost" style="color:#e94560;">TZS {{ number_format($totalCost, 0) }}</div>
-                <div class="small text-muted" style="font-size:0.68rem;">Combined Cost</div>
-            </div>
-        </div>
-    @endif
+    </div>
 </div>
+@else
+<div class="diary-kpi-grid diary-kpi-grid-5">
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="all" title="Show all accessible entries">
+        <div class="diary-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-journal-text"></i>
+        </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Total</p>
+            <div class="diary-kpi-val" id="cardTotalEntries" style="color:#0077b6;">{{ number_format($totalEntries) }}</div>
+            <div class="diary-kpi-sub">All Accessible</div>
+        </div>
+    </div>
+
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="personal" title="Filter personal diary entries">
+        <div class="diary-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Personal</p>
+            <div class="diary-kpi-val" id="cardPersonalCount" style="color:#7c3aed;">{{ number_format($personalCount) }}</div>
+            <div class="diary-kpi-sub">My Private Logs</div>
+        </div>
+    </div>
+
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="shop" title="Filter shared shop diary entries">
+        <div class="diary-kpi-icon" style="background:rgba(14,165,233,.12);color:#0284c7;">
+            <i class="bi bi-shop"></i>
+        </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Shop</p>
+            <div class="diary-kpi-val" id="cardShopCount" style="color:#0284c7;">{{ number_format($shopCount) }}</div>
+            <div class="diary-kpi-sub">Shared Records</div>
+        </div>
+    </div>
+
+    <div class="diary-kpi-card is-clickable" data-kpi-filter="followup" title="Filter entries needing follow-up">
+        <div class="diary-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-bell-fill"></i>
+        </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Follow-up</p>
+            <div class="diary-kpi-val" id="cardFollowUp" style="color:#d97706;">{{ number_format($followUpCount) }}</div>
+            <div class="diary-kpi-sub">Needs Follow-up</div>
+        </div>
+    </div>
+
+    <div class="diary-kpi-card diary-kpi-cost">
+        <div class="diary-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="diary-kpi-body">
+            <p class="diary-kpi-label">Total Cost</p>
+            <div class="diary-kpi-val is-currency" id="cardTotalCost" style="color:#e11d48;">TZS {{ number_format($totalCost, 0) }}</div>
+            <div class="diary-kpi-sub">Combined Cost</div>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Filters --}}
 <div class="card border-0 shadow-sm mb-3" style="background:var(--card-bg);border:1px solid var(--card-border) !important;border-radius:12px;">
@@ -151,7 +272,7 @@
                 <label class="form-label small mb-1" style="color:var(--text-secondary);font-size:0.72rem;">To</label>
                 <input type="date" class="form-control form-control-sm" id="filterDateTo" name="date_to" value="{{ $dateTo }}" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);font-size:0.82rem;">
             </div>
-            @if(!auth()->user()->isOwner())
+            @if($canUseShopDiary)
             <div>
                 <label class="form-label small mb-1" style="color:var(--text-secondary);font-size:0.72rem;">Diary Scope</label>
                 <select class="form-select form-select-sm" id="filterType" name="type" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);font-size:0.82rem;">
@@ -231,8 +352,8 @@
                                 Diary Scope <span class="text-danger">*</span>
                             </label>
 
-                            @if(auth()->user()->isOwner())
-                                {{-- Owner can only have Personal Diary --}}
+                            @if(!$canUseShopDiary)
+                                {{-- Owner or shop without any seller: Personal Diary only --}}
                                 <input type="hidden" name="type" value="personal">
                                 <div class="p-2 rounded d-flex align-items-center gap-2" style="background:rgba(163,113,247,0.1);border:1px solid rgba(163,113,247,0.25);">
                                     <i class="bi bi-person-fill fs-5" style="color:#a371f7;"></i>
@@ -263,7 +384,7 @@
                         </div>
 
                         {{-- Shop Selection (For Shop Admin / Seller when Shop Diary is selected) --}}
-                        @if(!auth()->user()->isOwner())
+                        @if($canUseShopDiary)
                             <div class="col-12 d-none" id="shopSelectionWrapper">
                                 @if(auth()->user()->shop)
                                     <input type="hidden" name="shop_id" id="inputShopId" value="{{ auth()->user()->shop_id }}">
@@ -319,8 +440,8 @@
                         {{-- Cost --}}
                         <div class="col-12 col-md-6">
                             <label class="form-label small fw-600" style="color:var(--text-secondary);">Cost (TZS)</label>
-                            <input type="number" class="form-control" id="inputCost" name="cost"
-                                placeholder="0.00" min="0" step="0.01"
+                            <input type="text" inputmode="decimal" class="form-control currency-input" id="inputCost" name="cost"
+                                placeholder="0" autocomplete="off"
                                 style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary);">
                         </div>
 
@@ -407,10 +528,10 @@
 @push('scripts')
 <script>
 $(function () {
-    const isOwner = {{ auth()->user()->isOwner() ? 'true' : 'false' }};
+    const canUseShopDiary = {{ $canUseShopDiary ? 'true' : 'false' }};
 
-    // Toggle shop selection visibility based on radio buttons (for Admin/Seller)
-    if (!isOwner) {
+    // Toggle shop selection visibility based on radio buttons (when Shop Diary is enabled)
+    if (canUseShopDiary) {
         $('input[name="type"]').on('change', function () {
             if ($(this).val() === 'shop') {
                 $('#shopSelectionWrapper').removeClass('d-none');
@@ -464,6 +585,7 @@ $(function () {
         ],
         order: [[0, 'desc']],
         pageLength: 15,
+        lengthMenu: [[10, 15, 25, 50, 100, -1], [10, 15, 25, 50, 100, 'All']],
         language: {
             search: '',
             searchPlaceholder: 'Search entries…',
@@ -486,6 +608,23 @@ $(function () {
         table.ajax.reload();
     });
     $('#filterDateFrom, #filterDateTo, #filterType, #filterFollowUp').on('change', function () {
+        table.ajax.reload();
+    });
+
+    // Quick-filter table when clicking KPI cards
+    $(document).on('click', '.diary-kpi-card[data-kpi-filter]', function () {
+        const filter = $(this).data('kpi-filter');
+        if (filter === 'all') {
+            if ($('#filterType').length) $('#filterType').val('');
+            $('#filterFollowUp').val('');
+        } else if (filter === 'personal' || filter === 'shop') {
+            if ($('#filterType').length) $('#filterType').val(filter);
+            $('#filterFollowUp').val('');
+        } else if (filter === 'followup') {
+            $('#filterFollowUp').val('1');
+        } else if (filter === 'closed') {
+            $('#filterFollowUp').val('0');
+        }
         table.ajax.reload();
     });
 
@@ -535,7 +674,7 @@ $(function () {
         $('#diaryId').val(id);
         $('#diaryForm').attr('action', '/diary/' + id);
 
-        if (!isOwner) {
+        if (canUseShopDiary) {
             if (type === 'shop') {
                 $('#typeShop').prop('checked', true).trigger('change');
             } else {
@@ -547,7 +686,8 @@ $(function () {
         $('#inputEventDescription').val(btn.data('event-description'));
         $('#inputEventDate').val(btn.data('event-date'));
         $('#inputDueDate').val(btn.data('due-date'));
-        $('#inputCost').val(btn.data('cost'));
+        const rawCost = btn.data('cost');
+        $('#inputCost').val(rawCost !== '' && rawCost !== undefined && rawCost !== null ? (window.formatCurrencyValue ? window.formatCurrencyValue(rawCost) : rawCost) : '');
         $('#inputNeedsFollowUp').prop('checked', btn.data('needs-follow-up') == 1);
 
         $('#diaryModal').modal('show');
@@ -560,7 +700,7 @@ $(function () {
         $('#diaryForm').attr('action', '{{ route("diary.store") }}');
         $('#diaryForm')[0].reset();
 
-        if (!isOwner) {
+        if (canUseShopDiary) {
             $('#typePersonal').prop('checked', true).trigger('change');
         }
 
