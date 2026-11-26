@@ -325,6 +325,7 @@
         </table>
     </div>
 </div>
+@include('partials.handover_lock_modals')
 @endsection
 
 @push('scripts')

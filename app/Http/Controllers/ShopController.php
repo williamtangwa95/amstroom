@@ -65,9 +65,25 @@ class ShopController extends Controller
             $statusClass = $shop->status === 'active' ? 'badge-active' : 'badge-inactive';
             $statusHtml = '<span class="status-badge ' . $statusClass . '"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span> ' . e(ucfirst($shop->status)) . '</span>';
 
-            $actions = '<div class="d-flex gap-1">
-                <a href="' . route('shops.show', $shop) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                <a href="' . route('shops.edit', $shop) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+            $logoUrl = ($shop->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($shop->logo))
+                ? asset('media/' . $shop->logo)
+                : '';
+
+            $actions = '<div class="d-flex gap-1 justify-content-end">
+                <button type="button" class="btn btn-xs btn-outline-custom btn-view-shop"
+                    data-show-url="' . route('shops.show', $shop) . '"
+                    title="View"><i class="bi bi-eye"></i></button>
+                <button type="button" class="btn btn-xs btn-outline-custom btn-edit-shop"
+                    data-id="' . $shop->id . '"
+                    data-name="' . e($shop->shop_name) . '"
+                    data-slogan="' . e($shop->slogan ?? '') . '"
+                    data-location="' . e($shop->location ?? '') . '"
+                    data-phone="' . e($shop->phone ?? '') . '"
+                    data-email="' . e($shop->email ?? '') . '"
+                    data-status="' . e($shop->status ?? 'active') . '"
+                    data-logo-url="' . e($logoUrl) . '"
+                    data-update-url="' . route('shops.update', $shop) . '"
+                    title="Edit"><i class="bi bi-pencil"></i></button>';
 
             if ($user->isOwner()) {
                 $actions .= '<form method="POST" action="' . route('shops.destroy', $shop) . '" id="del-shop-' . $shop->id . '" class="d-inline">
@@ -139,7 +155,7 @@ class ShopController extends Controller
             ->with('success', 'Shop created successfully.');
     }
 
-    public function show(Shop $shop)
+    public function show(Request $request, Shop $shop)
     {
         $user = auth()->user();
         if (!$user->isOwner() && $user->shop_id !== $shop->id) {
@@ -161,6 +177,46 @@ class ShopController extends Controller
         $sales_count = $shop->sales()->where('is_admin_stock', false)->count();
         $stock_count = $shop->shopStocks->sum('remaining_quantity');
         $low_stock_count = $shop->shopStocks->filter(fn ($s) => $s->isLowStock())->count();
+
+        if ($request->expectsJson()) {
+            $logoUrl = ($shop->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($shop->logo))
+                ? asset('media/' . $shop->logo)
+                : null;
+
+            return response()->json([
+                'id'              => $shop->id,
+                'shop_name'       => $shop->shop_name,
+                'slogan'          => $shop->slogan ?: '',
+                'location'        => $shop->location ?: '',
+                'phone'           => $shop->phone ?: '',
+                'email'           => $shop->email ?: '',
+                'status'          => $shop->status,
+                'logo_url'        => $logoUrl,
+                'created_at'      => $shop->created_at ? $shop->created_at->format('M d, Y') : '—',
+                'sales_total'     => (float) $sales_total,
+                'sales_count'     => (int) $sales_count,
+                'stock_count'     => (int) $stock_count,
+                'total_products'  => $shop->shopStocks->count(),
+                'low_stock_count' => (int) $low_stock_count,
+                'full_url'        => route('shops.show', $shop),
+                'update_url'      => route('shops.update', $shop),
+                'stocks_url'      => route('shop-stock.index', ['shop_id' => $shop->id]),
+                'stocks'          => $shop->shopStocks->take(8)->map(fn ($st) => [
+                    'item_name'          => $st->item?->item_name ?? '—',
+                    'category_name'      => $st->item?->category?->category_name ?? 'General',
+                    'remaining_quantity' => (int) $st->remaining_quantity,
+                    'unit_symbol'        => $st->item?->unit_symbol ?? 'pc',
+                    'selling_price'      => (float) $st->selling_price,
+                    'is_low'             => $st->isLowStock(),
+                ])->values(),
+                'employees'       => $shop->users->map(fn ($emp) => [
+                    'name'   => $emp->name,
+                    'email'  => $emp->email,
+                    'role'   => ucwords(str_replace('_', ' ', $emp->role)),
+                    'status' => $emp->status,
+                ])->values(),
+            ]);
+        }
 
         return view('shops.show', compact('shop', 'sales_total', 'sales_count', 'stock_count', 'low_stock_count'));
     }

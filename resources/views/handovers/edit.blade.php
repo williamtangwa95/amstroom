@@ -8,6 +8,12 @@
 @endsection
 
 @section('content')
+@if($handover->status === 'submitted')
+<div class="alert alert-info border-0 py-2 px-3 mb-3 small d-flex align-items-center gap-2" style="border-radius:10px;">
+    <i class="bi bi-info-circle-fill fs-5 flex-shrink-0"></i>
+    <div>This Cash Handover is currently <strong>Submitted (Awaiting Owner Review)</strong>. You can update the submitted amount, notes, or attachment below and click <strong>Resubmit Report</strong>.</div>
+</div>
+@endif
 <div class="row g-4">
     <!-- Calculation & Input Column -->
     <div class="col-md-5">
@@ -142,7 +148,7 @@
                             <i class="bi bi-save me-1"></i> Save Draft
                         </button>
                         <button type="submit" name="submit_action" value="submit" class="btn btn-accent w-50">
-                            <i class="bi bi-check-circle me-1"></i> Submit Report
+                            <i class="bi bi-check-circle me-1"></i> {{ $handover->status === 'submitted' ? 'Resubmit Report' : 'Submit Report' }}
                         </button>
                     </div>
                 </form>

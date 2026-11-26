@@ -221,67 +221,8 @@
         color: #0077b6;
         box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
     }
-    .ro-search-wrap {
-        position: relative;
-        width: 195px;
-    }
-    .ro-search-wrap i {
-        position: absolute;
-        left: .65rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-        font-size: .78rem;
-        pointer-events: none;
-    }
-    .ro-search-input {
-        width: 100%;
-        height: 32px;
-        padding: .25rem .65rem .25rem 1.9rem;
-        font-size: .78rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        background: #f8fafc;
-        color: var(--text-primary, #0f172a);
-        transition: border-color .15s, background .15s;
-    }
-    .ro-search-input:focus {
-        outline: none;
-        background: #fff;
-        border-color: #0077b6;
-        box-shadow: 0 0 0 3px rgba(0, 119, 182, .1);
-    }
 
-    /* ── Clean Desktop Table ── */
-    .ro-table {
-        width: 100%;
-        margin: 0;
-        border-collapse: collapse;
-    }
-    .ro-table thead th {
-        font-size: .69rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: #64748b;
-        background: #f8fafc;
-        padding: .7rem .95rem;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-    }
-    .ro-table tbody td {
-        padding: .78rem .95rem;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        font-size: .82rem;
-    }
-    .ro-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .ro-table tbody tr:hover {
-        background: #f8fafc;
-    }
-    .ro-table tbody tr.is-custom-row {
+    #reorderTable tbody tr.is-custom-row {
         background: #f0f9ff;
     }
 
@@ -468,106 +409,6 @@
             text-align: center;
             padding: .3rem .35rem;
         }
-        .ro-search-wrap {
-            width: 100%;
-        }
-
-        /* Convert table rows into sleek zero-scroll mobile cards */
-        .ro-table thead {
-            display: none;
-        }
-        .ro-table,
-        .ro-table tbody {
-            display: block;
-            width: 100%;
-        }
-        .ro-table tbody tr.reorder-row {
-            display: grid;
-            grid-template-columns: 28px repeat(3, minmax(0, 1fr));
-            gap: .55rem .5rem;
-            padding: .85rem .9rem;
-            border-bottom: 1px solid #e2e8f0;
-            align-items: center;
-        }
-        .ro-table tbody tr.reorder-row:last-child {
-            border-bottom: none;
-        }
-        .ro-table tbody tr.reorder-row td {
-            display: block;
-            padding: 0;
-            border: none;
-            text-align: left !important;
-        }
-        /* Cell 1: Checkbox */
-        .ro-table tbody tr.reorder-row td.ro-col-check {
-            grid-column: 1 / 2;
-            grid-row: 1 / 2;
-            align-self: start;
-            padding-top: 2px;
-        }
-        /* Cell 2: Product Name & Category */
-        .ro-table tbody tr.reorder-row td.ro-col-prod {
-            grid-column: 2 / 5;
-            grid-row: 1 / 2;
-        }
-        /* Cells 3, 4, 5: Compact metrics strip */
-        .ro-table tbody tr.reorder-row td.ro-col-shop {
-            grid-column: 1 / 3;
-            grid-row: 2 / 3;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 8px;
-            padding: .45rem .55rem;
-        }
-        .ro-table tbody tr.reorder-row td.ro-col-wh {
-            grid-column: 3 / 5;
-            grid-row: 2 / 3;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 8px;
-            padding: .45rem .55rem;
-        }
-        .ro-table tbody tr.reorder-row td.ro-col-demand {
-            grid-column: 1 / 5;
-            grid-row: 3 / 4;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 8px;
-            padding: .42rem .55rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: .4rem;
-        }
-        /* Cell 6: Order Qty */
-        .ro-table tbody tr.reorder-row td.ro-col-qty {
-            grid-column: 1 / 5;
-            grid-row: 4 / 5;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: .5rem;
-            padding-top: .25rem;
-        }
-        .ro-mobile-label {
-            display: block !important;
-            font-size: .64rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #94a3b8;
-            margin-bottom: .18rem;
-        }
-        .ro-col-demand .ro-mobile-label,
-        .ro-col-qty .ro-mobile-label {
-            margin-bottom: 0;
-        }
-        .ro-table tbody tr#emptyRow,
-        .ro-table tbody tr#emptyRow td {
-            display: block;
-            width: 100%;
-        }
-
         .ro-footer {
             padding: .85rem .9rem;
         }
@@ -577,9 +418,6 @@
         .ro-footer-actions .btn {
             flex: 1 1 100%;
         }
-    }
-    .ro-mobile-label {
-        display: none;
     }
 </style>
 @endpush
@@ -712,28 +550,23 @@
                 <button type="button" class="ro-pill-btn filter-btn" data-filter="critical">Low</button>
                 <button type="button" class="ro-pill-btn filter-btn" data-filter="high_risk">Risk</button>
             </div>
-
-            <div class="ro-search-wrap">
-                <i class="bi bi-search"></i>
-                <input type="text" id="tableSearchInput" class="ro-search-input" placeholder="Search item...">
-            </div>
         </div>
     </div>
 
-    <div>
-        <table class="ro-table" id="reorderTable">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reorderTable">
             <thead>
                 <tr>
-                    <th style="width:42px;" class="text-center">#</th>
-                    <th>Product</th>
-                    <th>Shop Stock</th>
-                    <th>Demand ({{ $velocityDays }}d)</th>
-                    <th>Main Store</th>
-                    <th class="text-center" style="width:140px;">Order Qty</th>
+                    <th data-priority="1" class="all iter-col text-center no-sort" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="2" class="min-tablet-l">Shop Stock</th>
+                    <th data-priority="3" class="min-tablet-l">Demand ({{ $velocityDays }}d)</th>
+                    <th data-priority="3" class="min-tablet-l">Main Store</th>
+                    <th data-priority="2" class="min-tablet-l no-sort text-center" style="width: 145px;">Order Qty</th>
                 </tr>
             </thead>
             <tbody id="reorderTableBody">
-                @forelse($suggestions as $item)
+                @foreach($suggestions as $item)
                 @php
                     $isOut = $item->current_stock <= 0;
                     $isWhZero = $item->main_store_available <= 0;
@@ -744,7 +577,7 @@
                     data-fast-mover="{{ $item->daily_sales_rate >= 0.5 ? '1' : '0' }}">
 
                     {{-- 1. Select --}}
-                    <td class="text-center ro-col-check">
+                    <td class="text-center iter-col">
                         <input class="form-check-input item-checkbox m-0" type="checkbox"
                             data-item-id="{{ $item->item_id }}"
                             data-item-name="{{ $item->item_name }}"
@@ -753,7 +586,7 @@
                     </td>
 
                     {{-- 2. Product + Category + Active Transit/Request Chips --}}
-                    <td class="ro-col-prod">
+                    <td class="primary-col">
                         <div class="ro-prod-name">{{ $item->item_name }}</div>
                         <div class="ro-prod-meta">
                             <span class="ro-cat-chip">{{ $item->category_name }}</span>
@@ -773,8 +606,7 @@
                     </td>
 
                     {{-- 3. Shop Stock --}}
-                    <td class="ro-col-shop">
-                        <span class="ro-mobile-label">Shop Stock</span>
+                    <td data-order="{{ $item->current_stock }}">
                         @if($isOut)
                         <span class="ro-badge ro-badge-danger">
                             <i class="bi bi-x-circle"></i> 0 {{ $item->unit_symbol }}
@@ -788,8 +620,7 @@
                     </td>
 
                     {{-- 4. Demand & Days Cover Combined --}}
-                    <td class="ro-col-demand">
-                        <span class="ro-mobile-label">Demand ({{ $velocityDays }}d)</span>
+                    <td data-order="{{ $item->total_sold }}">
                         <div class="ro-demand-cell">
                             <span class="ro-demand-main">{{ $item->total_sold }} sold</span>
                             <span class="ro-demand-rate">({{ number_format($item->daily_sales_rate, 1) }}/d)</span>
@@ -806,8 +637,7 @@
                     </td>
 
                     {{-- 5. Main Store --}}
-                    <td class="ro-col-wh">
-                        <span class="ro-mobile-label">Main Store</span>
+                    <td data-order="{{ $item->main_store_available }}">
                         @if($isWhZero)
                         <span class="ro-badge ro-badge-danger" title="Out of stock in Main Warehouse">
                             <i class="bi bi-building-x"></i> 0 {{ $item->unit_symbol }}
@@ -820,8 +650,7 @@
                     </td>
 
                     {{-- 6. Suggested Order Qty --}}
-                    <td class="text-center ro-col-qty">
-                        <span class="ro-mobile-label">Order Qty</span>
+                    <td class="text-center">
                         <div>
                             <div class="ro-qty-group">
                                 <input type="number" min="1"
@@ -837,22 +666,7 @@
                         </div>
                     </td>
                 </tr>
-                @empty
-                <tr id="emptyRow">
-                    <td colspan="6" class="text-center py-5">
-                        <div class="text-muted">
-                            <i class="bi bi-check-circle-fill text-success fs-2 d-block mb-2"></i>
-                            <div class="fw-700 text-dark mb-1" style="font-size:.92rem;">Stock Levels Healthy</div>
-                            <small>No urgent reorders needed for {{ $currentShop->shop_name }}.</small>
-                            <div class="mt-3">
-                                <button type="button" class="btn btn-sm btn-outline-custom" data-bs-toggle="modal" data-bs-target="#addExtraProductModal">
-                                    <i class="bi bi-plus-circle me-1"></i> Add Item
-                                </button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
@@ -1018,21 +832,68 @@
 @push('scripts')
 <script>
 $(function() {
+    let activeFilter = 'all';
+
+    // Custom DataTables urgency / fast-mover filter
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (settings.nTable.id !== 'reorderTable') return true;
+        if (activeFilter === 'all') return true;
+        const rowNode = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
+        if (!rowNode) return true;
+        const $tr = $(rowNode);
+        if (activeFilter === 'fast_movers') {
+            return String($tr.attr('data-fast-mover')) === '1';
+        }
+        return String($tr.attr('data-urgency')) === activeFilter;
+    });
+
+    const reorderTable = $('#reorderTable').DataTable({
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        order: [[2, 'asc']],
+        columnDefs: [
+            { orderable: false, searchable: false, targets: [0, 5] }
+        ],
+        language: {
+            searchPlaceholder: 'Search products...',
+            emptyTable: '<div class="py-4 text-muted"><i class="bi bi-check-circle-fill text-success fs-3 d-block mb-2"></i><div class="fw-700 text-dark mb-1">Stock Levels Healthy</div><small>No urgent reorders needed for {{ e($currentShop->shop_name) }}.</small></div>'
+        }
+    });
+
     // Auto-submit filter changes
     $('.auto-submit').on('change', function() {
         $('#filterForm').submit();
     });
 
-    // Update selection summary and button states
+    function getAllRowNodes() {
+        return $(reorderTable.rows().nodes());
+    }
+
+    function getFilteredRowNodes() {
+        return $(reorderTable.rows({ search: 'applied' }).nodes());
+    }
+
+    function syncSelectAllState() {
+        const $filtered = getFilteredRowNodes();
+        const totalVisible = $filtered.find('.item-checkbox').length;
+        const totalChecked = $filtered.find('.item-checkbox:checked').length;
+        $('#selectAllCheckbox').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
+    }
+
+    // Update selection summary and button states across all DataTable pages
     function updateSelectionSummary() {
         let count = 0;
         let totalUnits = 0;
 
-        $('.item-checkbox:checked').each(function() {
-            count++;
-            const row = $(this).closest('tr');
-            const qty = parseInt(row.find('.qty-input').val()) || 0;
-            totalUnits += qty;
+        getAllRowNodes().each(function() {
+            const $row = $(this);
+            const $cb = $row.find('.item-checkbox');
+            if ($cb.is(':checked')) {
+                count++;
+                const qty = parseInt($row.find('.qty-input').val(), 10) || 0;
+                totalUnits += qty;
+            }
         });
 
         $('#selectedCountBadge').text(count);
@@ -1041,56 +902,58 @@ $(function() {
         const disabled = count === 0;
         $('#btnOpenRequestModal').prop('disabled', disabled);
         $('#btnOpenTransferModal').prop('disabled', disabled);
+        syncSelectAllState();
     }
 
-    // Select all toggle
+    // Select all toggle (applies to all currently filtered rows across pages)
     $('#selectAllCheckbox').on('change', function() {
         const isChecked = $(this).is(':checked');
-        $('.reorder-row:visible .item-checkbox').prop('checked', isChecked);
+        getFilteredRowNodes().find('.item-checkbox').prop('checked', isChecked);
         updateSelectionSummary();
     });
 
-    // Individual checkbox click
-    $(document).on('change', '.item-checkbox', function() {
+    // Individual checkbox click (delegated)
+    $(document).on('change', '#reorderTable .item-checkbox', function() {
         updateSelectionSummary();
-        const totalVisible = $('.reorder-row:visible .item-checkbox').length;
-        const totalChecked = $('.reorder-row:visible .item-checkbox:checked').length;
-        $('#selectAllCheckbox').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
     });
 
-    // Qty input change
-    $(document).on('input change', '.qty-input', function() {
-        const input = $(this);
-        const qty = parseInt(input.val()) || 0;
-        const whStock = parseInt(input.data('wh-stock')) || 0;
-        const warning = input.closest('td').find('.wh-warning');
+    // Qty input change (syncs desktop row & DataTables Responsive child drawer)
+    $(document).on('input change', '#reorderTable .qty-input', function() {
+        const $input = $(this);
+        const itemId = $input.data('item-id');
+        const qty = parseInt($input.val(), 10) || 0;
+        const whStock = parseInt($input.data('wh-stock'), 10) || 0;
 
+        // Sync matching row input if edited from mobile responsive child row
+        getAllRowNodes().filter(`[data-item-id="${itemId}"]`).find('.qty-input').not($input).val($input.val());
+
+        const $warning = $input.closest('td, li').find('.wh-warning');
         if (qty > whStock && whStock >= 0) {
-            warning.removeClass('d-none');
+            $warning.removeClass('d-none');
         } else {
-            warning.addClass('d-none');
+            $warning.addClass('d-none');
         }
 
         updateSelectionSummary();
     });
 
-    // Initial check
-    $('.qty-input').trigger('change');
+    // Initial check on all row nodes
+    getAllRowNodes().find('.qty-input').each(function() {
+        const $input = $(this);
+        const qty = parseInt($input.val(), 10) || 0;
+        const whStock = parseInt($input.data('wh-stock'), 10) || 0;
+        if (qty > whStock && whStock >= 0) {
+            $input.closest('td').find('.wh-warning').removeClass('d-none');
+        }
+    });
 
-    // Search filter
-    $('#tableSearchInput').on('keyup', function() {
-        const val = $(this).val().toLowerCase().trim();
-        $('.reorder-row').each(function() {
-            const text = $(this).text().toLowerCase();
-            $(this).toggle(text.indexOf(val) > -1);
-        });
-        updateSelectionSummary();
+    reorderTable.on('draw', function() {
+        syncSelectAllState();
     });
 
     // Filter pills
     $('.filter-btn').on('click', function() {
-        const filter = $(this).data('filter');
-        setActiveFilter(filter);
+        setActiveFilter($(this).data('filter'));
     });
 
     // KPI card click filter
@@ -1104,24 +967,14 @@ $(function() {
     });
 
     function setActiveFilter(filter) {
+        activeFilter = filter;
         $('.filter-btn').removeClass('active');
         $(`.filter-btn[data-filter="${filter}"]`).addClass('active');
         $('.kpi-card[data-filter]').removeClass('is-active');
         if (filter !== 'all') {
             $(`.kpi-card[data-filter="${filter}"]`).addClass('is-active');
         }
-
-        if (filter === 'all') {
-            $('.reorder-row').show();
-        } else if (filter === 'fast_movers') {
-            $('.reorder-row').each(function() {
-                $(this).toggle($(this).data('fast-mover') == '1');
-            });
-        } else {
-            $('.reorder-row').each(function() {
-                $(this).toggle($(this).data('urgency') === filter);
-            });
-        }
+        reorderTable.draw();
         updateSelectionSummary();
     }
 
@@ -1146,56 +999,53 @@ $(function() {
         const itemName = opt.data('name');
         const catName = opt.data('cat') || 'General';
         const unit = opt.data('unit') || 'pc';
-        const whStock = parseInt(opt.data('wh-stock')) || 0;
-        const qty = parseInt($('#extraProductQty').val()) || 1;
+        const whStock = parseInt(opt.data('wh-stock'), 10) || 0;
+        const qty = parseInt($('#extraProductQty').val(), 10) || 1;
 
-        const existingRow = $(`#reorderTableBody tr[data-item-id="${itemId}"]`);
-        if (existingRow.length > 0) {
-            existingRow.find('.item-checkbox').prop('checked', true);
-            existingRow.find('.qty-input').val(qty).trigger('change');
-            existingRow.show();
-            $('html, body').animate({ scrollTop: existingRow.offset().top - 150 }, 300);
+        const $existingRow = getAllRowNodes().filter(`[data-item-id="${itemId}"]`);
+        if ($existingRow.length > 0) {
+            $existingRow.find('.item-checkbox').prop('checked', true);
+            $existingRow.find('.qty-input').val(qty).trigger('change');
+            setActiveFilter('all');
             $('#addExtraProductModal').modal('hide');
             updateSelectionSummary();
             return;
         }
 
-        $('#emptyRow').remove();
+        const safeName = $('<div>').text(itemName).html();
+        const safeCat = $('<div>').text(catName).html();
+        const safeUnit = $('<div>').text(unit).html();
 
         const newRowHtml = `
             <tr class="reorder-row is-custom-row" data-item-id="${itemId}" data-urgency="custom" data-fast-mover="0">
-                <td class="text-center ro-col-check">
+                <td class="text-center iter-col">
                     <input class="form-check-input item-checkbox m-0" type="checkbox" checked
                         data-item-id="${itemId}"
-                        data-item-name="${itemName}"
+                        data-item-name="${safeName}"
                         data-wh-stock="${whStock}"
-                        data-unit="${unit}">
+                        data-unit="${safeUnit}">
                 </td>
-                <td class="ro-col-prod">
+                <td class="primary-col">
                     <div class="ro-prod-name">
-                        ${itemName}
+                        ${safeName}
                         <span class="ro-transit-chip ms-1" style="background:rgba(0,119,182,.1);color:#0077b6;">Custom</span>
                     </div>
                     <div class="ro-prod-meta">
-                        <span class="ro-cat-chip">${catName}</span>
+                        <span class="ro-cat-chip">${safeCat}</span>
                     </div>
                 </td>
-                <td class="ro-col-shop">
-                    <span class="ro-mobile-label">Shop Stock</span>
+                <td data-order="999999">
                     <span class="ro-badge ro-badge-muted">Catalog</span>
                 </td>
-                <td class="ro-col-demand">
-                    <span class="ro-mobile-label">Demand</span>
+                <td data-order="0">
                     <span class="ro-demand-rate">Manual addition</span>
                 </td>
-                <td class="ro-col-wh">
-                    <span class="ro-mobile-label">Main Store</span>
+                <td data-order="${whStock}">
                     <span class="ro-badge ${whStock > 0 ? 'ro-badge-success' : 'ro-badge-danger'}">
-                        <i class="bi ${whStock > 0 ? 'bi-building-check' : 'bi-building-x'}"></i> ${whStock} ${unit}
+                        <i class="bi ${whStock > 0 ? 'bi-building-check' : 'bi-building-x'}"></i> ${whStock} ${safeUnit}
                     </span>
                 </td>
-                <td class="text-center ro-col-qty">
-                    <span class="ro-mobile-label">Order Qty</span>
+                <td class="text-center">
                     <div>
                         <div class="ro-qty-group">
                             <input type="number" min="1"
@@ -1203,7 +1053,7 @@ $(function() {
                                 value="${qty}"
                                 data-item-id="${itemId}"
                                 data-wh-stock="${whStock}">
-                            <span class="ro-qty-unit">${unit}</span>
+                            <span class="ro-qty-unit">${safeUnit}</span>
                         </div>
                         <div class="wh-warning text-danger mt-1 ${qty > whStock ? '' : 'd-none'}" style="font-size:.66rem;font-weight:600;">
                             <i class="bi bi-exclamation-triangle"></i> Exceeds stock
@@ -1213,7 +1063,8 @@ $(function() {
             </tr>
         `;
 
-        $('#reorderTableBody').prepend(newRowHtml);
+        reorderTable.row.add($(newRowHtml)[0]).draw(false);
+        setActiveFilter('all');
         $('#addExtraProductModal').modal('hide');
         $('#extraProductSelect').val('');
         $('#extraProductWhDisplay').text('—');
@@ -1221,34 +1072,36 @@ $(function() {
         updateSelectionSummary();
     });
 
-    // Populate Request Modal
+    // Populate Request Modal (reads checked items across all DataTable pages)
     $('#btnOpenRequestModal').on('click', function() {
         const tbody = $('#requestSummaryBody');
         tbody.empty();
 
         let index = 0;
-        $('.item-checkbox:checked').each(function() {
-            const checkbox = $(this);
-            const row = checkbox.closest('tr');
-            const itemId = checkbox.data('item-id');
-            const itemName = checkbox.data('item-name');
-            const unit = checkbox.data('unit');
-            const qty = parseInt(row.find('.qty-input').val()) || 1;
-            const whStock = parseInt(checkbox.data('wh-stock')) || 0;
+        getAllRowNodes().each(function() {
+            const $row = $(this);
+            const $checkbox = $row.find('.item-checkbox');
+            if (!$checkbox.is(':checked')) return;
+
+            const itemId = $checkbox.data('item-id');
+            const itemName = $checkbox.data('item-name');
+            const unit = $checkbox.data('unit');
+            const qty = parseInt($row.find('.qty-input').val(), 10) || 1;
+            const whStock = parseInt($checkbox.data('wh-stock'), 10) || 0;
 
             tbody.append(`
                 <tr>
                     <td>
-                        <span class="fw-700">${itemName}</span>
+                        <span class="fw-700">${$('<div>').text(itemName).html()}</span>
                         <input type="hidden" name="items[${index}][item_id]" value="${itemId}">
                     </td>
                     <td class="text-center fw-700">
-                        ${qty} ${unit}
+                        ${qty} ${$('<div>').text(unit).html()}
                         <input type="hidden" name="items[${index}][quantity]" value="${qty}">
                     </td>
                     <td class="text-center">
                         <span class="badge ${whStock >= qty ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">
-                            ${whStock} ${unit}
+                            ${whStock} ${$('<div>').text(unit).html()}
                         </span>
                     </td>
                 </tr>
@@ -1259,7 +1112,7 @@ $(function() {
         $('#confirmRequestModal').modal('show');
     });
 
-    // Populate Transfer Modal (Owner only)
+    // Populate Transfer Modal (Owner only, reads checked items across all DataTable pages)
     $('#btnOpenTransferModal').on('click', function() {
         const tbody = $('#transferSummaryBody');
         tbody.empty();
@@ -1267,14 +1120,16 @@ $(function() {
         let index = 0;
         let hasShortage = false;
 
-        $('.item-checkbox:checked').each(function() {
-            const checkbox = $(this);
-            const row = checkbox.closest('tr');
-            const itemId = checkbox.data('item-id');
-            const itemName = checkbox.data('item-name');
-            const unit = checkbox.data('unit');
-            const qty = parseInt(row.find('.qty-input').val()) || 1;
-            const whStock = parseInt(checkbox.data('wh-stock')) || 0;
+        getAllRowNodes().each(function() {
+            const $row = $(this);
+            const $checkbox = $row.find('.item-checkbox');
+            if (!$checkbox.is(':checked')) return;
+
+            const itemId = $checkbox.data('item-id');
+            const itemName = $checkbox.data('item-name');
+            const unit = $checkbox.data('unit');
+            const qty = parseInt($row.find('.qty-input').val(), 10) || 1;
+            const whStock = parseInt($checkbox.data('wh-stock'), 10) || 0;
             const isShort = whStock < qty;
 
             if (isShort) {
@@ -1284,16 +1139,16 @@ $(function() {
             tbody.append(`
                 <tr class="${isShort ? 'table-danger' : ''}">
                     <td>
-                        <span class="fw-700">${itemName}</span>
+                        <span class="fw-700">${$('<div>').text(itemName).html()}</span>
                         <input type="hidden" name="items[${index}][item_id]" value="${itemId}">
                     </td>
                     <td class="text-center fw-700">
-                        ${qty} ${unit}
+                        ${qty} ${$('<div>').text(unit).html()}
                         <input type="hidden" name="items[${index}][quantity]" value="${qty}">
                     </td>
                     <td class="text-center">
                         <span class="badge ${whStock >= qty ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">
-                            ${whStock} ${unit}
+                            ${whStock} ${$('<div>').text(unit).html()}
                         </span>
                     </td>
                     <td class="text-center">

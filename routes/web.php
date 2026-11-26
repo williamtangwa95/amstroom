@@ -23,6 +23,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\HandoverReportController;
+use App\Http\Controllers\HandoverEditRequestController;
 use App\Http\Controllers\DiaryController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\UnitController;
@@ -188,6 +189,8 @@ Route::middleware('auth')->group(function () {
         Route::get('product-transfers', [ShopProductTransferController::class, 'index'])->name('product-transfers.index');
         Route::get('product-transfers/create', [ShopProductTransferController::class, 'create'])->name('product-transfers.create');
         Route::get('product-transfers/source-items', [ShopProductTransferController::class, 'getSourceItems'])->name('product-transfers.source-items');
+        Route::get('product-transfers/pending-reminders', [ShopProductTransferController::class, 'pendingReminders'])->name('product-transfers.pending-reminders');
+        Route::post('product-transfers/pending-reminders/dismiss', [ShopProductTransferController::class, 'dismissPendingReminders'])->name('product-transfers.pending-reminders.dismiss');
         Route::post('product-transfers', [ShopProductTransferController::class, 'store'])->name('product-transfers.store');
         Route::get('product-transfers/{productTransfer}', [ShopProductTransferController::class, 'show'])->name('product-transfers.show');
         Route::post('product-transfers/{productTransfer}/confirm', [ShopProductTransferController::class, 'confirm'])->name('product-transfers.confirm');
@@ -241,7 +244,10 @@ Route::middleware('auth')->group(function () {
         // ── Daily Diary (personal — each user sees only their own entries) ────────
         Route::get('diary', [DiaryController::class, 'index'])->name('diary.index');
         Route::get('diary/data', [DiaryController::class, 'data'])->name('diary.data');
+        Route::get('diary/due-reminders', [DiaryController::class, 'dueReminders'])->name('diary.due-reminders');
         Route::post('diary', [DiaryController::class, 'store'])->name('diary.store');
+        Route::post('diary/{diary}/acknowledge', [DiaryController::class, 'acknowledgeReminder'])->name('diary.acknowledge');
+        Route::post('diary/{diary}/reschedule', [DiaryController::class, 'reschedule'])->name('diary.reschedule');
         Route::put('diary/{diary}', [DiaryController::class, 'update'])->name('diary.update');
         Route::delete('diary/{diary}', [DiaryController::class, 'destroy'])->name('diary.destroy');
 
@@ -335,6 +341,11 @@ Route::middleware('auth')->group(function () {
         Route::post('expenses/{expense}/request-review', [ExpenseController::class, 'requestReview'])->name('expenses.request-review');
         Route::post('expenses/{expense}/grant-edit', [ExpenseController::class, 'grantEdit'])->name('expenses.grant-edit');
         Route::post('expenses/{expense}/revert-approval', [ExpenseController::class, 'revertApproval'])->name('expenses.revert-approval');
+
+        // Handover-Locked Record Edit / Return Unlock Requests (Shop Admin & Seller request, Owner approves/rejects)
+        Route::post('handover-edit-requests', [HandoverEditRequestController::class, 'store'])->name('handover-edit-requests.store');
+        Route::post('handover-edit-requests/{editRequest}/approve', [HandoverEditRequestController::class, 'approve'])->name('handover-edit-requests.approve');
+        Route::post('handover-edit-requests/{editRequest}/reject', [HandoverEditRequestController::class, 'reject'])->name('handover-edit-requests.reject');
     });
 
     // ─── OWNER + ADMIN ONLY ──────────────────────────────────────────────────

@@ -377,7 +377,14 @@ class HandoverReportController extends Controller
               })->where('role', 'shop_admin')->get()
             : collect();
 
-        return view('handovers.show', compact('handover', 'sales', 'expenses', 'shopAdmins'));
+        \App\Models\HandoverEditRequest::ensureTableExists();
+        $editRequests = \App\Models\HandoverEditRequest::with(['requester', 'reviewer'])
+            ->where('handover_report_id', $handover->id)
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'approved' THEN 1 ELSE 2 END")
+            ->orderByDesc('id')
+            ->get();
+
+        return view('handovers.show', compact('handover', 'sales', 'expenses', 'shopAdmins', 'editRequests'));
     }
 
     public function submit(HandoverReport $handover)
@@ -407,8 +414,8 @@ class HandoverReportController extends Controller
             abort(403, 'Unauthorized access to edit this handover report.');
         }
 
-        if ($handover->status !== 'draft' && $handover->status !== 'returned') {
-            return redirect()->route('handovers.show', $handover)->with('error', 'Only drafts or returned reports can be edited.');
+        if (!in_array($handover->status, ['draft', 'returned', 'submitted'], true)) {
+            return redirect()->route('handovers.show', $handover)->with('error', 'Only draft, returned, or submitted (pending review) reports can be edited.');
         }
 
         $shop = Shop::findOrFail($handover->shop_id);
@@ -467,8 +474,8 @@ class HandoverReportController extends Controller
             abort(403, 'Unauthorized access to edit this handover report.');
         }
 
-        if ($handover->status !== 'draft' && $handover->status !== 'returned') {
-            return redirect()->route('handovers.show', $handover)->with('error', 'Only drafts or returned reports can be edited.');
+        if (!in_array($handover->status, ['draft', 'returned', 'submitted'], true)) {
+            return redirect()->route('handovers.show', $handover)->with('error', 'Only draft, returned, or submitted (pending review) reports can be edited.');
         }
 
         $request->validate([
@@ -478,6 +485,7 @@ class HandoverReportController extends Controller
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
+        $wasSubmitted = $handover->status === 'submitted';
         $actualAmount = (float) $request->actual_amount;
         $expectedAmount = (float) $handover->expected_amount;
         $difference = $actualAmount - $expectedAmount;
@@ -502,7 +510,7 @@ class HandoverReportController extends Controller
 
         $updateData = [
             'actual_amount' => $actualAmount,
-            'commission_amount' => $request->commission_amount ?? 0,
+            'commission_amount' => $request->has('commission_amount') ? ($request->commission_amount ?? 0) : $handover->commission_amount,
             'difference' => $difference,
             'difference_status' => $differenceStatus,
             'difference_reason' => $request->difference_reason,
@@ -517,19 +525,23 @@ class HandoverReportController extends Controller
 
         $handover->update($updateData);
 
-        // Notify Owners if status is submitted
+        // Notify Owners if status is submitted / resubmitted
         if ($status === 'submitted') {
             $this->sendSubmissionNotifications($handover, $user);
         }
 
         // Log activity
         ActivityLog::log(
-            strtoupper($status),
+            $status === 'submitted' && $wasSubmitted ? 'RESUBMITTED' : strtoupper($status),
             ($status === 'submitted' ? 'Resubmitted' : 'Updated draft') . " Handover Report: {$handover->handover_no}",
             $handover
         );
 
-        return redirect()->route('handovers.show', $handover)->with('success', 'Handover report updated successfully.');
+        $successMessage = $status === 'submitted'
+            ? 'Handover report updated and resubmitted for Owner review.'
+            : 'Handover report saved as draft.';
+
+        return redirect()->route('handovers.show', $handover)->with('success', $successMessage);
     }
 
     public function assignCommission(HandoverReport $handover, Request $request)

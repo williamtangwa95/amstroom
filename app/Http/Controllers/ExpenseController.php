@@ -137,12 +137,27 @@ class ExpenseController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $expenses = $query->with('category', 'recorder', 'approver')
+        $expenses = $query->with('category', 'recorder', 'approver', 'handoverReport')
             ->orderBy('expenses.activity_date', 'desc')
             ->orderBy('expenses.id', 'desc')
             ->skip($start)
             ->take($length)
             ->get();
+
+        // Batch-load active handover edit/delete unlock requests for this page
+        \App\Models\HandoverEditRequest::ensureTableExists();
+        $expenseIds = $expenses->pluck('id')->all();
+        $activeRequestsByExpense = empty($expenseIds)
+            ? collect()
+            : \App\Models\HandoverEditRequest::with('requester')
+                ->where('record_type', 'expense')
+                ->whereIn('record_id', $expenseIds)
+                ->whereIn('status', ['pending', 'approved'])
+                ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('record_id')
+                ->map(fn ($group) => $group->first());
 
         $isOwnerOrAdmin = $user->isOwner() || $user->isShopAdmin();
 
@@ -158,6 +173,10 @@ class ExpenseController extends Controller
             $recorderName = e($expense->recorder?->name ?? '—');
             $approverName = e($expense->approver?->name ?? '—');
 
+            $isLockedByHandover = $expense->isLockedByHandover();
+            $handoverNo = $expense->handoverReport?->handover_no;
+            $activeReq = $activeRequestsByExpense->get($expense->id);
+
             if ($expense->isPending()) {
                 $statusBadge = '<span class="badge badge-pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
             } elseif ($expense->isApproved()) {
@@ -170,8 +189,30 @@ class ExpenseController extends Controller
                 $statusBadge = '<span class="badge bg-secondary">' . e(ucfirst($expense->status)) . '</span>';
             }
 
-            $actions = '<div class="d-flex justify-content-end gap-1">';
-            if ($user->isShopAdmin()) {
+            if ($isLockedByHandover) {
+                $statusBadge .= '<div class="mt-1"><span class="badge bg-dark-subtle text-dark border" style="font-size:.66rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;" title="Locked under submitted Cash Handover ' . e($handoverNo) . '"><i class="bi bi-lock-fill me-1"></i>' . e($handoverNo) . '</span></div>';
+                if ($activeReq && $activeReq->status === 'pending') {
+                    $statusBadge .= '<div class="mt-1"><span class="badge bg-warning text-dark" style="font-size:.65rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;" title="' . e($activeReq->reason) . '"><i class="bi bi-hourglass-split me-1"></i>' . e($activeReq->action_label) . ' Requested</span></div>';
+                } elseif ($activeReq && $activeReq->status === 'approved') {
+                    $statusBadge .= '<div class="mt-1"><span class="badge bg-info text-dark" style="font-size:.65rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;"><i class="bi bi-unlock-fill me-1"></i>Unlocked: ' . e($activeReq->action_label) . '</span></div>';
+                }
+            }
+
+            $actions = '<div class="d-flex justify-content-end gap-1 flex-wrap">';
+            if ($isLockedByHandover && !$user->isOwner()) {
+                // Handover-locked expense for Shop Admin or Seller: strictly gated by Owner unlock approval
+                if ($activeReq && $activeReq->status === 'approved') {
+                    if ($activeReq->action_type === 'edit') {
+                        $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-accent" title="Edit (Owner Approved)"><i class="bi bi-pencil me-1"></i>Edit</a>';
+                    } elseif ($activeReq->action_type === 'delete') {
+                        $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this handover-linked expense? Handover totals will recalculate.\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-danger" title="Delete (Owner Approved)"><i class="bi bi-trash me-1"></i>Delete</button></form>';
+                    }
+                } elseif ($activeReq && $activeReq->status === 'pending') {
+                    $actions .= '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-1 px-2" style="font-size:.7rem;"><i class="bi bi-hourglass-split me-1"></i>Awaiting Owner</span>';
+                } else {
+                    $actions .= '<button type="button" class="btn btn-xs btn-outline-warning text-dark request-handover-edit-btn" data-record-type="expense" data-record-id="' . $expense->id . '" data-record-label="Expense #' . $expense->id . ' (' . e($expense->activity) . ')" data-handover-no="' . e($handoverNo) . '" title="Request Edit or Delete Approval from Owner"><i class="bi bi-shield-lock me-1"></i>Request Edit</button>';
+                }
+            } elseif ($user->isShopAdmin()) {
                 if ($expense->isPending()) {
                     $actions .= '<form method="POST" action="' . route('expenses.approve', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-success" title="Approve Expense"><i class="bi bi-check-lg"></i> </button></form>';
                     $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
@@ -183,16 +224,21 @@ class ExpenseController extends Controller
                     $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
                 }
             } elseif ($user->isOwner()) {
-                if ($expense->isReviewRequested()) {
+                if ($isLockedByHandover && $activeReq && $activeReq->status === 'pending') {
+                    $actions .= '<button type="button" class="btn btn-xs btn-success owner-approve-unlock-btn" data-request-id="' . $activeReq->id . '" data-label="Expense #' . $expense->id . ' — ' . e($expense->activity) . ' (' . e($activeReq->action_label) . ')" data-reason="' . e($activeReq->reason) . '" title="Approve Unlock Request"><i class="bi bi-unlock-fill me-1"></i>Approve</button>';
+                    $actions .= '<button type="button" class="btn btn-xs btn-outline-danger owner-reject-unlock-btn" data-request-id="' . $activeReq->id . '" data-label="Expense #' . $expense->id . ' — ' . e($expense->activity) . '" title="Reject Unlock Request"><i class="bi bi-x-lg"></i></button>';
+                }
+                if (!$isLockedByHandover && $expense->isReviewRequested()) {
                     $actions .= '<form method="POST" action="' . route('expenses.grant-edit', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-info text-dark" title="Grant Edit Ability"><i class="bi bi-unlock-fill"></i> Grant Edit</button></form>';
                 }
-                if ($expense->isPending() || $expense->isEditable()) {
-                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'Delete this expense?\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
+                if ($expense->isPending() || $expense->isEditable() || $isLockedByHandover) {
+                    $confirmDel = $isLockedByHandover ? 'Delete this handover-linked expense? Linked handover totals will recalculate.' : 'Delete this expense?';
+                    $actions .= '<form method="POST" action="' . route('expenses.destroy', $expense) . '" class="d-inline" onsubmit="return confirm(\'' . $confirmDel . '\');">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-xs btn-outline-custom text-danger" title="Delete"><i class="bi bi-trash"></i></button></form>';
                 }
                 if ($expense->isPending()) {
                     $actions .= '<form method="POST" action="' . route('expenses.approve', $expense) . '" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom btn-success" title="Approve Expense"><i class="bi bi-check-lg"></i> </button></form>';
                 }
-                if ($expense->isApproved() || $expense->isReviewRequested() || $expense->isEditable()) {
+                if (!$isLockedByHandover && ($expense->isApproved() || $expense->isReviewRequested() || $expense->isEditable())) {
                     $actions .= '<form method="POST" action="' . route('expenses.revert-approval', $expense) . '" class="d-inline" onsubmit="return confirm(\'Revert approval for this expense?\');">' . csrf_field() . '<button type="submit" class="btn btn-xs btn-outline-custom text-warning" title="Revert Approval"><i class="bi bi-arrow-counterclockwise"></i> Revert</button></form>';
                 }
                 $actions .= '<a href="' . route('expenses.edit', $expense) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
@@ -305,7 +351,16 @@ class ExpenseController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isOwner()) {
+        // Handover lock takes highest precedence for Shop Admin & Seller
+        if ($expense->isLockedByHandover()) {
+            if (!$user->isOwner()) {
+                $sameShop = $user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id;
+                $isRecorder = $expense->recorded_by === $user->id;
+                if ((!$sameShop && !$isRecorder) || !$expense->canMutateUnderHandover($user, 'edit')) {
+                    abort(403, 'This expense is locked by a submitted Cash Handover (' . ($expense->handoverReport?->handover_no ?? '') . '). Please request edit approval from the Owner first.');
+                }
+            }
+        } elseif ($user->isOwner()) {
             // Owner is always allowed
         } elseif ($expense->isPending()) {
             if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
@@ -330,8 +385,17 @@ class ExpenseController extends Controller
     public function update(Request $request, Expense $expense)
     {
         $user = Auth::user();
+        $wasHandoverLocked = $expense->isLockedByHandover();
 
-        if ($user->isOwner()) {
+        if ($wasHandoverLocked) {
+            if (!$user->isOwner()) {
+                $sameShop = $user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id;
+                $isRecorder = $expense->recorded_by === $user->id;
+                if ((!$sameShop && !$isRecorder) || !$expense->canMutateUnderHandover($user, 'edit')) {
+                    abort(403, 'This expense is locked by a submitted Cash Handover. Please request edit approval from the Owner first.');
+                }
+            }
+        } elseif ($user->isOwner()) {
             // Owner is always allowed
         } elseif ($expense->isPending()) {
             if (($user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id) || $expense->recorded_by === $user->id) {
@@ -359,19 +423,50 @@ class ExpenseController extends Controller
 
         $data = $request->only('expense_category_id', 'activity', 'description', 'amount', 'activity_date');
 
-        if ($expense->isEditable() || ($user->isOwner() && !$expense->isPending())) {
+        if ($wasHandoverLocked || $expense->isEditable() || ($user->isOwner() && !$expense->isPending())) {
             $data['status'] = 'approved';
         }
 
         $expense->update($data);
 
+        if ($wasHandoverLocked) {
+            if (!$user->isOwner()) {
+                $expense->approvedHandoverUnlock('edit')?->markConsumed();
+            }
+            $expense->handoverReport?->recalculateTotals("Edited Expense #{$expense->id} ({$expense->activity})");
+        }
+
         return redirect()->route('expenses.index')
-            ->with('success', 'Expense updated successfully.');
+            ->with('success', $wasHandoverLocked
+                ? 'Expense updated, handover totals recalculated, and expense re-locked.'
+                : 'Expense updated successfully.');
     }
 
     public function destroy(Expense $expense)
     {
         $user = Auth::user();
+        $wasHandoverLocked = $expense->isLockedByHandover();
+        $handoverReport = $wasHandoverLocked ? $expense->handoverReport : null;
+        $expenseId = $expense->id;
+        $expenseActivity = $expense->activity;
+
+        if ($wasHandoverLocked) {
+            if (!$user->isOwner()) {
+                $sameShop = $user->isShopAdmin() && $expense->recorder?->shop_id === $user->shop_id;
+                $isRecorder = $expense->recorded_by === $user->id;
+                if ((!$sameShop && !$isRecorder) || !$expense->canMutateUnderHandover($user, 'delete')) {
+                    abort(403, 'Cannot delete an expense locked by a submitted Cash Handover without Owner approval.');
+                }
+            }
+
+            $approvedUnlock = !$user->isOwner() ? $expense->approvedHandoverUnlock('delete') : null;
+            $expense->delete();
+            $approvedUnlock?->markConsumed();
+            $handoverReport?->recalculateTotals("Deleted Expense #{$expenseId} ({$expenseActivity})");
+
+            return redirect()->route('expenses.index')
+                ->with('success', 'Expense deleted and linked handover totals recalculated.');
+        }
 
         if (!$expense->isPending() && !$expense->isEditable()) {
             abort(403, 'Cannot delete an approved or locked expense.');
@@ -541,6 +636,10 @@ class ExpenseController extends Controller
 
         if (!$user->isOwner()) {
             abort(403, 'Only the owner can revert expense approvals.');
+        }
+
+        if ($expense->isLockedByHandover()) {
+            return back()->with('error', 'This expense is part of a submitted Cash Handover (' . ($expense->handoverReport?->handover_no ?? '') . ') and its approval cannot be reverted.');
         }
 
         if (!$expense->isApproved() && !$expense->isReviewRequested() && !$expense->isEditable()) {

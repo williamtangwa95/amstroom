@@ -227,7 +227,7 @@
                     <i class="bi bi-rulers me-2" style="color:var(--accent-blue);"></i>
                     <span id="modalTitleText">New Measurement Unit</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="unitForm" method="POST" action="{{ route('units.store') }}">
                 @csrf
@@ -288,6 +288,50 @@
         </div>
     </div>
 </div>
+
+{{-- View Unit Modal --}}
+<div class="modal fade" id="viewUnitModal" tabindex="-1" aria-labelledby="viewUnitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg);border:1px solid var(--card-border);color:var(--text-primary);">
+            <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
+                <h5 class="modal-title fw-700" id="viewUnitModalLabel">
+                    <i class="bi bi-rulers me-2" style="color:var(--accent-blue);"></i>
+                    <span id="viewUnitTitle">Unit Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3 border-bottom">
+                    <div>
+                        <h6 class="mb-1 fw-700" id="viewUnitName">—</h6>
+                        <span class="badge px-2 py-1" id="viewUnitSymbol" style="background:rgba(88,166,255,0.15);color:#0077b6;">—</span>
+                        <span class="badge ms-1 d-none" id="viewUnitDefaultBadge" style="background:rgba(16,185,129,0.15);color:#059669;">Default Unit</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted">Assigned Products</div>
+                        <div class="fw-800 text-primary" id="viewUnitItemsCount">0</div>
+                    </div>
+                </div>
+                <table class="table table-borderless table-sm mb-0" style="font-size:.84rem;">
+                    <tr>
+                        <th style="width:35%;color:var(--text-secondary);">Description</th>
+                        <td id="viewUnitDescription">—</td>
+                    </tr>
+                    <tr>
+                        <th style="color:var(--text-secondary);">Created</th>
+                        <td id="viewUnitCreated">—</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--card-border);">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-accent" id="btnViewUnitToEdit">
+                    <i class="bi bi-pencil me-1"></i> Edit Unit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -321,6 +365,46 @@ $(function () {
 
     $('#btn-new-unit').on('click', function () {
         resetModal();
+    });
+
+    let lastViewedUnitData = null;
+
+    $(document).on('click', '.btn-view-unit', function () {
+        const btn = $(this);
+        lastViewedUnitData = {
+            id: btn.data('id'),
+            name: btn.data('name'),
+            symbol: btn.data('symbol'),
+            description: btn.data('description') || '',
+            isDefault: btn.data('is-default') == 1,
+            itemsCount: btn.data('items-count') || 0,
+            created: btn.data('created') || '—'
+        };
+
+        $('#viewUnitTitle').text(lastViewedUnitData.name);
+        $('#viewUnitName').text(lastViewedUnitData.name);
+        $('#viewUnitSymbol').text(lastViewedUnitData.symbol);
+        $('#viewUnitDefaultBadge').toggleClass('d-none', !lastViewedUnitData.isDefault);
+        $('#viewUnitItemsCount').text(Number(lastViewedUnitData.itemsCount).toLocaleString() + ' product(s)');
+        $('#viewUnitDescription').text(lastViewedUnitData.description || '—');
+        $('#viewUnitCreated').text(lastViewedUnitData.created);
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('viewUnitModal')).show();
+    });
+
+    $('#btnViewUnitToEdit').on('click', function () {
+        if (!lastViewedUnitData) return;
+        bootstrap.Modal.getInstance(document.getElementById('viewUnitModal'))?.hide();
+
+        $('#modalTitleText').text('Edit Measurement Unit');
+        $('#unitMethod').val('PUT');
+        $('#unitId').val(lastViewedUnitData.id);
+        $('#unitForm').attr('action', '/units/' + lastViewedUnitData.id);
+        $('#inputUnitName').val(lastViewedUnitData.name);
+        $('#inputUnitSymbol').val(lastViewedUnitData.symbol);
+        $('#inputUnitDescription').val(lastViewedUnitData.description);
+        $('#inputIsDefault').prop('checked', lastViewedUnitData.isDefault);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('unitModal')).show();
     });
 
     $(document).on('click', '.btn-edit-unit', function () {

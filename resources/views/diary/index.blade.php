@@ -132,6 +132,54 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* ── Compact Reminder Preset Pills ── */
+    .diary-preset-bar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .32rem;
+        margin-top: .45rem;
+    }
+    .diary-preset-label {
+        font-size: .68rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-right: .15rem;
+    }
+    .diary-preset-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: .16rem .58rem;
+        font-size: .7rem;
+        font-weight: 700;
+        line-height: 1.3;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .diary-preset-pill:hover:not(:disabled) {
+        border-color: #0077b6;
+        color: #0077b6;
+        background: #f0f9ff;
+    }
+    .diary-preset-pill.is-active {
+        background: #0077b6;
+        border-color: #0077b6;
+        color: #ffffff;
+        box-shadow: 0 2px 6px rgba(0, 119, 182, .22);
+    }
+    .diary-preset-pill:disabled {
+        opacity: .42;
+        cursor: not-allowed;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #94a3b8;
+    }
 </style>
 @endpush
 
@@ -447,9 +495,82 @@
                         <div class="col-12 col-md-6 d-flex align-items-end">
                             <div class="form-check form-switch mb-2">
                                 <input class="form-check-input" type="checkbox" id="inputNeedsFollowUp" name="needs_follow_up" value="1" style="width:2.5em;height:1.3em;">
-                                <label class="form-check-label ms-2 fw-600" for="inputNeedsFollowUp" style="color:var(--text-secondary);">
-                                    <i class="bi bi-bell me-1" style="color:#e3b341;"></i> Needs Follow-up
+                                <label class="form-check-label ms-2 fw-600" for="inputNeedsFollowUp" style="color:var(--text-secondary);cursor:pointer;">
+                                    <i class="bi bi-bell me-1" style="color:#e3b341;"></i> Enable Follow-up Reminder
                                 </label>
+                            </div>
+                        </div>
+
+                        {{-- Follow-up Reminder & Email Settings (shown when Follow-up is enabled) --}}
+                        <div class="col-12 d-none" id="followUpSettingsPanel">
+                            <div class="p-3 rounded-3 border" style="background:rgba(0,119,182,0.04);border-color:rgba(0,119,182,0.22) !important;">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                                    <div class="fw-700 small text-primary">
+                                        <i class="bi bi-alarm-fill me-1"></i>Follow-up Reminder Schedule
+                                    </div>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="reminderSchedulePreview" style="font-size:.7rem;">
+                                        Set a Due Date to schedule reminder
+                                    </span>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-600 mb-1" style="color:var(--text-secondary);">
+                                            Remind Me (Days Before Due)
+                                        </label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="inputRemindDaysBefore" name="remind_days_before" min="1" max="365" value="1" placeholder="1">
+                                            <span class="input-group-text">day(s)</span>
+                                        </div>
+                                        <div class="form-text" id="remindDaysRangeHint" style="font-size:.7rem;">
+                                            Min: 1 day &middot; Max: days between Event &amp; Due Date
+                                        </div>
+                                        <div class="diary-preset-bar">
+                                            <span class="diary-preset-label">Quick:</span>
+                                            <button type="button" class="diary-preset-pill btn-days-preset" data-days="1">1d</button>
+                                            <button type="button" class="diary-preset-pill btn-days-preset" data-days="2">2d</button>
+                                            <button type="button" class="diary-preset-pill btn-days-preset" data-days="3">3d</button>
+                                            <button type="button" class="diary-preset-pill btn-days-preset" data-days="7">7d</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-sm-6 col-md-4">
+                                        <label class="form-label small fw-600 mb-1" style="color:var(--text-secondary);">
+                                            Reminder Date
+                                        </label>
+                                        <input type="date" class="form-control form-control-sm" id="inputReminderDate" name="reminder_date">
+                                        <div class="form-text" style="font-size:.7rem;">
+                                            Auto-calculated from Due Date
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-sm-6 col-md-4">
+                                        <label class="form-label small fw-600 mb-1" style="color:var(--text-secondary);">
+                                            Reminder Time
+                                        </label>
+                                        <input type="time" class="form-control form-control-sm" id="inputReminderTime" name="reminder_time" value="10:00">
+                                        <div class="form-text" style="font-size:.7rem;">
+                                            Default: 10:00 AM
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="p-2 px-3 rounded-3 bg-white border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            <div>
+                                                <div class="fw-600 small text-dark">
+                                                    <i class="bi bi-envelope-fill text-primary me-1"></i>Email Notification
+                                                </div>
+                                                <div class="text-muted" style="font-size:.72rem;">
+                                                    Choose whether to also receive an email alert at <strong>{{ auth()->user()->email }}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="inputNotifyEmail" name="notify_email" value="1" style="width:2.5em;height:1.3em;">
+                                                <label class="form-check-label small fw-600 ms-1" for="inputNotifyEmail" id="notifyEmailLabel" style="cursor:pointer;">Off</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -505,6 +626,18 @@
                         <div class="p-2 rounded" style="background:var(--input-bg);border:1px solid var(--card-border);">
                             <span class="small text-muted d-block" style="font-size:0.70rem;">Due Date</span>
                             <span class="fw-600" id="viewDueDate" style="font-size:0.82rem;"></span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded" style="background:var(--input-bg);border:1px solid var(--card-border);">
+                            <span class="small text-muted d-block" style="font-size:0.70rem;">Reminder Date</span>
+                            <span class="fw-600 text-primary" id="viewReminderDate" style="font-size:0.82rem;">—</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded" style="background:var(--input-bg);border:1px solid var(--card-border);">
+                            <span class="small text-muted d-block" style="font-size:0.70rem;">Email Notification</span>
+                            <span class="fw-600" id="viewNotifyEmail" style="font-size:0.82rem;">Off</span>
                         </div>
                     </div>
                     <div class="col-12">
@@ -626,6 +759,176 @@ $(function () {
         table.ajax.reload();
     });
 
+    // ── Follow-up Reminder Schedule Panel Helpers ─────────────────────────────
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function formatDateYmd(d) {
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    function parseYmd(str) {
+        if (!str || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+        const p = str.split('-').map(Number);
+        return new Date(p[0], p[1] - 1, p[2]);
+    }
+    function formatNiceDate(d) {
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function formatNiceTime(timeStr) {
+        const clean = String(timeStr || '10:00').trim();
+        const m = clean.match(/^(\d{2}):(\d{2})/);
+        if (!m) return '10:00 AM';
+        let h = parseInt(m[1], 10);
+        const min = m[2];
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        if (h === 0) h = 12;
+        return pad2(h) + ':' + min + ' ' + ampm;
+    }
+
+    function getMaxReminderDays() {
+        const eventStr = $('#inputEventDate').val();
+        const dueStr = $('#inputDueDate').val();
+        const eventDate = parseYmd(eventStr);
+        const dueDate = parseYmd(dueStr);
+        if (eventDate && dueDate) {
+            return Math.round((dueDate.getTime() - eventDate.getTime()) / 86400000);
+        }
+        return 365;
+    }
+
+    function updateFollowUpPanelVisibility() {
+        const enabled = $('#inputNeedsFollowUp').is(':checked');
+        if (enabled) {
+            $('#followUpSettingsPanel').removeClass('d-none');
+            syncReminderFromDays();
+        } else {
+            $('#followUpSettingsPanel').addClass('d-none');
+        }
+        $('#notifyEmailLabel').text($('#inputNotifyEmail').is(':checked') ? 'Send Email' : 'Off');
+    }
+
+    function updatePresetButtons(maxDays, activeDays) {
+        const currentDays = activeDays !== undefined ? activeDays : parseInt($('#inputRemindDaysBefore').val() || '0', 10);
+        $('.btn-days-preset').each(function () {
+            const presetDays = parseInt($(this).data('days'), 10);
+            const allowed = maxDays >= 1 && presetDays <= maxDays;
+            $(this).prop('disabled', !allowed);
+            $(this).toggleClass('is-active', allowed && presetDays === currentDays);
+        });
+    }
+
+    function syncReminderFromDays() {
+        const eventStr = $('#inputEventDate').val();
+        const dueStr = $('#inputDueDate').val();
+        const $daysInput = $('#inputRemindDaysBefore');
+        const $remInput = $('#inputReminderDate');
+        const $preview = $('#reminderSchedulePreview');
+        const $hint = $('#remindDaysRangeHint');
+
+        if (!dueStr) {
+            $daysInput.attr('min', 1).attr('max', 365);
+            if ((parseInt($daysInput.val() || '1', 10) || 0) < 1) $daysInput.val(1);
+            $remInput.val('').removeAttr('min').removeAttr('max');
+            $preview.removeClass('bg-danger-subtle text-danger border-danger-subtle').addClass('bg-primary-subtle text-primary border-primary-subtle');
+            $preview.text('Set a Due Date to schedule reminder');
+            $hint.text('Min: 1 day · Max: days between Event Date & Due Date');
+            updatePresetButtons(365);
+            return;
+        }
+
+        const due = parseYmd(dueStr);
+        if (!due) return;
+
+        const maxDays = getMaxReminderDays();
+        updatePresetButtons(maxDays);
+
+        if (maxDays < 1) {
+            $daysInput.attr('min', 1).attr('max', 1).val(1);
+            $remInput.val('').removeAttr('min').removeAttr('max');
+            $preview.removeClass('bg-primary-subtle text-primary border-primary-subtle').addClass('bg-danger-subtle text-danger border-danger-subtle');
+            $preview.text('Due Date must be at least 1 day after Event Date');
+            $hint.html('<span class="text-danger">Increase Due Date by at least 1 day after Event Date.</span>');
+            return;
+        }
+
+        $preview.removeClass('bg-danger-subtle text-danger border-danger-subtle').addClass('bg-primary-subtle text-primary border-primary-subtle');
+        $daysInput.attr('min', 1).attr('max', maxDays);
+
+        let days = parseInt($daysInput.val() || '1', 10);
+        if (isNaN(days) || days < 1) days = 1;
+        if (days > maxDays) days = maxDays;
+        $daysInput.val(days);
+        updatePresetButtons(maxDays, days);
+
+        const maxRemDate = new Date(due.getTime());
+        maxRemDate.setDate(maxRemDate.getDate() - 1);
+        $remInput.attr('max', formatDateYmd(maxRemDate));
+        if (eventStr) {
+            $remInput.attr('min', eventStr);
+            $hint.text(`Min: 1 day · Max: ${maxDays} ${maxDays === 1 ? 'day' : 'days'} (between Event & Due Date)`);
+        } else {
+            $remInput.removeAttr('min');
+            $hint.text('Min: 1 day before Due Date');
+        }
+
+        const rem = new Date(due.getTime());
+        rem.setDate(rem.getDate() - days);
+        $remInput.val(formatDateYmd(rem));
+        const niceTime = formatNiceTime($('#inputReminderTime').val() || '10:00');
+        $preview.text('Reminder: ' + formatNiceDate(rem) + ' at ' + niceTime + ' (' + days + (days === 1 ? ' day' : ' days') + ' before due)');
+    }
+
+    function syncDaysFromReminder() {
+        const dueStr = $('#inputDueDate').val();
+        const remStr = $('#inputReminderDate').val();
+        const due = parseYmd(dueStr);
+        const rem = parseYmd(remStr);
+
+        if (!due || !rem) {
+            syncReminderFromDays();
+            return;
+        }
+
+        const maxDays = getMaxReminderDays();
+        if (maxDays < 1) {
+            syncReminderFromDays();
+            return;
+        }
+
+        let diffDays = Math.round((due.getTime() - rem.getTime()) / 86400000);
+        if (diffDays < 1) diffDays = 1;
+        if (diffDays > maxDays) diffDays = maxDays;
+
+        $('#inputRemindDaysBefore').val(diffDays);
+        updatePresetButtons(maxDays, diffDays);
+        const clampedRem = new Date(due.getTime());
+        clampedRem.setDate(clampedRem.getDate() - diffDays);
+        $('#inputReminderDate').val(formatDateYmd(clampedRem));
+        const niceTime = formatNiceTime($('#inputReminderTime').val() || '10:00');
+        $('#reminderSchedulePreview').text(
+            'Reminder: ' + formatNiceDate(clampedRem) + ' at ' + niceTime + ' (' + diffDays + (diffDays === 1 ? ' day' : ' days') + ' before due)'
+        );
+    }
+
+    $('#inputNeedsFollowUp').on('change', updateFollowUpPanelVisibility);
+    $('#inputNotifyEmail').on('change', function () {
+        $('#notifyEmailLabel').text($(this).is(':checked') ? 'Send Email' : 'Off');
+    });
+    $('#inputEventDate, #inputDueDate, #inputRemindDaysBefore, #inputReminderTime').on('change input', function () {
+        if ($('#inputNeedsFollowUp').is(':checked')) {
+            syncReminderFromDays();
+        }
+    });
+    $('#inputReminderDate').on('change', function () {
+        if ($('#inputNeedsFollowUp').is(':checked')) {
+            syncDaysFromReminder();
+        }
+    });
+    $(document).on('click', '.btn-days-preset', function () {
+        if ($(this).prop('disabled')) return;
+        $('#inputRemindDaysBefore').val($(this).data('days'));
+        syncReminderFromDays();
+    });
+
     // ── Open modal for NEW entry ───────────────────────────────────────────────
     $('#btn-new-diary').on('click', function () {
         resetModal();
@@ -656,6 +959,20 @@ $(function () {
         $('#viewDescription').text(btn.data('event-description'));
         $('#viewEventDate').text(btn.data('event-date'));
         $('#viewDueDate').text(btn.data('due-date'));
+        const remDate = btn.data('reminder-date') || '—';
+        const remTime = btn.data('reminder-time') || '10:00 AM';
+        const daysBefore = parseInt(btn.data('remind-days-before') || '1', 10);
+        $('#viewReminderDate').text(
+            needsFollowUp && remDate !== '—'
+                ? remDate + ' · ' + remTime + ' (' + daysBefore + 'd before)'
+                : '—'
+        );
+        const notifyEmail = btn.data('notify-email') == 1;
+        $('#viewNotifyEmail').html(
+            notifyEmail
+                ? '<span class="text-success"><i class="bi bi-envelope-check-fill me-1"></i>Enabled</span>'
+                : '<span class="text-muted">Off (In-App Only)</span>'
+        );
         $('#viewCost').text(btn.data('cost'));
 
         $('#viewDiaryModal').modal('show');
@@ -686,7 +1003,19 @@ $(function () {
         $('#inputDueDate').val(btn.data('due-date'));
         const rawCost = btn.data('cost');
         $('#inputCost').val(rawCost !== '' && rawCost !== undefined && rawCost !== null ? (window.formatCurrencyValue ? window.formatCurrencyValue(rawCost) : rawCost) : '');
-        $('#inputNeedsFollowUp').prop('checked', btn.data('needs-follow-up') == 1);
+        const needsFollowUp = btn.data('needs-follow-up') == 1;
+        $('#inputNeedsFollowUp').prop('checked', needsFollowUp);
+        const editDays = Math.max(1, parseInt(btn.data('remind-days-before') || '1', 10) || 1);
+        $('#inputRemindDaysBefore').val(editDays);
+        $('#inputReminderDate').val(btn.data('reminder-date') || '');
+        $('#inputReminderTime').val(btn.data('reminder-time') || '10:00');
+        $('#inputNotifyEmail').prop('checked', btn.data('notify-email') == 1);
+
+        updateFollowUpPanelVisibility();
+        if (needsFollowUp && btn.data('reminder-date')) {
+            $('#inputReminderDate').val(btn.data('reminder-date'));
+            syncDaysFromReminder();
+        }
 
         $('#diaryModal').modal('show');
     });
@@ -697,6 +1026,10 @@ $(function () {
         $('#diaryId').val('');
         $('#diaryForm').attr('action', '{{ route("diary.store") }}');
         $('#diaryForm')[0].reset();
+        $('#inputRemindDaysBefore').val(1);
+        $('#inputReminderDate').val('');
+        $('#inputReminderTime').val('10:00');
+        $('#inputNotifyEmail').prop('checked', false);
 
         if (canUseShopDiary) {
             $('#typePersonal').prop('checked', true).trigger('change');
@@ -705,6 +1038,7 @@ $(function () {
         // Set today as default event date
         const today = new Date().toISOString().split('T')[0];
         $('#inputEventDate').val(today);
+        updateFollowUpPanelVisibility();
     }
 
     // ── Delete ─────────────────────────────────────────────────────────────────

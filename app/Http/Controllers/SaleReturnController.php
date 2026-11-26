@@ -186,7 +186,12 @@ class SaleReturnController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $sale->load('items.item', 'items.components.item', 'shop');
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'return')) {
+            return redirect()->route('sales.show', $sale)
+                ->with('error', 'This sale is locked by a submitted Cash Handover (' . ($sale->handoverReport?->handover_no ?? '') . '). Please request Sale Return approval from the Owner first.');
+        }
+
+        $sale->load('items.item', 'items.components.item', 'shop', 'handoverReport');
         return view('sales-returns.create', compact('sale'));
     }
 
@@ -219,6 +224,10 @@ class SaleReturnController extends Controller
         // Authorization
         if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'return')) {
+            abort(403, 'This sale is locked by a submitted Cash Handover. Please request Sale Return approval from the Owner first.');
         }
 
         $request->validate([
@@ -380,6 +389,13 @@ class SaleReturnController extends Controller
                         $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
                         $sale->update(['total_amount' => $newTotal]);
                     }
+
+                    if ($sale->isLockedByHandover()) {
+                        if (!$user->isOwner()) {
+                            $sale->approvedHandoverUnlock('return')?->markConsumed();
+                        }
+                        $sale->handoverReport?->recalculateTotals("Sale Return #{$saleReturn->id} on Sale #SL-{$sale->id}");
+                    }
                 }
 
                 return $saleReturn;
@@ -422,6 +438,11 @@ class SaleReturnController extends Controller
 
         if ($saleReturn->status !== 'pending') {
             return back()->with('error', 'This return request has already been processed.');
+        }
+
+        $targetSale = $saleReturn->sale;
+        if ($targetSale && $targetSale->isLockedByHandover() && !$targetSale->canMutateUnderHandover($user, 'return')) {
+            return back()->with('error', 'Sale #SL-' . $targetSale->id . ' is locked by a submitted Cash Handover (' . ($targetSale->handoverReport?->handover_no ?? '') . '). Owner unlock approval is required before approving this return.');
         }
 
         try {
@@ -527,6 +548,13 @@ class SaleReturnController extends Controller
                     $newTotal = $sale->items()->get()->sum(fn($i) => $i->quantity * $i->selling_price);
                     $sale->update(['total_amount' => $newTotal]);
                 }
+
+                if ($sale->isLockedByHandover()) {
+                    if (!$user->isOwner()) {
+                        $sale->approvedHandoverUnlock('return')?->markConsumed();
+                    }
+                    $sale->handoverReport?->recalculateTotals("Approved Sale Return #{$saleReturn->id} on Sale #SL-{$sale->id}");
+                }
             });
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to approve return: ' . $e->getMessage());
@@ -577,6 +605,11 @@ class SaleReturnController extends Controller
                 ->with('error', 'Shop Admins cannot delete sales return records associated with Owner stock.');
         }
 
+        if (!$user->isOwner() && $saleReturn->sale && $saleReturn->sale->isLockedByHandover()) {
+            return redirect()->route('sales-returns.index')
+                ->with('error', 'Cannot delete a sale return linked to a submitted Cash Handover without Owner action.');
+        }
+
         $saleReturn->delete();
 
         return redirect()->route('sales-returns.index')
@@ -610,6 +643,11 @@ class SaleReturnController extends Controller
 
             if ($user->isShopAdmin() && !$saleReturn->isAdminStock()) {
                 $errors[] = "Return #{$id}: Shop Admins cannot delete sales return records associated with Owner stock.";
+                continue;
+            }
+
+            if (!$user->isOwner() && $saleReturn->sale && $saleReturn->sale->isLockedByHandover()) {
+                $errors[] = "Return #{$id}: Linked to a submitted Cash Handover and cannot be deleted.";
                 continue;
             }
 

@@ -53,6 +53,19 @@ class UnitController extends Controller
                 . number_format($unit->items_count) . ' product(s)</span>';
 
             $actions = '<div class="d-flex align-items-center gap-1 justify-content-end">';
+            $actions .= '<button type="button" class="btn btn-sm btn-outline-primary btn-view-unit"
+                            style="font-size:0.72rem;padding:3px 8px;"
+                            data-id="' . $unit->id . '"
+                            data-name="' . e($unit->name) . '"
+                            data-symbol="' . e($unit->symbol) . '"
+                            data-description="' . e($unit->description ?? '') . '"
+                            data-is-default="' . ($unit->is_default ? '1' : '0') . '"
+                            data-items-count="' . $unit->items_count . '"
+                            data-created="' . e($unit->created_at ? $unit->created_at->format('M d, Y') : '—') . '"
+                            title="View Unit">
+                            <i class="bi bi-eye"></i>
+                         </button>';
+
             $actions .= '<button type="button" class="btn btn-sm btn-outline-warning btn-edit-unit"
                             style="font-size:0.72rem;padding:3px 8px;"
                             data-id="' . $unit->id . '"

@@ -1667,6 +1667,15 @@
                 max-width: 100% !important;
             }
 
+            table.dataTable > tbody > tr.child span.dtr-data .badge {
+                max-width: 100% !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                text-align: left !important;
+                line-height: 1.3 !important;
+            }
+
             table.dataTable > tbody > tr.child span.dtr-data .btn,
             table.dataTable > tbody > tr.child span.dtr-data button,
             table.dataTable > tbody > tr.child span.dtr-data a.btn {
@@ -2092,7 +2101,7 @@
                         <a href="{{ route('product-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('product-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-box-arrow-right text-warning"></i> Product Transfer
                             @php $myIncomingPt = \Illuminate\Support\Facades\Schema::hasTable('shop_product_transfers') ? \App\Models\ShopProductTransfer::where('status', 'pending')->where('from_shop_id', auth()->user()->shop_id)->count() : 0; @endphp
-                            @if($myIncomingPt > 0) <span class="nav-badge bg-warning text-dark">{{ $myIncomingPt }}</span> @endif
+                            <span id="sidebarIncomingPtBadge" class="nav-badge bg-warning text-dark {{ $myIncomingPt > 0 ? '' : 'd-none' }}">{{ $myIncomingPt }}</span>
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -3624,6 +3633,527 @@
     </style>
     @endif
 
+    @if(auth()->check() && auth()->user()->isShopAdmin())
+    {{-- ── Global Incoming Inter-Shop Product Transfer Request Modal (Shop Admin) ── --}}
+    <div class="modal fade" id="incomingProductTransferModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="incomingProductTransferLabel" aria-hidden="true" style="z-index: 1084;">
+        <div class="modal-dialog modal-dialog-centered modal-lg ipt-modal-dialog">
+            <div class="modal-content ipt-modal-content">
+                <div class="modal-header ipt-modal-header">
+                    <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+                        <div class="ipt-header-icon">
+                            <i class="bi bi-box-arrow-in-left"></i>
+                            <span class="ipt-pulse-dot" aria-hidden="true"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="ipt-eyebrow-pill"><i class="bi bi-bell-fill"></i> Incoming Branch Request</span>
+                                <span class="ipt-count-pill" id="iptPendingCountBadge">1 Pending Request</span>
+                            </div>
+                            <h6 class="modal-title mb-0 ipt-modal-title" id="incomingProductTransferLabel">Another Branch Requested Stock From Your Shop</h6>
+                            <p class="ipt-modal-sub mb-0" id="iptModalSubtitle">Review the requested products below and confirm or reject the transfer.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body ipt-modal-body">
+                    <div id="iptTransfersList" class="ipt-list"></div>
+                </div>
+
+                <div class="modal-footer ipt-modal-footer">
+                    <button type="button" class="ipt-btn-dismiss ipt-dismiss-trigger">
+                        <i class="bi bi-clock-history"></i>
+                        <span>Remind Me Later (30m)</span>
+                    </button>
+                    <a href="{{ route('product-transfers.index', ['tab' => 'action_required']) }}" class="ipt-btn-primary" id="btnOpenAllIncomingPt">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Open Incoming Requests</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .ipt-modal-dialog { max-width: 660px; }
+        .ipt-modal-content {
+            border: 1px solid rgba(15, 23, 42, .08);
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28), 0 4px 16px rgba(15, 23, 42, .08);
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .ipt-modal-header {
+            padding: 1.05rem 1.3rem;
+            background: linear-gradient(135deg, #b45309 0%, #d97706 55%, #92400e 100%);
+            border-bottom: none;
+            color: #ffffff;
+        }
+        .ipt-header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .16);
+            border: 1px solid rgba(255, 255, 255, .28);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .ipt-pulse-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #fef08a;
+            border: 2px solid #b45309;
+        }
+        .ipt-eyebrow-pill, .ipt-count-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .16rem .56rem;
+            border-radius: 999px;
+            font-size: .64rem;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+        .ipt-eyebrow-pill {
+            background: rgba(255, 255, 255, .22);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, .36);
+        }
+        .ipt-count-pill {
+            background: rgba(15, 23, 42, .22);
+            color: #fef9c3;
+            border: 1px solid rgba(254, 240, 138, .35);
+        }
+        .ipt-modal-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-top: .28rem;
+        }
+        .ipt-modal-sub {
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .88);
+            margin-top: .18rem;
+        }
+        .ipt-modal-body {
+            padding: 1rem 1.2rem;
+            background: #f8fafc;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .ipt-list {
+            display: flex;
+            flex-direction: column;
+            gap: .85rem;
+        }
+        .ipt-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #d97706;
+            border-radius: 12px;
+            padding: .9rem 1rem;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        }
+        .ipt-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: .45rem;
+            margin-bottom: .6rem;
+        }
+        .ipt-card-num {
+            font-weight: 800;
+            font-size: .88rem;
+            color: #0f172a;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+        }
+        .ipt-shop-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .18rem .55rem;
+            border-radius: 999px;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: .72rem;
+            font-weight: 700;
+        }
+        .ipt-time-pill {
+            font-size: .71rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .ipt-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem 1rem;
+            font-size: .75rem;
+            color: #475569;
+            margin-bottom: .6rem;
+        }
+        .ipt-items-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: .5rem .7rem;
+            margin-bottom: .65rem;
+        }
+        .ipt-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            padding: .28rem 0;
+            font-size: .79rem;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .ipt-item-row:last-child { border-bottom: none; }
+        .ipt-item-name {
+            font-weight: 600;
+            color: #0f172a;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+        .ipt-item-qty {
+            font-weight: 700;
+            color: #0369a1;
+            background: #e0f2fe;
+            padding: .1rem .5rem;
+            border-radius: 999px;
+            font-size: .72rem;
+            white-space: nowrap;
+        }
+        .ipt-notes {
+            font-size: .74rem;
+            color: #475569;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: .4rem .65rem;
+            margin-bottom: .65rem;
+        }
+        .ipt-card-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            width: 100%;
+            padding: .48rem .9rem;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #0077b6, #005691);
+            color: #ffffff;
+            text-decoration: none;
+            font-size: .8rem;
+            font-weight: 700;
+            transition: all .15s ease;
+        }
+        .ipt-card-cta:hover {
+            background: linear-gradient(135deg, #00669e, #004473);
+            color: #ffffff;
+        }
+        .ipt-modal-footer {
+            padding: .85rem 1.2rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+        .ipt-btn-dismiss {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .46rem .88rem;
+            border-radius: 9px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .ipt-btn-dismiss:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .ipt-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .48rem 1rem;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #d97706, #b45309);
+            color: #ffffff;
+            text-decoration: none;
+            font-size: .79rem;
+            font-weight: 700;
+        }
+        .ipt-btn-primary:hover {
+            background: linear-gradient(135deg, #b45309, #92400e);
+            color: #ffffff;
+        }
+        @media (max-width: 575.98px) {
+            .ipt-modal-header { padding: .9rem 1rem; }
+            .ipt-modal-body { padding: .85rem .9rem; }
+            .ipt-modal-footer {
+                padding: .8rem .95rem;
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+            .ipt-btn-dismiss, .ipt-btn-primary {
+                justify-content: center;
+                width: 100%;
+            }
+        }
+    </style>
+    @endif
+
+    @if(auth()->check())
+    {{-- ── Global Daily Diary Follow-up Reminder Modal (All Authenticated Users) ── --}}
+    <div class="modal fade" id="diaryFollowUpReminderModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="diaryFollowUpReminderLabel" aria-hidden="true" style="z-index: 1085;">
+        <div class="modal-dialog modal-dialog-centered modal-lg dfr-modal-dialog">
+            <div class="modal-content dfr-modal-content">
+                <div class="modal-header dfr-modal-header">
+                    <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+                        <div class="dfr-header-icon">
+                            <i class="bi bi-journal-check"></i>
+                            <span class="dfr-pulse-dot" aria-hidden="true"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="dfr-eyebrow-pill"><i class="bi bi-bell-fill"></i> Diary Follow-up Alert</span>
+                                <span class="dfr-count-pill" id="dfrPendingCountBadge">1 Follow-up Due</span>
+                            </div>
+                            <h6 class="modal-title mb-0 dfr-modal-title" id="diaryFollowUpReminderLabel">Scheduled Diary Follow-up Reached</h6>
+                            <p class="dfr-modal-sub mb-0">Click <strong>OK</strong> to acknowledge once, or <strong>Reschedule</strong> to update the due date &amp; reminder date.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body dfr-modal-body">
+                    <div id="dfrItemsList" class="dfr-list"></div>
+                </div>
+
+                <div class="modal-footer dfr-modal-footer">
+                    <a href="{{ route('diary.index') }}" class="dfr-link-diary">
+                        <i class="bi bi-journal-text"></i>
+                        <span>Open Daily Diary</span>
+                    </a>
+                    <button type="button" class="dfr-btn-ok-all" id="btnAcknowledgeAllDiaries">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>OK, Got It</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .dfr-modal-dialog { max-width: 650px; }
+        .dfr-modal-content {
+            border: 1px solid rgba(15, 23, 42, .08);
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28), 0 4px 16px rgba(15, 23, 42, .08);
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .dfr-modal-header {
+            padding: 1.1rem 1.35rem;
+            background: linear-gradient(135deg, #0077b6 0%, #005691 58%, #003a6c 100%);
+            border-bottom: none;
+            color: #ffffff;
+        }
+        .dfr-header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .24);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .dfr-pulse-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #fbbf24;
+            border: 2px solid #005691;
+        }
+        .dfr-eyebrow-pill, .dfr-count-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .16rem .56rem;
+            border-radius: 999px;
+            font-size: .64rem;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+        .dfr-eyebrow-pill {
+            background: rgba(251, 191, 36, .22);
+            color: #fef3c7;
+            border: 1px solid rgba(251, 191, 36, .4);
+        }
+        .dfr-count-pill {
+            background: rgba(255, 255, 255, .16);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, .24);
+        }
+        .dfr-modal-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-top: .28rem;
+        }
+        .dfr-modal-sub {
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .86);
+            margin-top: .18rem;
+        }
+        .dfr-modal-body {
+            padding: 1.05rem 1.25rem;
+            background: #f8fafc;
+            max-height: 62vh;
+            overflow-y: auto;
+        }
+        .dfr-list {
+            display: flex;
+            flex-direction: column;
+            gap: .85rem;
+        }
+        .dfr-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #0077b6;
+            border-radius: 13px;
+            padding: .95rem 1.05rem;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+        }
+        .dfr-card.is-due { border-left-color: #dc2626; }
+        .dfr-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+        .dfr-card-title {
+            font-size: .95rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+        }
+        .dfr-card-desc {
+            font-size: .8rem;
+            color: #475569;
+            margin: .4rem 0 .7rem;
+            line-height: 1.45;
+            white-space: pre-line;
+            max-height: 84px;
+            overflow-y: auto;
+        }
+        .dfr-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .55rem;
+            margin-bottom: .75rem;
+            font-size: .74rem;
+        }
+        .dfr-meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .22rem .58rem;
+            border-radius: 8px;
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        .dfr-card-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: .5rem;
+            flex-wrap: wrap;
+            padding-top: .65rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        .dfr-reschedule-panel {
+            margin-top: .75rem;
+            padding: .85rem;
+            border-radius: 10px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+        }
+        .dfr-modal-footer {
+            padding: .85rem 1.25rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+        .dfr-link-diary {
+            display: inline-flex;
+            align-items: center;
+            gap: .38rem;
+            font-size: .8rem;
+            font-weight: 600;
+            color: #0077b6;
+            text-decoration: none;
+        }
+        .dfr-link-diary:hover { text-decoration: underline; color: #005691; }
+        .dfr-btn-ok-all {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .46rem 1.05rem;
+            border-radius: 9px;
+            border: none;
+            background: linear-gradient(135deg, #0077b6, #005691);
+            color: #ffffff;
+            font-size: .82rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0, 86, 145, .2);
+        }
+        .dfr-btn-ok-all:hover { background: linear-gradient(135deg, #00669e, #004473); }
+        @media (max-width: 575.98px) {
+            .dfr-modal-body { padding: .85rem; }
+            .dfr-card-actions { justify-content: stretch; }
+            .dfr-card-actions .btn { flex: 1; }
+            .dfr-modal-footer { flex-direction: column-reverse; align-items: stretch; }
+            .dfr-btn-ok-all { justify-content: center; width: 100%; }
+            .dfr-link-diary { justify-content: center; }
+        }
+    </style>
+    @endif
+
     <style>
         .product-img-wrapper:hover .img-zoom-overlay {
             opacity: 1 !important;
@@ -3884,9 +4414,35 @@
                         list.prepend(itemsHtml);
                     }
 
-                    // Play sound if flagged
+                    // Play sound & show clickable in-app toast when brand-new notifications arrive
                     if (response.play_sound) {
                         playNotificationSound(response.ringtone_url);
+                        if (response.recent && response.recent.length > 0) {
+                            const newest = response.recent[0];
+                            const toastUrl = newest.destination_url ?
+                                `/notifications/${newest.id}/go?redirect=${encodeURIComponent(newest.destination_url)}` :
+                                `/notifications/${newest.id}/go`;
+                            const safeTitle = $('<div>').text(newest.title || 'New Notification').html();
+                            const safeMsg = $('<div>').text(newest.message || '').html();
+                            const $nToast = $(`
+                                <div class="toast border-0 shadow-lg" role="alert" style="position:fixed;bottom:22px;right:22px;z-index:1095;border-radius:12px;max-width:360px;width:calc(100vw - 32px);overflow:hidden;background:#ffffff;border-left:4px solid #0088cc !important;">
+                                    <div class="d-flex align-items-start gap-2 p-3">
+                                        <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px;height:32px;">
+                                            <i class="bi bi-bell-fill"></i>
+                                        </div>
+                                        <a href="${toastUrl}" class="text-decoration-none flex-grow-1" style="min-width:0;">
+                                            <div class="fw-700 text-dark" style="font-size:.82rem;line-height:1.25;">${safeTitle}</div>
+                                            <div class="text-secondary mt-1" style="font-size:.74rem;line-height:1.35;overflow-wrap:anywhere;">${safeMsg}</div>
+                                        </a>
+                                        <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="toast" aria-label="Close" style="font-size:.65rem;"></button>
+                                    </div>
+                                </div>
+                            `);
+                            $('body').append($nToast);
+                            const bsNToast = new bootstrap.Toast($nToast[0], { delay: 7500 });
+                            bsNToast.show();
+                            $nToast[0].addEventListener('hidden.bs.toast', function() { $nToast.remove(); });
+                        }
                     }
                 },
                 error: function(xhr) {
@@ -5134,6 +5690,9 @@
             if (priceModalEl) {
                 priceModalEl.addEventListener('hidden.bs.modal', function() {
                     isPriceModalOpen = false;
+                    if (typeof window.checkIncomingProductTransfers === 'function') {
+                        setTimeout(window.checkIncomingProductTransfers, 450);
+                    }
                 });
             }
 
@@ -5144,6 +5703,632 @@
                     if (isOnStockTransfersPagePpr()) return;
                     if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
                         window.checkPendingPriceReminders();
+                    }
+                }, POLL_INTERVAL_MS);
+            });
+        })();
+
+        // ── Shop Admin: Real-Time Incoming Inter-Shop Product Transfer Request Popup ──
+        (function() {
+            const USER_ID = {{ (int) auth()->id() }};
+            const SNOOZE_MS = 30 * 60 * 1000; // 30 minutes
+            const STORAGE_KEY = 'amstroom_ipt_reminder_snooze_u' + USER_ID;
+            const POLL_INTERVAL_MS = 10000;
+
+            let currentIncomingPts = [];
+            let isIptModalOpen = false;
+
+            function escapeHtmlIpt(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function formatTzsIpt(amount) {
+                if (amount === null || amount === undefined || isNaN(amount)) return 'TZS 0';
+                return 'TZS ' + Number(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+
+            function getLocalIptSnoozes() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    const now = Date.now();
+                    const cleaned = {};
+                    Object.keys(parsed).forEach(function(k) {
+                        if (parsed[k] && parsed[k] > now) {
+                            cleaned[k] = parsed[k];
+                        }
+                    });
+                    return cleaned;
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            function saveLocalIptSnoozes(ids) {
+                try {
+                    const map = getLocalIptSnoozes();
+                    const until = Date.now() + SNOOZE_MS;
+                    ids.forEach(function(id) {
+                        map[String(id)] = until;
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+                } catch (e) {}
+            }
+
+            function getCurrentViewingPtId() {
+                const match = (window.location.pathname || '').match(/^\/product-transfers\/(\d+)(?:\/|$)/i);
+                return match ? parseInt(match[1], 10) : null;
+            }
+
+            function isSuppressedPageIpt() {
+                return /^\/stock-transfers(?:\/|$)/i.test(window.location.pathname || '');
+            }
+
+            function updateSidebarIncomingPtBadge(totalPending) {
+                const $badge = $('#sidebarIncomingPtBadge');
+                if ($badge.length === 0) return;
+                if (totalPending > 0) {
+                    $badge.removeClass('d-none').text(totalPending);
+                } else {
+                    $badge.addClass('d-none').text('0');
+                }
+            }
+
+            function renderIncomingPts(transfers, indexUrl, shopName) {
+                const count = transfers.length;
+                $('#iptPendingCountBadge').text(count + ' Pending Request' + (count === 1 ? '' : 's'));
+                $('#iptModalSubtitle').text(
+                    shopName
+                        ? `Another branch requested products from ${shopName}. Review and confirm to transfer stock.`
+                        : 'Another branch requested products from your shop. Review and confirm to transfer stock.'
+                );
+                if (indexUrl) {
+                    $('#btnOpenAllIncomingPt').attr('href', indexUrl);
+                }
+
+                let html = '';
+                transfers.forEach(function(t) {
+                    let itemsHtml = '';
+                    (t.items_preview || []).forEach(function(it) {
+                        itemsHtml += `
+                            <div class="ipt-item-row">
+                                <span class="ipt-item-name">${escapeHtmlIpt(it.name)}</span>
+                                <span class="ipt-item-qty">${it.qty} ${escapeHtmlIpt(it.unit || 'pc')}</span>
+                            </div>
+                        `;
+                    });
+                    if (t.extra_items_count > 0) {
+                        itemsHtml += `<div class="text-muted small pt-1">+ ${t.extra_items_count} more product(s)</div>`;
+                    }
+
+                    const notesHtml = t.notes
+                        ? `<div class="ipt-notes"><i class="bi bi-chat-left-text me-1 text-warning"></i><strong>Note:</strong> ${escapeHtmlIpt(t.notes)}</div>`
+                        : '';
+
+                    html += `
+                        <div class="ipt-card" data-pt-id="${t.id}">
+                            <div class="ipt-card-head">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="ipt-card-num">
+                                        <i class="bi bi-box-arrow-right text-warning"></i>
+                                        ${escapeHtmlIpt(t.transfer_number)}
+                                    </span>
+                                    <span class="ipt-shop-pill">
+                                        <i class="bi bi-shop"></i> From Requesting Shop: ${escapeHtmlIpt(t.requesting_shop)}
+                                    </span>
+                                </div>
+                                <span class="ipt-time-pill"><i class="bi bi-clock me-1"></i>${escapeHtmlIpt(t.elapsed_human)}</span>
+                            </div>
+                            <div class="ipt-meta-row">
+                                <span><i class="bi bi-person me-1"></i>Requested by: <strong>${escapeHtmlIpt(t.requested_by)}</strong></span>
+                                <span><i class="bi bi-boxes me-1"></i>Total: <strong>${t.total_qty} unit${t.total_qty === 1 ? '' : 's'}</strong></span>
+                                <span><i class="bi bi-cash-coin me-1"></i>Est. Value: <strong>${formatTzsIpt(t.total_amount)}</strong></span>
+                            </div>
+                            <div class="ipt-items-box">${itemsHtml}</div>
+                            ${notesHtml}
+                            <a href="${t.url}" class="ipt-card-cta">
+                                <i class="bi bi-check2-square"></i>
+                                <span>Review &amp; Confirm ${escapeHtmlIpt(t.transfer_number)}</span>
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    `;
+                });
+
+                $('#iptTransfersList').html(html);
+            }
+
+            window.checkIncomingProductTransfers = function() {
+                if (isSuppressedPageIpt()) return;
+
+                $.ajax({
+                    url: "{{ route('product-transfers.pending-reminders') }}",
+                    type: 'GET',
+                    success: function(response) {
+                        updateSidebarIncomingPtBadge(response.total_pending || 0);
+
+                        if (isIptModalOpen || $('.modal.show').length > 0) return;
+
+                        const rawDue = response.due_transfers || [];
+                        const localSnoozes = getLocalIptSnoozes();
+                        const viewingId = getCurrentViewingPtId();
+
+                        const dueTransfers = rawDue.filter(function(t) {
+                            if (viewingId && t.id === viewingId) return false;
+                            const snoozedUntil = localSnoozes[String(t.id)];
+                            return !snoozedUntil || Date.now() >= snoozedUntil;
+                        });
+
+                        if (dueTransfers.length === 0) return;
+
+                        currentIncomingPts = dueTransfers;
+                        renderIncomingPts(
+                            dueTransfers,
+                            response.index_url || "{{ route('product-transfers.index', ['tab' => 'action_required']) }}",
+                            response.shop_name || ''
+                        );
+
+                        const modalEl = document.getElementById('incomingProductTransferModal');
+                        if (!modalEl) return;
+
+                        isIptModalOpen = true;
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                        if (typeof playNotificationSound === 'function') {
+                            playNotificationSound(response.ringtone_url || null);
+                        }
+                        if (typeof window.pollNotifications === 'function') {
+                            window.pollNotifications();
+                        }
+                    }
+                });
+            };
+
+            $(document).on('click', '.ipt-dismiss-trigger', function() {
+                const ids = currentIncomingPts.map(function(t) { return t.id; });
+                if (ids.length > 0) {
+                    saveLocalIptSnoozes(ids);
+                    $.ajax({
+                        url: "{{ route('product-transfers.pending-reminders.dismiss') }}",
+                        type: 'POST',
+                        data: {
+                            transfer_ids: ids,
+                            _token: "{{ csrf_token() }}"
+                        }
+                    });
+                }
+
+                const modalEl = document.getElementById('incomingProductTransferModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+            });
+
+            const iptModalEl = document.getElementById('incomingProductTransferModal');
+            if (iptModalEl) {
+                iptModalEl.addEventListener('hidden.bs.modal', function() {
+                    isIptModalOpen = false;
+                });
+            }
+
+            $(document).ready(function() {
+                if (isSuppressedPageIpt()) return;
+                setTimeout(window.checkIncomingProductTransfers, 1100);
+                setInterval(function() {
+                    if (isSuppressedPageIpt()) return;
+                    if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
+                        window.checkIncomingProductTransfers();
+                    }
+                }, POLL_INTERVAL_MS);
+            });
+        })();
+        @endif
+
+        @if(auth()->check())
+        // ── Global Daily Diary Follow-up Reminder Popup (Displays Once per Milestone, OK or Reschedule) ──
+        (function() {
+            const POLL_INTERVAL_MS = 30000;
+            let currentDiaryItems = [];
+            let isDiaryModalOpen = false;
+
+            function escapeHtmlDfr(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function isSuppressedPageDfr() {
+                return /^\/stock-transfers(?:\/|$)/i.test(window.location.pathname || '');
+            }
+
+            function showDiaryToast(message, isSuccess) {
+                const iconClass = isSuccess ? 'bi-check-circle-fill text-success' : 'bi-info-circle-fill text-info';
+                const $toast = $(`
+                    <div class="toast align-items-center text-white bg-dark border-0 shadow" role="alert" style="position:fixed;bottom:22px;right:22px;z-index:1098;border-radius:10px;font-size:.8rem;">
+                        <div class="d-flex">
+                            <div class="toast-body"><i class="bi ${iconClass} me-2"></i>${escapeHtmlDfr(message)}</div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `);
+                $('body').append($toast);
+                const bsToast = new bootstrap.Toast($toast[0], { delay: 3600 });
+                bsToast.show();
+                $toast[0].addEventListener('hidden.bs.toast', function() { $toast.remove(); });
+            }
+
+            function pad2Dfr(n) { return String(n).padStart(2, '0'); }
+            function formatYmdDfr(d) {
+                return d.getFullYear() + '-' + pad2Dfr(d.getMonth() + 1) + '-' + pad2Dfr(d.getDate());
+            }
+            function parseYmdDfr(str) {
+                if (!str || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+                const p = str.split('-').map(Number);
+                return new Date(p[0], p[1] - 1, p[2]);
+            }
+
+            function refreshDiaryBadge() {
+                const n = currentDiaryItems.length;
+                $('#dfrPendingCountBadge').text(n + ' Follow-up' + (n === 1 ? '' : 's') + ' Due');
+            }
+
+            function closeDiaryModalIfEmpty() {
+                refreshDiaryBadge();
+                if (currentDiaryItems.length === 0) {
+                    const modalEl = document.getElementById('diaryFollowUpReminderModal');
+                    if (modalEl) {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                }
+            }
+
+            function renderDiaryReminders(items) {
+                const $list = $('#dfrItemsList');
+                refreshDiaryBadge();
+
+                let html = '';
+                items.forEach(function(it) {
+                    const isDue = it.stage === 'due';
+                    let stageBadge = '';
+                    if (isDue && it.is_overdue) {
+                        stageBadge = `<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue Due Date</span>`;
+                    } else if (isDue) {
+                        stageBadge = `<span class="badge bg-danger"><i class="bi bi-alarm-fill me-1"></i>Due Today</span>`;
+                    } else {
+                        const dLeft = it.days_until_due === 1 ? '1 day left' : `${it.days_until_due} days left`;
+                        stageBadge = `<span class="badge bg-primary"><i class="bi bi-bell-fill me-1"></i>Reminder Reached (${escapeHtmlDfr(dLeft)})</span>`;
+                    }
+
+                    const scopeBadge = it.type === 'shop'
+                        ? `<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="bi bi-shop me-1"></i>${escapeHtmlDfr(it.shop_name || 'Shop Diary')}</span>`
+                        : `<span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-person-fill me-1"></i>Personal</span>`;
+
+                    const emailChip = it.notify_email
+                        ? `<span class="dfr-meta-chip" style="background:#e0f2fe;color:#0369a1;"><i class="bi bi-envelope-check-fill"></i> Email Alert: On</span>`
+                        : `<span class="dfr-meta-chip"><i class="bi bi-bell"></i> In-App Alert</span>`;
+
+                    const costChip = it.cost_display
+                        ? `<span class="dfr-meta-chip"><i class="bi bi-cash-stack"></i> ${escapeHtmlDfr(it.cost_display)}</span>`
+                        : '';
+
+                    const rescheduleBtnHtml = it.can_reschedule
+                        ? `<button type="button" class="btn btn-sm btn-outline-primary fw-600 dfr-toggle-reschedule">
+                               <i class="bi bi-calendar-event me-1"></i>Reschedule
+                           </button>`
+                        : '';
+
+                    html += `
+                        <div class="dfr-card ${isDue ? 'is-due' : ''}"
+                             data-diary-id="${it.id}"
+                             data-stage="${escapeHtmlDfr(it.stage)}"
+                             data-event-date="${escapeHtmlDfr(it.event_date || '')}"
+                             data-ack-url="${escapeHtmlDfr(it.acknowledge_url)}"
+                             data-reschedule-url="${escapeHtmlDfr(it.reschedule_url)}">
+                            <div class="dfr-card-top">
+                                <div>
+                                    <h6 class="dfr-card-title">${escapeHtmlDfr(it.event_name)}</h6>
+                                    <div class="d-flex flex-wrap gap-1 mt-1">${stageBadge} ${scopeBadge}</div>
+                                </div>
+                            </div>
+
+                            <div class="dfr-card-desc">${escapeHtmlDfr(it.event_description)}</div>
+
+                            <div class="dfr-meta-row">
+                                <span class="dfr-meta-chip"><i class="bi bi-alarm text-primary"></i> Reminder: ${escapeHtmlDfr(it.reminder_date_display)} &middot; ${escapeHtmlDfr(it.reminder_time_display || '10:00 AM')}</span>
+                                <span class="dfr-meta-chip" style="${isDue ? 'background:#fee2e2;color:#b91c1c;' : ''}"><i class="bi bi-calendar-check"></i> Due: ${escapeHtmlDfr(it.due_date_display)}</span>
+                                ${costChip}
+                                ${emailChip}
+                            </div>
+
+                            <div class="dfr-card-actions">
+                                ${rescheduleBtnHtml}
+                                <button type="button" class="btn btn-sm btn-success fw-700 px-3 dfr-btn-ok">
+                                    <i class="bi bi-check-lg me-1"></i>OK
+                                </button>
+                            </div>
+
+                            ${it.can_reschedule ? `
+                            <div class="dfr-reschedule-panel d-none">
+                                <div class="fw-700 small text-primary mb-2">
+                                    <i class="bi bi-calendar2-week me-1"></i>Reschedule Follow-up Dates &amp; Time
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-6 col-md-3">
+                                        <label class="form-label small fw-600 mb-1">New Due Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control form-control-sm dfr-new-due" value="${escapeHtmlDfr(it.due_date)}" required>
+                                    </div>
+                                    <div class="col-12 col-sm-6 col-md-3">
+                                        <label class="form-label small fw-600 mb-1">Days Before</label>
+                                        <input type="number" class="form-control form-control-sm dfr-new-days" min="1" max="365" value="${Math.max(1, it.remind_days_before || 1)}">
+                                    </div>
+                                    <div class="col-12 col-sm-6 col-md-3">
+                                        <label class="form-label small fw-600 mb-1">New Reminder Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control form-control-sm dfr-new-reminder" value="${escapeHtmlDfr(it.reminder_date)}" ${it.event_date ? `min="${escapeHtmlDfr(it.event_date)}"` : ''} required>
+                                    </div>
+                                    <div class="col-12 col-sm-6 col-md-3">
+                                        <label class="form-label small fw-600 mb-1">Reminder Time</label>
+                                        <input type="time" class="form-control form-control-sm dfr-new-time" value="${escapeHtmlDfr(it.reminder_time || '10:00')}">
+                                    </div>
+                                    <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input dfr-new-email" type="checkbox" id="dfrEmail_${it.id}" ${it.notify_email ? 'checked' : ''}>
+                                            <label class="form-check-label small fw-600" for="dfrEmail_${it.id}">Send Email Notification</label>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary dfr-cancel-reschedule">Cancel</button>
+                                            <button type="button" class="btn btn-sm btn-primary fw-600 dfr-save-reschedule">
+                                                <i class="bi bi-check2-circle me-1"></i>Save New Dates
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="small text-danger fw-600 dfr-reschedule-error d-none"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                $list.html(html);
+            }
+
+            window.checkDiaryFollowUpReminders = function() {
+                if (isDiaryModalOpen) return;
+                if (isSuppressedPageDfr()) return;
+                if ($('.modal.show').length > 0) return;
+
+                $.ajax({
+                    url: "{{ route('diary.due-reminders') }}",
+                    type: 'GET',
+                    success: function(res) {
+                        const items = res.due_items || [];
+                        if (items.length === 0) return;
+
+                        currentDiaryItems = items;
+                        renderDiaryReminders(items);
+
+                        const modalEl = document.getElementById('diaryFollowUpReminderModal');
+                        if (!modalEl) return;
+
+                        isDiaryModalOpen = true;
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+
+                        if (typeof playNotificationSound === 'function') {
+                            playNotificationSound(res.ringtone_url || null);
+                        }
+                        if (typeof window.pollNotifications === 'function') {
+                            window.pollNotifications();
+                        }
+                    }
+                });
+            };
+
+            // Toggle inline Reschedule panel
+            $(document).on('click', '.dfr-toggle-reschedule', function() {
+                const $card = $(this).closest('.dfr-card');
+                $card.find('.dfr-reschedule-panel').toggleClass('d-none');
+            });
+
+            $(document).on('click', '.dfr-cancel-reschedule', function() {
+                $(this).closest('.dfr-reschedule-panel').addClass('d-none');
+            });
+
+            // Sync Due Date + Days Before <-> Reminder Date inside reschedule panel (min 1 day, max days between event_date & due_date)
+            $(document).on('change input', '.dfr-new-due, .dfr-new-days', function() {
+                const $card = $(this).closest('.dfr-card');
+                const $panel = $(this).closest('.dfr-reschedule-panel');
+                const eventStr = $card.attr('data-event-date') || '';
+                const dueStr = $panel.find('.dfr-new-due').val();
+                const $days = $panel.find('.dfr-new-days');
+                const $rem = $panel.find('.dfr-new-reminder');
+                const due = parseYmdDfr(dueStr);
+                if (!due) return;
+
+                const eventDate = parseYmdDfr(eventStr);
+                const maxDays = eventDate ? Math.round((due.getTime() - eventDate.getTime()) / 86400000) : 365;
+
+                if (maxDays < 1) {
+                    $days.attr('min', 1).attr('max', 1).val(1);
+                    return;
+                }
+
+                $days.attr('min', 1).attr('max', maxDays);
+                let days = parseInt($days.val() || '1', 10);
+                if (isNaN(days) || days < 1) days = 1;
+                if (days > maxDays) days = maxDays;
+                $days.val(days);
+
+                const maxRem = new Date(due.getTime());
+                maxRem.setDate(maxRem.getDate() - 1);
+                $rem.attr('max', formatYmdDfr(maxRem));
+                if (eventStr) $rem.attr('min', eventStr);
+
+                const remDate = new Date(due.getTime());
+                remDate.setDate(remDate.getDate() - days);
+                $rem.val(formatYmdDfr(remDate));
+            });
+
+            $(document).on('change', '.dfr-new-reminder', function() {
+                const $card = $(this).closest('.dfr-card');
+                const $panel = $(this).closest('.dfr-reschedule-panel');
+                const eventStr = $card.attr('data-event-date') || '';
+                const due = parseYmdDfr($panel.find('.dfr-new-due').val());
+                const rem = parseYmdDfr($(this).val());
+                if (!due || !rem) return;
+
+                const eventDate = parseYmdDfr(eventStr);
+                const maxDays = eventDate ? Math.round((due.getTime() - eventDate.getTime()) / 86400000) : 365;
+                if (maxDays < 1) return;
+
+                let diff = Math.round((due.getTime() - rem.getTime()) / 86400000);
+                if (diff < 1) diff = 1;
+                if (diff > maxDays) diff = maxDays;
+
+                $panel.find('.dfr-new-days').val(diff);
+                const clampedRem = new Date(due.getTime());
+                clampedRem.setDate(clampedRem.getDate() - diff);
+                $(this).val(formatYmdDfr(clampedRem));
+            });
+
+            // Single item OK (Acknowledge once)
+            $(document).on('click', '.dfr-btn-ok', function() {
+                const $btn = $(this);
+                const $card = $btn.closest('.dfr-card');
+                const diaryId = parseInt($card.attr('data-diary-id'), 10);
+                const stage = $card.attr('data-stage');
+                const url = $card.attr('data-ack-url');
+
+                $btn.prop('disabled', true);
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: { _token: "{{ csrf_token() }}", stage: stage },
+                    success: function() {
+                        $card.slideUp(180, function() { $(this).remove(); });
+                        currentDiaryItems = currentDiaryItems.filter(function(x) { return x.id !== diaryId; });
+                        closeDiaryModalIfEmpty();
+                        showDiaryToast('Follow-up acknowledged.', true);
+                    },
+                    error: function() {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
+
+            // Save Reschedule (updates Due Date & Reminder Date)
+            $(document).on('click', '.dfr-save-reschedule', function() {
+                const $btn = $(this);
+                const $card = $btn.closest('.dfr-card');
+                const $panel = $card.find('.dfr-reschedule-panel');
+                const $err = $panel.find('.dfr-reschedule-error');
+
+                const diaryId = parseInt($card.attr('data-diary-id'), 10);
+                const url = $card.attr('data-reschedule-url');
+                const dueDate = $panel.find('.dfr-new-due').val();
+                const reminderDate = $panel.find('.dfr-new-reminder').val();
+                const reminderTime = $panel.find('.dfr-new-time').val() || '10:00';
+                const notifyEmail = $panel.find('.dfr-new-email').is(':checked') ? 1 : 0;
+
+                $err.addClass('d-none').text('');
+
+                if (!dueDate || !reminderDate) {
+                    $err.removeClass('d-none').text('Both New Due Date and New Reminder Date are required.');
+                    return;
+                }
+                if (reminderDate >= dueDate) {
+                    $err.removeClass('d-none').text('Reminder Date must be at least 1 day before the Due Date.');
+                    return;
+                }
+
+                const origHtml = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Saving...');
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        due_date: dueDate,
+                        reminder_date: reminderDate,
+                        reminder_time: reminderTime,
+                        notify_email: notifyEmail
+                    },
+                    success: function(res) {
+                        $card.slideUp(180, function() { $(this).remove(); });
+                        currentDiaryItems = currentDiaryItems.filter(function(x) { return x.id !== diaryId; });
+                        closeDiaryModalIfEmpty();
+                        showDiaryToast(res.message || 'Follow-up rescheduled successfully.', true);
+                        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#diaryTable')) {
+                            $('#diaryTable').DataTable().ajax.reload(null, false);
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html(origHtml);
+                        let msg = 'Could not reschedule follow-up. Please check the dates.';
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.errors) {
+                                const firstKey = Object.keys(xhr.responseJSON.errors)[0];
+                                if (firstKey) msg = xhr.responseJSON.errors[firstKey][0];
+                            } else if (xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                        }
+                        $err.removeClass('d-none').text(msg);
+                    }
+                });
+            });
+
+            // Footer "OK, Got It" acknowledges all remaining items in the modal once
+            $(document).on('click', '#btnAcknowledgeAllDiaries', function() {
+                const itemsToAck = currentDiaryItems.slice();
+                if (itemsToAck.length === 0) {
+                    closeDiaryModalIfEmpty();
+                    return;
+                }
+
+                const requests = itemsToAck.map(function(it) {
+                    return $.ajax({
+                        url: it.acknowledge_url,
+                        type: 'POST',
+                        data: { _token: "{{ csrf_token() }}", stage: it.stage }
+                    });
+                });
+
+                $.when.apply($, requests).always(function() {
+                    currentDiaryItems = [];
+                    closeDiaryModalIfEmpty();
+                    showDiaryToast('Diary follow-up reminder(s) acknowledged.', true);
+                });
+            });
+
+            const diaryModalEl = document.getElementById('diaryFollowUpReminderModal');
+            if (diaryModalEl) {
+                diaryModalEl.addEventListener('hidden.bs.modal', function() {
+                    isDiaryModalOpen = false;
+                });
+            }
+
+            $(document).ready(function() {
+                setTimeout(window.checkDiaryFollowUpReminders, 1800);
+                setInterval(function() {
+                    if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
+                        window.checkDiaryFollowUpReminders();
                     }
                 }, POLL_INTERVAL_MS);
             });

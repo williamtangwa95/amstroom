@@ -14,52 +14,53 @@
        ══════════════════════════════════════════════ */
     .src-hero {
         background: linear-gradient(135deg, #0077b6 0%, #005691 58%, #003a6c 100%);
-        border-radius: 16px;
-        padding: 1.2rem 1.45rem;
+        border-radius: 13px;
+        padding: 0.9rem 1.15rem;
         color: #ffffff;
-        box-shadow: 0 8px 24px rgba(0, 86, 145, .2);
-        margin-bottom: 1.25rem;
+        box-shadow: 0 6px 18px rgba(0, 86, 145, .18);
+        margin-bottom: 1rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
+        gap: 0.85rem;
         flex-wrap: wrap;
     }
     .src-hero-title {
-        font-size: 1.18rem;
+        font-size: 1.04rem;
         font-weight: 800;
         margin: 0;
         color: #ffffff;
         letter-spacing: -.015em;
     }
     .src-hero-sub {
-        font-size: .8rem;
+        font-size: .75rem;
         color: rgba(255, 255, 255, .86);
-        margin: .28rem 0 0;
+        margin: .2rem 0 0;
+        line-height: 1.35;
     }
     .src-hero-pill {
         display: inline-flex;
         align-items: center;
-        gap: .38rem;
-        padding: .24rem .7rem;
+        gap: .32rem;
+        padding: .18rem .58rem;
         border-radius: 999px;
         background: rgba(255, 255, 255, .16);
         border: 1px solid rgba(255, 255, 255, .26);
         color: #ffffff;
-        font-size: .7rem;
+        font-size: .67rem;
         font-weight: 700;
     }
     .src-hero-back {
         display: inline-flex;
         align-items: center;
-        gap: .4rem;
-        padding: .46rem .9rem;
-        border-radius: 10px;
+        gap: .35rem;
+        padding: .36rem .75rem;
+        border-radius: 8px;
         background: rgba(255, 255, 255, .14);
         border: 1px solid rgba(255, 255, 255, .25);
         color: #ffffff;
         text-decoration: none;
-        font-size: .78rem;
+        font-size: .74rem;
         font-weight: 600;
         transition: all .15s ease;
     }
@@ -71,30 +72,30 @@
     .src-card {
         background: #ffffff;
         border: 1px solid var(--card-border, #e2e8f0);
-        border-radius: 16px;
-        box-shadow: 0 3px 14px rgba(15, 23, 42, .045);
+        border-radius: 13px;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, .04);
         overflow: hidden;
     }
     .src-section-head {
-        padding: 1rem 1.35rem;
+        padding: 0.75rem 1.1rem;
         border-bottom: 1px solid #f1f5f9;
         background: #fafcff;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: .75rem;
+        gap: .65rem;
     }
     .src-step-badge {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
         background: rgba(0, 119, 182, .12);
         color: #0077b6;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: .78rem;
+        font-size: .72rem;
         font-weight: 800;
         flex-shrink: 0;
     }
@@ -103,47 +104,47 @@
     .src-item-row {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-left: 4px solid #0077b6;
-        border-radius: 13px;
-        padding: 1rem 1.15rem;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, .03);
+        border-left: 3.5px solid #0077b6;
+        border-radius: 10px;
+        padding: 0.72rem 0.95rem;
+        box-shadow: 0 1px 5px rgba(15, 23, 42, .025);
         transition: border-color .18s ease, box-shadow .18s ease;
     }
     .src-item-row:hover {
         border-color: #cbd5e1;
         border-left-color: #0077b6;
-        box-shadow: 0 5px 16px rgba(15, 23, 42, .06);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, .055);
     }
     .src-item-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: .5rem;
-        margin-bottom: .75rem;
+        margin-bottom: .5rem;
     }
     .src-item-num {
         display: inline-flex;
         align-items: center;
-        gap: .32rem;
-        padding: .18rem .6rem;
+        gap: .28rem;
+        padding: .12rem .5rem;
         border-radius: 6px;
         background: #f1f5f9;
         color: #334155;
-        font-size: .7rem;
+        font-size: .68rem;
         font-weight: 700;
         letter-spacing: .02em;
     }
     .src-remove-btn {
         display: inline-flex;
         align-items: center;
-        gap: .28rem;
+        gap: .25rem;
         border: none;
         background: transparent;
         color: #dc2626;
-        font-size: .76rem;
+        font-size: .72rem;
         font-weight: 600;
-        padding: .22rem .5rem;
-        border-radius: 7px;
+        padding: .16rem .45rem;
+        border-radius: 6px;
         transition: background .15s ease;
     }
     .src-remove-btn:hover {
@@ -151,23 +152,37 @@
         color: #b91c1c;
     }
 
-    /* Stepper */
+    /* Compact Inputs & Stepper */
+    .src-item-row .form-label {
+        font-size: .74rem;
+        margin-bottom: .25rem;
+    }
+    .src-item-row .form-select,
+    .src-item-row .select2-container--bootstrap-5 .select2-selection--single {
+        min-height: 34px;
+        height: 34px;
+        font-size: .82rem;
+        padding-top: .25rem;
+        padding-bottom: .25rem;
+        border-radius: 8px;
+    }
     .src-qty-stepper {
         display: flex;
         align-items: stretch;
         border: 1px solid #cbd5e1;
-        border-radius: 9px;
+        border-radius: 8px;
         overflow: hidden;
         background: #ffffff;
-        height: 38px;
+        height: 34px;
+        max-width: 155px;
     }
     .src-qty-stepper button {
-        width: 38px;
+        width: 32px;
         border: none;
         background: #f8fafc;
         color: #334155;
         font-weight: 800;
-        font-size: 1rem;
+        font-size: .92rem;
         cursor: pointer;
         transition: background .15s ease, color .15s ease;
     }
@@ -182,8 +197,8 @@
         border-left: 1px solid #e2e8f0;
         border-right: 1px solid #e2e8f0;
         text-align: center;
-        font-weight: 800;
-        font-size: .92rem;
+        font-weight: 700;
+        font-size: .84rem;
         color: #0f172a;
         background: #ffffff;
         outline: none;
@@ -196,16 +211,16 @@
     .src-add-dashed {
         width: 100%;
         border: 1.5px dashed #94a3b8;
-        border-radius: 12px;
+        border-radius: 10px;
         background: #f8fafc;
         color: #0077b6;
-        padding: .72rem 1rem;
-        font-size: .84rem;
+        padding: .5rem .85rem;
+        font-size: .79rem;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: .45rem;
+        gap: .4rem;
         cursor: pointer;
         transition: all .16s ease;
     }
@@ -219,47 +234,50 @@
     .src-summary-bar {
         background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%);
         border: 1px solid #bae6fd;
-        border-radius: 13px;
-        padding: 1rem 1.2rem;
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: .85rem;
+        gap: .75rem;
     }
     .src-summary-stat-k {
-        font-size: .66rem;
+        font-size: .63rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: .05em;
         color: #64748b;
     }
     .src-summary-stat-v {
-        font-size: 1.1rem;
+        font-size: .95rem;
         font-weight: 800;
         color: #0f172a;
-        margin-top: .12rem;
+        margin-top: .08rem;
     }
 
     .src-branch-pill {
         display: inline-flex;
         align-items: center;
-        gap: .3rem;
-        padding: .2rem .6rem;
+        gap: .28rem;
+        padding: .12rem .5rem;
         border-radius: 999px;
-        font-size: .72rem;
+        font-size: .68rem;
         font-weight: 600;
     }
 
     @media (max-width: 767.98px) {
         .src-hero {
-            padding: 1rem;
+            padding: 0.85rem;
         }
         .src-hero-back {
             width: 100%;
             justify-content: center;
         }
+        .src-qty-stepper {
+            max-width: 100%;
+        }
         .src-summary-bar {
             grid-template-columns: 1fr;
-            gap: .6rem;
+            gap: .5rem;
         }
         .src-footer-actions {
             flex-direction: column-reverse;
@@ -273,7 +291,7 @@
 
 @section('content')
 <div class="row justify-content-center">
-    <div class="col-12 col-xl-10">
+    <div class="col-12 col-lg-9 col-xl-8">
 
         {{-- ── Executive Hero Banner ── --}}
         <div class="src-hero">
@@ -323,15 +341,15 @@
                     </button>
                 </div>
 
-                <div class="p-3 p-md-4">
+                <div class="p-3">
                     {{-- Helpful Tip --}}
-                    <div class="alert alert-info border-0 py-2 px-3 mb-4 d-flex align-items-center gap-2 small" style="background:#f0f9ff; color:#0369a1; border-left:4px solid #0284c7 !important; border-radius:10px;">
-                        <i class="bi bi-lightbulb-fill fs-5 flex-shrink-0"></i>
+                    <div class="alert alert-info border-0 py-2 px-3 mb-3 d-flex align-items-center gap-2" style="background:#f0f9ff; color:#0369a1; border-left:3px solid #0284c7 !important; border-radius:9px; font-size:.77rem;">
+                        <i class="bi bi-lightbulb-fill flex-shrink-0"></i>
                         <div>Request all products your branch needs — even items that may need restocking. The Owner will check warehouse stock, adjust quantities if needed, and dispatch available items to your shop.</div>
                     </div>
 
                     {{-- Product Rows Container --}}
-                    <div id="requestItemsContainer" class="d-flex flex-column gap-3">
+                    <div id="requestItemsContainer" class="d-flex flex-column gap-2">
                         <div class="src-item-row request-item-row">
                             <div class="src-item-header">
                                 <span class="src-item-num"><i class="bi bi-box-seam text-primary"></i> <span class="row-label">Item #1</span></span>
@@ -339,10 +357,10 @@
                                     <i class="bi bi-trash3"></i><span>Remove</span>
                                 </button>
                             </div>
-                            <div class="row g-3 align-items-end">
-                                <div class="col-12 col-md-7 col-lg-8">
-                                    <label class="form-label fw-600 small text-secondary mb-1">Product <span class="text-danger">*</span></label>
-                                    <select name="items[0][item_id]" class="form-select item-select" required>
+                            <div class="row g-2 align-items-start">
+                                <div class="col-12 col-md-8 col-lg-9">
+                                    <label class="form-label fw-600 text-secondary">Product <span class="text-danger">*</span></label>
+                                    <select name="items[0][item_id]" class="form-select form-select-sm item-select" required>
                                         <option value="">Search &amp; choose a product...</option>
                                         @foreach($items as $item)
                                             @php
@@ -358,10 +376,10 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="item-meta-line mt-2"></div>
+                                    <div class="item-meta-line mt-1"></div>
                                 </div>
-                                <div class="col-12 col-md-5 col-lg-4">
-                                    <label class="form-label fw-600 small text-secondary mb-1">Quantity Needed <span class="text-danger">*</span></label>
+                                <div class="col-12 col-md-4 col-lg-3">
+                                    <label class="form-label fw-600 text-secondary">Quantity Needed <span class="text-danger">*</span></label>
                                     <div class="src-qty-stepper">
                                         <button type="button" class="btn-qty-minus" aria-label="Decrease quantity">&minus;</button>
                                         <input type="number" name="items[0][quantity]" class="quantity-input" min="1" value="1" required>
@@ -373,15 +391,15 @@
                     </div>
 
                     {{-- Add Another Product Dashed Trigger --}}
-                    <div class="mt-3 mb-4">
+                    <div class="mt-2 mb-3">
                         <button type="button" class="src-add-dashed" id="addItemBtn">
-                            <i class="bi bi-plus-circle-fill fs-6"></i>
+                            <i class="bi bi-plus-circle-fill"></i>
                             <span>Add Another Product to Request</span>
                         </button>
                     </div>
 
                     {{-- Live Executive Summary Bar --}}
-                    <div class="src-summary-bar mb-4">
+                    <div class="src-summary-bar mb-3">
                         <div>
                             <div class="src-summary-stat-k">Products Selected</div>
                             <div class="src-summary-stat-v text-primary" id="summaryTotalProducts">0 products</div>
@@ -392,26 +410,26 @@
                         </div>
                         <div>
                             <div class="src-summary-stat-k">Destination Branch</div>
-                            <div class="src-summary-stat-v text-dark" style="font-size:.96rem;">
+                            <div class="src-summary-stat-v text-dark" style="font-size:.86rem;">
                                 <i class="bi bi-shop text-primary me-1"></i>{{ $shop->shop_name }}
                             </div>
                         </div>
                     </div>
 
                     {{-- Notes Section --}}
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label fw-600 small text-secondary mb-1">
                             <i class="bi bi-chat-left-text text-primary me-1"></i>Additional Request Notes / Urgency (Optional)
                         </label>
-                        <textarea name="notes" class="form-control" rows="3" placeholder="Add helpful context for the Owner (e.g., customer order waiting, fast-moving weekend items, urgent restock)...">{{ old('notes') }}</textarea>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Add helpful context for the Owner (e.g., customer order waiting, fast-moving weekend items, urgent restock)...">{{ old('notes') }}</textarea>
                     </div>
 
                     {{-- Footer Action Buttons --}}
-                    <div class="d-flex align-items-center justify-content-between pt-3 border-top gap-2 src-footer-actions">
-                        <a href="{{ route('stock-requests.index') }}" class="btn btn-outline-custom px-4 py-2 fw-600">
+                    <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-2 src-footer-actions">
+                        <a href="{{ route('stock-requests.index') }}" class="btn btn-sm btn-outline-custom px-3 py-1 fw-600">
                             <i class="bi bi-arrow-left me-1"></i>Cancel
                         </a>
-                        <button type="submit" class="btn btn-accent px-4 py-2 fw-700 shadow-sm" id="submitRequestBtn">
+                        <button type="submit" class="btn btn-sm btn-accent px-3 py-1 fw-700 shadow-sm" id="submitRequestBtn">
                             <i class="bi bi-send-fill me-1"></i>Submit Stock Request
                         </button>
                     </div>

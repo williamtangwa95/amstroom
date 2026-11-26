@@ -48,6 +48,28 @@ class Notification extends Model
             }
         }
 
+        // 1b. Daily Diary Follow-up Reminders
+        if (stripos($text, 'Diary') !== false) {
+            if (auth()->check()) {
+                return route('diary.index');
+            }
+        }
+
+        // 1c. Handover Edit / Return Unlock Requests
+        if (stripos($text, 'Handover Edit') !== false || stripos($text, 'Handover Unlock') !== false) {
+            if (auth()->check()) {
+                if (preg_match('/#SL-(\d+)/', $text, $m)) {
+                    return route('sales.show', $m[1]);
+                }
+                if (stripos($text, 'Expense') !== false) {
+                    return route('expenses.index');
+                }
+                if (preg_match('/[Hh]andover\s*#(\d+)/', $text, $m) && !auth()->user()->isSeller()) {
+                    return route('handovers.show', $m[1]);
+                }
+            }
+        }
+
         // 2. Specific Stock Request (e.g. Request #12)
         if (preg_match('/[Rr]equest\s*#(\d+)/', $text, $matches)) {
             $id = $matches[1];
@@ -57,8 +79,17 @@ class Notification extends Model
         }
 
         // 3. Inter-Shop Product Transfer (e.g. PT-00001 or "Product Transfer")
-        if (stripos($text, 'Product Transfer') !== false || preg_match('/\bPT-\d+\b/', $text)) {
+        if (stripos($text, 'Product Transfer') !== false || preg_match('/\b(PT-\d+)\b/', $text)) {
             if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
+                if (preg_match('/\b(PT-\d+)\b/', $text, $ptMatch) && \Illuminate\Support\Facades\Schema::hasTable('shop_product_transfers')) {
+                    $ptId = ShopProductTransfer::where('transfer_number', $ptMatch[1])->value('id');
+                    if ($ptId) {
+                        return route('product-transfers.show', $ptId);
+                    }
+                }
+                if (stripos($text, 'Incoming Product Transfer') !== false && auth()->user()->isShopAdmin()) {
+                    return route('product-transfers.index', ['tab' => 'action_required']);
+                }
                 return route('product-transfers.index');
             }
         }

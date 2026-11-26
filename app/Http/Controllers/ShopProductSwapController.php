@@ -115,7 +115,7 @@ class ShopProductSwapController extends Controller
                   ->where('destination_shop_id', $user->shop_id);
         }
 
-        $swaps = $query->orderByDesc('id')->paginate(15)->withQueryString();
+        $swaps = $query->orderByDesc('id')->get();
         $shops = $user->isOwner() ? Shop::where('status', 'active')->orderBy('shop_name')->get() : collect();
 
         return view('shop-swaps.index', compact('swaps', 'counts', 'tab', 'shops'));
@@ -166,33 +166,50 @@ class ShopProductSwapController extends Controller
     }
 
     /**
-     * AJAX Endpoint: Fetch available items from destination shop filtered by category or exact product.
+     * AJAX Endpoint: Fetch available items from destination shop filtered by exact same category or exact same product.
      */
     public function getDestinationItems(Request $request)
     {
         $request->validate([
             'destination_shop_id' => 'required|exists:shops,id',
             'source_item_id'      => 'nullable|exists:items,id',
-            'filter_type'         => 'nullable|in:same_category,same_product,all',
+            'filter_type'         => 'nullable|in:same_category,same_product',
         ]);
 
         $destShopId = (int) $request->destination_shop_id;
         $sourceItemId = $request->source_item_id ? (int) $request->source_item_id : null;
         $filterType = $request->filter_type ?? 'same_category';
 
-        $sourceItem = $sourceItemId ? Item::find($sourceItemId) : null;
+        $sourceItem = $sourceItemId ? Item::with('category')->find($sourceItemId) : null;
+
+        if (!$sourceItem) {
+            return response()->json([
+                'success'         => true,
+                'filter_type'     => $filterType,
+                'source_category' => null,
+                'count'           => 0,
+                'items'           => [],
+                'message'         => 'Please select the product you are offering in Step 1 first.',
+            ]);
+        }
 
         $query = ShopStock::where('shop_id', $destShopId)
             ->where('is_admin_stock', false)
             ->where('remaining_quantity', '>', 0)
             ->with(['item.category', 'item.unit']);
 
-        if ($sourceItem && $filterType === 'same_product') {
+        if ($filterType === 'same_product') {
             $query->where('item_id', $sourceItem->id);
-        } elseif ($sourceItem && $filterType === 'same_category' && $sourceItem->category_id) {
-            $query->whereHas('item', function ($q) use ($sourceItem) {
-                $q->where('category_id', $sourceItem->category_id);
-            });
+        } else {
+            // same_category: strictly restrict to the exact same category as the offered product
+            if ($sourceItem->category_id) {
+                $query->whereHas('item', function ($q) use ($sourceItem) {
+                    $q->where('category_id', $sourceItem->category_id);
+                });
+            } else {
+                // Safety fallback if product has no category assigned: only allow exact same product
+                $query->where('item_id', $sourceItem->id);
+            }
         }
 
         $stocks = $query->get()->map(function ($st) {
@@ -210,10 +227,11 @@ class ShopProductSwapController extends Controller
         })->sortBy('item_name')->values();
 
         return response()->json([
-            'success'     => true,
-            'filter_type' => $filterType,
-            'count'       => $stocks->count(),
-            'items'       => $stocks,
+            'success'         => true,
+            'filter_type'     => $filterType,
+            'source_category' => $sourceItem->category?->category_name,
+            'count'           => $stocks->count(),
+            'items'           => $stocks,
         ]);
     }
 
@@ -233,18 +251,43 @@ class ShopProductSwapController extends Controller
             'source_item_id'       => 'required|exists:items,id',
             'source_quantity'      => 'required|integer|min:1',
             'destination_item_id'  => 'required|exists:items,id',
-            'destination_quantity' => 'required|integer|min:1',
+            'destination_quantity' => 'required|integer|min:1|same:source_quantity',
+            'swap_mode'            => 'nullable|in:same_category,same_product',
             'reason_type'          => 'required|string|max:50',
             'notes'                => 'nullable|string|max:500',
+        ], [
+            'destination_quantity.same' => 'Quantity to Receive must match Quantity to Swap Out (you cannot swap unequal quantities).',
         ]);
 
         $sourceShopId = (int) $user->shop_id;
         $destShopId = (int) $request->destination_shop_id;
+        $swapMode = $request->input('swap_mode', 'same_category');
 
         if ($destShopId === $sourceShopId) {
             return back()->withInput()->withErrors([
                 'destination_shop_id' => 'Destination shop must be different from your source shop.',
             ]);
+        }
+
+        $sourceItem = Item::with('category')->findOrFail($request->source_item_id);
+        $destItem = Item::with('category')->findOrFail($request->destination_item_id);
+
+        // Enforce swap eligibility: exact same product OR exact same category only (no cross-category swaps)
+        if ($swapMode === 'same_product' && (int) $sourceItem->id !== (int) $destItem->id) {
+            return back()->withInput()->withErrors([
+                'destination_item_id' => 'Exact Same Product mode requires selecting the exact same product to swap.',
+            ]);
+        }
+
+        if ((int) $sourceItem->id !== (int) $destItem->id) {
+            if (!$sourceItem->category_id || (int) $sourceItem->category_id !== (int) $destItem->category_id) {
+                $srcCat = $sourceItem->category?->category_name ?? 'Uncategorized';
+                $dstCat = $destItem->category?->category_name ?? 'Uncategorized';
+
+                return back()->withInput()->withErrors([
+                    'destination_item_id' => "Swaps must be between products in the exact same category or the exact same product. \"{$sourceItem->item_name}\" ({$srcCat}) cannot be swapped for \"{$destItem->item_name}\" ({$dstCat}).",
+                ]);
+            }
         }
 
         // 1. Verify source shop stock availability
@@ -271,8 +314,6 @@ class ShopProductSwapController extends Controller
 
         $sourceShop = Shop::findOrFail($sourceShopId);
         $destShop = Shop::findOrFail($destShopId);
-        $sourceItem = Item::findOrFail($request->source_item_id);
-        $destItem = Item::findOrFail($request->destination_item_id);
 
         $swap = ShopProductSwap::create([
             'source_shop_id'       => $sourceShopId,

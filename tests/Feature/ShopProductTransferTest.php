@@ -227,4 +227,78 @@ class ShopProductTransferTest extends TestCase
         $this->assertEquals(20, (int) $this->stockA->remaining_quantity);
         $this->assertEquals(1, (int) $this->stockB->remaining_quantity);
     }
+
+    public function test_supplying_shop_receives_in_app_notification_and_pending_reminder_when_request_arrives(): void
+    {
+        // Shop B submits a product transfer request to Shop A
+        $this->actingAs($this->adminB)->post(route('product-transfers.store'), [
+            'from_shop_id' => $this->shopA->id,
+            'items'        => [
+                ['id' => $this->wiredMouse->id, 'qty' => 3],
+            ],
+            'notes' => 'Customer waiting at Posta branch',
+        ])->assertRedirect();
+
+        $transfer = ShopProductTransfer::latest('id')->firstOrFail();
+
+        // 1. Bell notification exists for Shop A admin and deep-links straight to the transfer show page
+        $notif = Notification::where('user_id', $this->adminA->id)
+            ->where('title', 'Incoming Product Transfer Request')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($notif);
+        $this->actingAs($this->adminA);
+        $this->assertEquals(route('product-transfers.show', $transfer), $notif->destination_url);
+
+        // 2. Real-time in-app reminder endpoint returns the incoming request for Shop A admin
+        $reminderRes = $this->actingAs($this->adminA)
+            ->getJson(route('product-transfers.pending-reminders'))
+            ->assertOk()
+            ->assertJsonPath('total_pending', 1)
+            ->assertJsonPath('due_transfers.0.id', $transfer->id)
+            ->assertJsonPath('due_transfers.0.transfer_number', $transfer->transfer_number)
+            ->assertJsonPath('due_transfers.0.requesting_shop', 'Shop B')
+            ->assertJsonPath('due_transfers.0.total_qty', 3);
+
+        $this->assertEquals(route('product-transfers.show', $transfer), $reminderRes->json('due_transfers.0.url'));
+
+        // 3. Requesting shop (Shop B) and Owner do NOT get Shop A's incoming action-required popup
+        $this->actingAs($this->adminB)
+            ->getJson(route('product-transfers.pending-reminders'))
+            ->assertOk()
+            ->assertJsonPath('total_pending', 0)
+            ->assertJsonCount(0, 'due_transfers');
+
+        $this->actingAs($this->owner)
+            ->getJson(route('product-transfers.pending-reminders'))
+            ->assertOk()
+            ->assertJsonPath('total_pending', 0)
+            ->assertJsonCount(0, 'due_transfers');
+
+        // 4. Snoozing dismisses that specific request while leaving total_pending accurate
+        $this->actingAs($this->adminA)
+            ->postJson(route('product-transfers.pending-reminders.dismiss'), [
+                'transfer_ids' => [$transfer->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->actingAs($this->adminA)
+            ->getJson(route('product-transfers.pending-reminders'))
+            ->assertOk()
+            ->assertJsonPath('total_pending', 1)
+            ->assertJsonCount(0, 'due_transfers');
+
+        // 5. Once Shop A confirms the request, total_pending drops to 0
+        $this->actingAs($this->adminA)
+            ->post(route('product-transfers.confirm', $transfer))
+            ->assertRedirect();
+
+        $this->actingAs($this->adminA)
+            ->getJson(route('product-transfers.pending-reminders'))
+            ->assertOk()
+            ->assertJsonPath('total_pending', 0)
+            ->assertJsonCount(0, 'due_transfers');
+    }
 }

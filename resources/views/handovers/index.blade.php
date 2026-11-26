@@ -293,17 +293,17 @@
                 <tr>
                     <th data-priority="1" class="all compact-lead-col">Handover ID</th>
                     <th data-priority="1" class="all primary-col">Shop</th>
-                    <th data-priority="4" class="min-tablet-l">Shop Admin</th>
-                    <th data-priority="3" class="min-tablet-l">Period</th>
-                    <th data-priority="4" class="min-tablet-l">Owner Sales</th>
-                    <th data-priority="5" class="min-tablet-l">Admin Sales</th>
-                    <th data-priority="4" class="min-tablet-l">Expenses</th>
-                    <th data-priority="2" class="min-tablet-l">Expected</th>
-                    <th data-priority="2" class="min-tablet-l">Actual Submitted</th>
-                    <th data-priority="2" class="min-tablet-l">Difference</th>
-                    <th data-priority="2" class="min-tablet-l">Status</th>
-                    <th data-priority="4" class="min-tablet-l">Submitted At</th>
-                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 90px;">Actions</th>
+                    <th data-priority="6">Shop Admin</th>
+                    <th data-priority="5">Period</th>
+                    <th data-priority="7">Owner Sales</th>
+                    <th data-priority="9">Admin Sales</th>
+                    <th data-priority="8">Expenses</th>
+                    <th data-priority="3">Expected</th>
+                    <th data-priority="3">Actual Submitted</th>
+                    <th data-priority="4">Difference</th>
+                    <th data-priority="2">Status</th>
+                    <th data-priority="6">Submitted At</th>
+                    <th data-priority="1" class="min-tablet-l no-sort text-end" style="min-width: 145px;">Actions</th>
                 </tr>
             </thead>
                 <tbody>
@@ -336,22 +336,26 @@
                             <span class="badge bg-secondary">Draft</span>
                             @elseif($ho->status === 'submitted')
                             <span class="badge bg-primary">Submitted</span>
+                            @elseif($ho->status === 'approved')
+                            <span class="badge bg-info text-dark">Approved</span>
                             @elseif($ho->status === 'rejected')
                             <span class="badge bg-danger">Rejected</span>
                             @elseif($ho->status === 'returned')
                             <span class="badge bg-warning text-dark">Returned</span>
                             @elseif($ho->status === 'completed')
                             <span class="badge bg-success">Completed</span>
+                            @else
+                            <span class="badge bg-secondary">{{ ucfirst($ho->status) }}</span>
                             @endif
                         </td>
                         <td class="small">{{ $ho->submitted_at ? $ho->submitted_at->format('Y-m-d H:i') : '—' }}</td>
-                        <td class="text-end">
-                            <div class="d-flex justify-content-end gap-1">
+                        <td class="text-end text-nowrap">
+                            <div class="d-inline-flex justify-content-end align-items-center gap-1 flex-nowrap">
                                 <a href="{{ route('handovers.show', $ho) }}" class="btn btn-xs btn-outline-custom" title="View details">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if(auth()->user()->isShopAdmin() && in_array($ho->status, ['draft', 'returned']))
-                                <a href="{{ route('handovers.edit', $ho) }}" class="btn btn-xs btn-outline-warning" title="Edit Report">
+                                @if(auth()->user()->isShopAdmin() && in_array($ho->status, ['draft', 'returned', 'submitted']))
+                                <a href="{{ route('handovers.edit', $ho) }}" class="btn btn-xs btn-outline-warning" title="{{ $ho->status === 'submitted' ? 'Edit & Resubmit Report' : 'Edit Report' }}">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 @endif

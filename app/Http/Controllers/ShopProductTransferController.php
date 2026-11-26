@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\Notification;
+use App\Models\Setting;
 use App\Models\Shop;
 use App\Models\ShopProductTransfer;
 use App\Models\ShopProductTransferItem;
@@ -13,8 +14,10 @@ use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class ShopProductTransferController extends Controller
 {
@@ -164,7 +167,7 @@ class ShopProductTransferController extends Controller
             $query->whereIn('status', ['rejected', 'cancelled', 'reverted']);
         }
 
-        $transfers = $query->orderByDesc('id')->paginate(15)->withQueryString();
+        $transfers = $query->orderByDesc('id')->get();
         $shops = $isOwner ? Shop::where('status', 'active')->orderBy('shop_name')->get() : collect();
 
         return view('product-transfers.index', compact('transfers', 'counts', 'tab', 'shops'));
@@ -849,5 +852,147 @@ class ShopProductTransferController extends Controller
 
         return redirect()->route('product-transfers.show', $productTransfer)
             ->with('success', "Product Transfer {$productTransfer->transfer_number} reverted and stock restored to both branches.");
+    }
+
+    /**
+     * AJAX Endpoint: Fetch pending incoming inter-shop product transfer requests
+     * waiting for the current Shop Admin (supplying shop) to confirm or reject.
+     */
+    public function pendingReminders(Request $request)
+    {
+        self::ensureTablesExist();
+
+        $user = Auth::user();
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json([
+                'due_transfers' => [],
+                'total_pending' => 0,
+                'shop_name'     => null,
+                'ringtone_url'  => null,
+                'index_url'     => route('product-transfers.index', ['tab' => 'action_required']),
+                'server_now_ts' => now()->timestamp,
+            ]);
+        }
+
+        $now = now();
+        $transfers = ShopProductTransfer::with(['fromShop', 'toShop', 'requester', 'items.item.unit'])
+            ->where('from_shop_id', $user->shop_id)
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $dueTransfers = [];
+        foreach ($transfers as $transfer) {
+            $cacheKey = "product_transfer_reminder_snooze_{$user->id}_{$transfer->id}";
+            $snoozedUntil = Cache::get($cacheKey);
+            if ($snoozedUntil && (int) $snoozedUntil > $now->timestamp) {
+                continue;
+            }
+
+            $submittedAt = $transfer->created_at ?? $now;
+            $elapsedSeconds = max(0, (int) $submittedAt->diffInSeconds($now));
+
+            $itemsPreview = $transfer->items->take(5)->map(function ($tItem) {
+                $item = $tItem->item;
+                return [
+                    'name'          => $item?->item_name ?? 'Product',
+                    'image_url'     => $item && $item->image_path ? asset('media/' . $item->image_path) : null,
+                    'qty'           => (int) $tItem->quantity,
+                    'unit'          => $item?->unit?->symbol ?? 'pc',
+                    'selling_price' => (float) ($tItem->selling_price > 0 ? $tItem->selling_price : $tItem->buying_price),
+                ];
+            })->values()->all();
+
+            $dueTransfers[] = [
+                'id'                   => (int) $transfer->id,
+                'transfer_number'      => $transfer->transfer_number,
+                'url'                  => route('product-transfers.show', $transfer),
+                'requesting_shop'      => $transfer->toShop?->shop_name ?? 'Another Shop',
+                'supplying_shop'       => $transfer->fromShop?->shop_name ?? 'Your Shop',
+                'requested_by'         => $transfer->requester?->name ?? 'Shop Admin',
+                'notes'                => $transfer->notes ?: '',
+                'submitted_at_ts'      => $submittedAt->timestamp,
+                'submitted_at_display' => $submittedAt->format('M d, Y · h:i A'),
+                'elapsed_seconds'      => $elapsedSeconds,
+                'elapsed_human'        => $this->formatElapsedDuration($elapsedSeconds),
+                'total_items_count'    => $transfer->items->count(),
+                'total_qty'            => (int) $transfer->total_quantity,
+                'total_amount'         => (float) $transfer->total_amount,
+                'items_preview'        => $itemsPreview,
+                'extra_items_count'    => max(0, $transfer->items->count() - 5),
+            ];
+        }
+
+        $customRingtone = Setting::get('notification_sound_user_' . $user->id);
+        $ringtoneUrl = null;
+        if ($customRingtone && Storage::disk('public')->exists($customRingtone)) {
+            $ringtoneUrl = asset('media/' . $customRingtone);
+        }
+
+        return response()->json([
+            'due_transfers' => $dueTransfers,
+            'total_pending' => $transfers->count(),
+            'shop_name'     => $user->shop?->shop_name ?? 'Your Branch',
+            'ringtone_url'  => $ringtoneUrl,
+            'index_url'     => route('product-transfers.index', ['tab' => 'action_required']),
+            'server_now_ts' => $now->timestamp,
+        ]);
+    }
+
+    /**
+     * AJAX Endpoint: Snooze incoming product transfer request alerts for 30 minutes for the current Shop Admin.
+     */
+    public function dismissPendingReminders(Request $request)
+    {
+        self::ensureTablesExist();
+
+        $user = Auth::user();
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validated = $request->validate([
+            'transfer_ids'   => 'required|array|min:1',
+            'transfer_ids.*' => 'integer',
+        ]);
+
+        $snoozeUntil = now()->addMinutes(30);
+        $validIds = ShopProductTransfer::where('from_shop_id', $user->shop_id)
+            ->where('status', 'pending')
+            ->whereIn('id', $validated['transfer_ids'])
+            ->pluck('id');
+
+        foreach ($validIds as $transferId) {
+            $cacheKey = "product_transfer_reminder_snooze_{$user->id}_{$transferId}";
+            Cache::put($cacheKey, $snoozeUntil->timestamp, $snoozeUntil);
+        }
+
+        return response()->json([
+            'success'        => true,
+            'snoozed_until'  => $snoozeUntil->timestamp,
+            'snooze_minutes' => 30,
+        ]);
+    }
+
+    /**
+     * Format elapsed waiting seconds into a concise human-readable duration.
+     */
+    private function formatElapsedDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return 'Just now';
+        }
+        $minutes = intdiv($seconds, 60);
+        if ($minutes < 60) {
+            return "{$minutes}m ago";
+        }
+        $hours = intdiv($minutes, 60);
+        $remMin = $minutes % 60;
+        if ($hours < 24) {
+            return $remMin > 0 ? "{$hours}h {$remMin}m ago" : "{$hours}h ago";
+        }
+        $days = intdiv($hours, 24);
+        $remHours = $hours % 24;
+        return $remHours > 0 ? "{$days}d {$remHours}h ago" : "{$days}d ago";
     }
 }

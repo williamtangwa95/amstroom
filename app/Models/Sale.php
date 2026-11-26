@@ -60,6 +60,85 @@ class Sale extends Model
         return $this->belongsTo(HandoverReport::class);
     }
 
+    /**
+     * True when this sale is linked to a submitted/under_review/approved/completed Cash Handover.
+     */
+    public function isLockedByHandover(): bool
+    {
+        if (!$this->handover_report_id) {
+            return false;
+        }
+
+        $report = $this->relationLoaded('handoverReport')
+            ? $this->handoverReport
+            : $this->handoverReport()->first();
+
+        return $report !== null && $report->locksTransactions();
+    }
+
+    /**
+     * Latest active (pending or approved) handover unlock request for this sale.
+     */
+    public function activeHandoverEditRequest(?string $actionType = null): ?HandoverEditRequest
+    {
+        if (!$this->handover_report_id) {
+            return null;
+        }
+
+        HandoverEditRequest::ensureTableExists();
+
+        $query = HandoverEditRequest::where('record_type', 'sale')
+            ->where('record_id', $this->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
+            ->orderByDesc('id');
+
+        if ($actionType !== null) {
+            $query->where('action_type', $actionType);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Approved unused unlock request for this sale (optionally matching a specific action: edit|return).
+     */
+    public function approvedHandoverUnlock(?string $actionType = null): ?HandoverEditRequest
+    {
+        if (!$this->handover_report_id) {
+            return null;
+        }
+
+        HandoverEditRequest::ensureTableExists();
+
+        $query = HandoverEditRequest::where('record_type', 'sale')
+            ->where('record_id', $this->id)
+            ->where('status', 'approved')
+            ->orderByDesc('id');
+
+        if ($actionType !== null) {
+            $query->where('action_type', $actionType);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Check whether the given user may mutate (edit or return) this sale under handover lock rules.
+     */
+    public function canMutateUnderHandover(User $user, ?string $actionType = null): bool
+    {
+        if (!$this->isLockedByHandover()) {
+            return true;
+        }
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        return $this->approvedHandoverUnlock($actionType) !== null;
+    }
+
     public function calculateRevenue(bool $isOwner): float
     {
         $isIndependent = \App\Models\Setting::get('store_pricing_mode', 'INDEPENDENT') === 'INDEPENDENT';

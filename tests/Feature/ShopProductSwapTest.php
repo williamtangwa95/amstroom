@@ -345,4 +345,191 @@ class ShopProductSwapTest extends TestCase
         $this->assertEquals(3, ShopStock::where('shop_id', $this->shopB->id)->where('item_id', $this->itemB->id)->value('remaining_quantity'));
         $this->assertEquals(0, ShopStock::where('shop_id', $this->shopB->id)->where('item_id', $this->itemA->id)->value('remaining_quantity'));
     }
+
+    public function test_destination_items_only_allow_same_category_or_same_product_and_exclude_other_categories()
+    {
+        $accessoryCategory = Category::create(['category_name' => 'Chargers']);
+
+        $touchLaptop = Item::create([
+            'category_id' => $this->category->id,
+            'unit_id'     => $this->unit->id,
+            'item_name'   => 'Dell Latitude 3190 2-in-1 Touchscreen Laptop',
+            'brand'       => 'Dell',
+        ]);
+
+        $nonTouchLaptop = Item::create([
+            'category_id' => $this->category->id,
+            'unit_id'     => $this->unit->id,
+            'item_name'   => 'Dell Latitude 3190 2-in-1 Non-Touchscreen Laptop',
+            'brand'       => 'Dell',
+        ]);
+
+        $charger = Item::create([
+            'category_id' => $accessoryCategory->id,
+            'unit_id'     => $this->unit->id,
+            'item_name'   => 'Dell 65W Laptop Charger',
+            'brand'       => 'Dell',
+        ]);
+
+        ShopStock::create([
+            'shop_id'            => $this->shopB->id,
+            'item_id'            => $touchLaptop->id,
+            'quantity'           => 2,
+            'remaining_quantity' => 2,
+            'buying_price'       => 420000,
+            'selling_price'      => 550000,
+        ]);
+
+        ShopStock::create([
+            'shop_id'            => $this->shopB->id,
+            'item_id'            => $nonTouchLaptop->id,
+            'quantity'           => 2,
+            'remaining_quantity' => 2,
+            'buying_price'       => 380000,
+            'selling_price'      => 500000,
+        ]);
+
+        ShopStock::create([
+            'shop_id'            => $this->shopB->id,
+            'item_id'            => $charger->id,
+            'quantity'           => 10,
+            'remaining_quantity' => 10,
+            'buying_price'       => 25000,
+            'selling_price'      => 45000,
+        ]);
+
+        // "all" filter is rejected
+        $this->actingAs($this->adminA)
+            ->getJson(route('shop-swaps.destination-items', [
+                'destination_shop_id' => $this->shopB->id,
+                'source_item_id'      => $touchLaptop->id,
+                'filter_type'         => 'all',
+            ]))
+            ->assertStatus(422);
+
+        // same_category returns laptops (including non-touchscreen variant) and excludes chargers
+        $sameCatResponse = $this->actingAs($this->adminA)
+            ->getJson(route('shop-swaps.destination-items', [
+                'destination_shop_id' => $this->shopB->id,
+                'source_item_id'      => $touchLaptop->id,
+                'filter_type'         => 'same_category',
+            ]))
+            ->assertOk();
+
+        $sameCatIds = collect($sameCatResponse->json('items'))->pluck('item_id')->all();
+        $this->assertContains($nonTouchLaptop->id, $sameCatIds);
+        $this->assertContains($touchLaptop->id, $sameCatIds);
+        $this->assertNotContains($charger->id, $sameCatIds);
+
+        // same_product returns only the exact same product
+        $sameProdResponse = $this->actingAs($this->adminA)
+            ->getJson(route('shop-swaps.destination-items', [
+                'destination_shop_id' => $this->shopB->id,
+                'source_item_id'      => $touchLaptop->id,
+                'filter_type'         => 'same_product',
+            ]))
+            ->assertOk();
+
+        $sameProdIds = collect($sameProdResponse->json('items'))->pluck('item_id')->all();
+        $this->assertSame([$touchLaptop->id], $sameProdIds);
+    }
+
+    public function test_cannot_swap_products_from_different_categories()
+    {
+        $accessoryCategory = Category::create(['category_name' => 'Chargers']);
+
+        $charger = Item::create([
+            'category_id' => $accessoryCategory->id,
+            'unit_id'     => $this->unit->id,
+            'item_name'   => 'Dell 65W Laptop Charger',
+            'brand'       => 'Dell',
+        ]);
+
+        ShopStock::create([
+            'shop_id'            => $this->shopB->id,
+            'item_id'            => $charger->id,
+            'quantity'           => 5,
+            'remaining_quantity' => 5,
+            'buying_price'       => 25000,
+            'selling_price'      => 45000,
+        ]);
+
+        $response = $this->actingAs($this->adminA)
+            ->post(route('shop-swaps.store'), [
+                'destination_shop_id'  => $this->shopB->id,
+                'source_item_id'       => $this->itemA->id,
+                'source_quantity'      => 1,
+                'destination_item_id'  => $charger->id,
+                'destination_quantity' => 1,
+                'swap_mode'            => 'same_category',
+                'reason_type'          => 'customer_preference',
+            ]);
+
+        $response->assertSessionHasErrors('destination_item_id');
+        $this->assertDatabaseCount('shop_product_swaps', 0);
+    }
+
+    public function test_same_product_mode_requires_exact_same_product_while_same_category_allows_same_category_variants()
+    {
+        // Give Shop B stock of Item A as well
+        ShopStock::create([
+            'shop_id'            => $this->shopB->id,
+            'item_id'            => $this->itemA->id,
+            'quantity'           => 2,
+            'remaining_quantity' => 2,
+            'buying_price'       => 350000,
+            'selling_price'      => 450000,
+        ]);
+
+        // same_product mode rejects swapping Item A for Item B even though both are Laptops
+        $this->actingAs($this->adminA)
+            ->post(route('shop-swaps.store'), [
+                'destination_shop_id'  => $this->shopB->id,
+                'source_item_id'       => $this->itemA->id,
+                'source_quantity'      => 1,
+                'destination_item_id'  => $this->itemB->id,
+                'destination_quantity' => 1,
+                'swap_mode'            => 'same_product',
+                'reason_type'          => 'defective_replacement',
+            ])
+            ->assertSessionHasErrors('destination_item_id');
+
+        $this->assertDatabaseCount('shop_product_swaps', 0);
+
+        // same_product mode accepts swapping Item A for Item A
+        $this->actingAs($this->adminA)
+            ->post(route('shop-swaps.store'), [
+                'destination_shop_id'  => $this->shopB->id,
+                'source_item_id'       => $this->itemA->id,
+                'source_quantity'      => 1,
+                'destination_item_id'  => $this->itemA->id,
+                'destination_quantity' => 1,
+                'swap_mode'            => 'same_product',
+                'reason_type'          => 'defective_replacement',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('shop_product_swaps', [
+            'source_item_id'      => $this->itemA->id,
+            'destination_item_id' => $this->itemA->id,
+            'status'              => 'pending_destination',
+        ]);
+    }
+
+    public function test_cannot_swap_unequal_quantities()
+    {
+        $response = $this->actingAs($this->adminA)
+            ->post(route('shop-swaps.store'), [
+                'destination_shop_id'  => $this->shopB->id,
+                'source_item_id'       => $this->itemA->id,
+                'source_quantity'      => 2,
+                'destination_item_id'  => $this->itemB->id,
+                'destination_quantity' => 1,
+                'swap_mode'            => 'same_category',
+                'reason_type'          => 'customer_preference',
+            ]);
+
+        $response->assertSessionHasErrors('destination_quantity');
+        $this->assertDatabaseCount('shop_product_swaps', 0);
+    }
 }

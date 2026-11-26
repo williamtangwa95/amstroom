@@ -210,9 +210,6 @@
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadMainStockModal">
             <i class="bi bi-file-earmark-excel"></i>Upload
         </button>
-        <a href="{{ route('main-stock.create') }}" class="btn btn-outline-custom" title="Full Page Form">
-            <i class="bi bi-box-arrow-up-right"></i>Full Form
-        </a>
         <button type="button" class="btn btn-accent shadow-sm" data-bs-toggle="modal" data-bs-target="#addMainStockModal">
             <i class="bi bi-plus-circle"></i>Add Stock
         </button>

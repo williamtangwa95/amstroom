@@ -17,8 +17,9 @@ class ItemController extends Controller
 {
     public function index()
     {
+        $categories = Category::where('is_admin_category', false)->orderBy('category_name')->get();
         $units = Unit::orderBy('name')->get();
-        return view('items.index', compact('units'));
+        return view('items.index', compact('categories', 'units'));
     }
 
     public function data(Request $request)
@@ -114,9 +115,24 @@ class ItemController extends Controller
             $hasShopStock = ($shopTotal > 0);
             $isDeleteDisabled = $hasMainStock || $hasShopStock;
 
-            $actions = '<div class="d-flex gap-1">
-                <a href="' . route('items.show', $item) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>
-                <a href="' . route('items.edit', $item) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+            $imageUrl = $item->image_path ? asset('media/' . $item->image_path) : '';
+
+            $actions = '<div class="d-flex gap-1 justify-content-end">
+                <button type="button" class="btn btn-xs btn-outline-custom btn-view-item"
+                    data-show-url="' . route('items.show', $item) . '"
+                    title="View"><i class="bi bi-eye"></i></button>
+                <button type="button" class="btn btn-xs btn-outline-custom btn-edit-item"
+                    data-id="' . $item->id . '"
+                    data-name="' . e($item->item_name) . '"
+                    data-category-id="' . ($item->category_id ?? '') . '"
+                    data-unit-id="' . ($item->unit_id ?? '') . '"
+                    data-brand="' . e($item->brand ?? '') . '"
+                    data-model="' . e($item->model ?? '') . '"
+                    data-warranty="' . e($item->warranty_period ?? '') . '"
+                    data-spec="' . e($item->specification ?? '') . '"
+                    data-image-url="' . e($imageUrl) . '"
+                    data-update-url="' . route('items.update', $item) . '"
+                    title="Edit"><i class="bi bi-pencil"></i></button>';
 
             if ($isDeleteDisabled) {
                 $disabledTitle = 'Cannot delete: product ';
@@ -223,10 +239,43 @@ class ItemController extends Controller
             ->with('success', 'Item registered successfully.');
     }
 
-    public function show(Item $item)
+    public function show(Request $request, Item $item)
     {
         $item->load('category', 'unit', 'mainStocks', 'shopStocks.shop', 'components.childItem');
-        
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'id'              => $item->id,
+                'item_name'       => $item->item_name,
+                'category_id'     => $item->category_id,
+                'category_name'   => $item->category?->category_name ?? '—',
+                'unit_id'         => $item->unit_id,
+                'unit_name'       => $item->unit ? ($item->unit->name . ' (' . $item->unit->symbol . ')') : ($item->unit_symbol ?: 'pc'),
+                'unit_symbol'     => $item->unit_symbol ?: 'pc',
+                'brand'           => $item->brand ?: '',
+                'model'           => $item->model ?: '',
+                'warranty_period' => $item->warranty_period ?: '',
+                'specification'   => $item->specification ?: '',
+                'image_url'       => $item->image_path ? asset('media/' . $item->image_path) : null,
+                'full_url'        => route('items.show', $item),
+                'update_url'      => route('items.update', $item),
+                'main_stocks'     => $item->mainStocks->map(fn ($ms) => [
+                    'buying_price'       => (float) $ms->buying_price,
+                    'selling_price'      => (float) $ms->selling_price,
+                    'stocked_quantity'   => (int) $ms->stocked_quantity,
+                    'remaining_quantity' => (int) $ms->remaining_quantity,
+                    'date_received'      => $ms->date_received ? $ms->date_received->format('M d, Y') : '—',
+                ])->values(),
+                'shop_stocks'     => $item->shopStocks->map(fn ($ss) => [
+                    'shop_name'          => $ss->shop?->shop_name ?? ('Shop #' . $ss->shop_id),
+                    'quantity'           => (int) $ss->quantity,
+                    'remaining_quantity' => (int) $ss->remaining_quantity,
+                    'selling_price'      => (float) $ss->selling_price,
+                    'is_low'             => $ss->isLowStock(),
+                ])->values(),
+            ]);
+        }
+
         $currentComponentsIds = $item->components->pluck('component_item_id')->toArray();
         $allItems = Item::where('is_admin_item', false)
             ->where('id', '!=', $item->id)

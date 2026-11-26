@@ -263,11 +263,26 @@ class SaleController extends Controller
         $requestedLength = (int) $request->input('length', 10);
         $length = in_array($requestedLength, $allowedLengths, true) ? $requestedLength : 10;
 
-        $sales = $query->with('shop', 'seller', 'items')
+        $sales = $query->with('shop', 'seller', 'items', 'handoverReport')
             ->withCount('items')
             ->skip($start)
             ->take($length)
             ->get();
+
+        // Batch-load active handover edit/return unlock requests for the current page (no N+1)
+        \App\Models\HandoverEditRequest::ensureTableExists();
+        $saleIds = $sales->pluck('id')->all();
+        $activeRequestsBySale = empty($saleIds)
+            ? collect()
+            : \App\Models\HandoverEditRequest::with('requester')
+                ->where('record_type', 'sale')
+                ->whereIn('record_id', $saleIds)
+                ->whereIn('status', ['pending', 'approved'])
+                ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('record_id')
+                ->map(fn ($group) => $group->first());
 
         $data = [];
         foreach ($sales as $index => $sale) {
@@ -280,9 +295,24 @@ class SaleController extends Controller
             $paymentMethod = e(str_replace('_', ' ', ucfirst($sale->payment_method)));
             $reportRevenue = 'TZS ' . number_format($sale->report_revenue, 0);
 
+            $isLocked = $sale->isLockedByHandover();
+            $handoverNo = $sale->handoverReport?->handover_no;
+            $activeReq = $activeRequestsBySale->get($sale->id);
+            $hasApprovedEdit = $activeReq && $activeReq->status === 'approved' && $activeReq->action_type === 'edit';
+            $canEditCustomer = !$isLocked || $user->isOwner() || $hasApprovedEdit;
+
             $statusBadge = $sale->status === 'draft_proforma'
                 ? '<span class="badge" style="background:#fef3c7;color:#92400e;font-size:.72rem;">Proforma</span>'
                 : '<span class="badge" style="background:#d1fae5;color:#065f46;font-size:.72rem;">Completed</span>';
+
+            if ($isLocked) {
+                $statusBadge .= '<div class="mt-1"><span class="badge bg-dark-subtle text-dark border" style="font-size:.66rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;" title="Locked under submitted Cash Handover ' . e($handoverNo) . '"><i class="bi bi-lock-fill me-1"></i>' . e($handoverNo) . '</span></div>';
+                if ($activeReq && $activeReq->status === 'pending') {
+                    $statusBadge .= '<div class="mt-1"><span class="badge bg-warning text-dark" style="font-size:.65rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;" title="' . e($activeReq->reason) . '"><i class="bi bi-hourglass-split me-1"></i>' . e($activeReq->action_label) . ' Requested</span></div>';
+                } elseif ($activeReq && $activeReq->status === 'approved') {
+                    $statusBadge .= '<div class="mt-1"><span class="badge bg-info text-dark" style="font-size:.65rem;max-width:100%;white-space:normal;word-break:break-word;text-align:left;"><i class="bi bi-unlock-fill me-1"></i>Unlocked: ' . e($activeReq->action_label) . '</span></div>';
+                }
+            }
 
             $saleDate = $sale->sale_date->format('M d, Y');
 
@@ -291,7 +321,21 @@ class SaleController extends Controller
 
             $actions = '<div class="d-flex gap-1 flex-wrap">';
             $actions .= '<a href="' . $showUrl . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>';
-            $actions .= '<button type="button" class="btn btn-xs btn-outline-custom edit-customer-btn" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-person-gear"></i></button>';
+
+            if ($canEditCustomer) {
+                $actions .= '<button type="button" class="btn btn-xs btn-outline-custom edit-customer-btn" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-person-gear"></i></button>';
+            }
+
+            if ($isLocked && !$user->isOwner()) {
+                if (!$activeReq) {
+                    $actions .= '<button type="button" class="btn btn-xs btn-outline-warning text-dark request-handover-edit-btn" data-record-type="sale" data-record-id="' . $sale->id . '" data-record-label="Sale #SL-' . $sale->id . '" data-handover-no="' . e($handoverNo) . '" title="Request Owner Unlock to Edit or Return"><i class="bi bi-shield-lock"></i></button>';
+                } elseif ($activeReq->status === 'approved' && $activeReq->action_type === 'return') {
+                    $actions .= '<a href="' . route('sales-returns.create', $sale) . '" class="btn btn-xs btn-danger" title="Process Approved Sale Return"><i class="bi bi-arrow-counterclockwise"></i></a>';
+                }
+            } elseif ($isLocked && $user->isOwner() && $activeReq && $activeReq->status === 'pending') {
+                $actions .= '<button type="button" class="btn btn-xs btn-success owner-approve-unlock-btn" data-request-id="' . $activeReq->id . '" data-label="Sale #SL-' . $sale->id . ' (' . e($activeReq->action_label) . ')" data-reason="' . e($activeReq->reason) . '" title="Approve Unlock Request"><i class="bi bi-unlock-fill"></i></button>';
+                $actions .= '<button type="button" class="btn btn-xs btn-outline-danger owner-reject-unlock-btn" data-request-id="' . $activeReq->id . '" data-label="Sale #SL-' . $sale->id . '" title="Reject Unlock Request"><i class="bi bi-x-lg"></i></button>';
+            }
 
             if ($sale->status === 'completed') {
                 $actions .= '<a href="' . $receiptUrl . '" class="btn btn-xs btn-accent" title="Print Receipt"><i class="bi bi-receipt"></i></a>';
@@ -303,7 +347,9 @@ class SaleController extends Controller
             $actions .= '</div>';
 
             $customerHtml = '<span class="customer-name-text">' . $customerName . '</span>';
-            $customerHtml .= '<button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-pencil-square"></i></button>';
+            if ($canEditCustomer) {
+                $customerHtml .= '<button type="button" class="btn btn-link btn-xs p-0 ms-1 edit-customer-btn" style="color:var(--accent);" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-pencil-square"></i></button>';
+            }
 
             $data[] = [
                 'iteration' => $iteration,
@@ -1083,6 +1129,10 @@ class SaleController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'edit')) {
+            abort(403, 'This sale is locked by a submitted Cash Handover. Please request edit approval from the Owner first.');
+        }
+
         $request->validate([
             'customer_name' => 'nullable|string|max:150',
         ]);
@@ -1090,6 +1140,10 @@ class SaleController extends Controller
         $sale->update([
             'customer_name' => $request->customer_name,
         ]);
+
+        if ($sale->isLockedByHandover() && !$user->isOwner()) {
+            $sale->approvedHandoverUnlock('edit')?->markConsumed();
+        }
 
         return back()->with('success', 'Customer name updated successfully.');
     }
@@ -1102,6 +1156,13 @@ class SaleController extends Controller
         $user = Auth::user();
         if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'edit')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This sale is locked by a submitted Cash Handover. Please request edit approval from the Owner first.',
+            ], 403);
         }
 
         if ($saleItem->sale_id !== $sale->id || $saleItem->parent_id !== null) {
@@ -1161,6 +1222,14 @@ class SaleController extends Controller
         $user = Auth::user();
         if (!$user->isOwner() && $sale->shop_id !== $user->shop_id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'edit')) {
+            $lockMsg = 'This sale is locked by a submitted Cash Handover. Please request edit approval from the Owner first.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $lockMsg], 403);
+            }
+            abort(403, $lockMsg);
         }
 
         if ($saleItem->sale_id !== $sale->id || $saleItem->parent_id !== null) {
@@ -1262,6 +1331,10 @@ class SaleController extends Controller
                         'message' => "{$performerName}" . ($sale->shop_id ? " ({$shopName})" : "") . " added {$qty}x \"{$componentItem->item_name}\" as a component to \"{$parentName}\" on Sale #{$sale->id}.",
                     ]);
                 }
+
+                if ($sale->isLockedByHandover() && !$user->isOwner()) {
+                    $sale->approvedHandoverUnlock('edit')?->markConsumed();
+                }
             });
         } catch (\Exception $e) {
             if ($request->expectsJson() || $request->ajax()) {
@@ -1292,6 +1365,14 @@ class SaleController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($sale->isLockedByHandover() && !$sale->canMutateUnderHandover($user, 'edit')) {
+            $lockMsg = 'This sale is locked by a submitted Cash Handover. Please request edit approval from the Owner first.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $lockMsg], 403);
+            }
+            abort(403, $lockMsg);
+        }
+
         if ($componentItem->sale_id !== $sale->id || $componentItem->parent_id === null) {
             abort(404, 'Invalid component item.');
         }
@@ -1303,6 +1384,10 @@ class SaleController extends Controller
                 }
 
                 $componentItem->delete();
+
+                if ($sale->isLockedByHandover() && !$user->isOwner()) {
+                    $sale->approvedHandoverUnlock('edit')?->markConsumed();
+                }
             });
         } catch (\Exception $e) {
             if ($request->expectsJson() || $request->ajax()) {

@@ -209,72 +209,6 @@
         opacity: .75;
     }
 
-    .sw-search-form {
-        display: flex;
-        align-items: center;
-        gap: .35rem;
-    }
-    .sw-search-wrap {
-        position: relative;
-        width: 210px;
-    }
-    .sw-search-wrap i {
-        position: absolute;
-        left: .65rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-        font-size: .78rem;
-        pointer-events: none;
-    }
-    .sw-search-input {
-        width: 100%;
-        height: 32px;
-        padding: .25rem .65rem .25rem 1.9rem;
-        font-size: .78rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        background: #f8fafc;
-        color: var(--text-primary, #0f172a);
-        transition: border-color .15s, background .15s;
-    }
-    .sw-search-input:focus {
-        outline: none;
-        background: #fff;
-        border-color: #0077b6;
-        box-shadow: 0 0 0 3px rgba(0, 119, 182, .1);
-    }
-
-    /* ── Clean Desktop Table ── */
-    .sw-table {
-        width: 100%;
-        margin: 0;
-        border-collapse: collapse;
-    }
-    .sw-table thead th {
-        font-size: .69rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: #64748b;
-        background: #f8fafc;
-        padding: .7rem .95rem;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-    }
-    .sw-table tbody td {
-        padding: .8rem .95rem;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        font-size: .82rem;
-    }
-    .sw-table tbody tr:last-child td {
-        border-bottom: none;
-    }
-    .sw-table tbody tr:hover {
-        background: #f8fafc;
-    }
-
     .sw-num-link {
         font-weight: 700;
         color: #0077b6;
@@ -378,17 +312,8 @@
         background: #f0f9ff;
     }
 
-    .sw-pagination {
-        padding: .75rem 1.15rem;
-        background: #f8fafc;
-        border-top: 1px solid #f1f5f9;
-    }
-    .sw-mobile-label {
-        display: none;
-    }
-
     /* ══════════════════════════════════════════════
-       RESPONSIVE BREAKPOINTS (ZERO HORIZONTAL SCROLL)
+       RESPONSIVE BREAKPOINTS
        ══════════════════════════════════════════════ */
     @media (max-width: 991.98px) {
         .sw-kpi-grid-4 {
@@ -437,108 +362,6 @@
             flex: 1 0 auto;
             justify-content: center;
             padding: .3rem .5rem;
-        }
-        .sw-search-form {
-            width: 100%;
-        }
-        .sw-search-wrap {
-            flex: 1;
-            width: auto;
-        }
-
-        /* Convert rows into zero-scroll exchange cards */
-        .sw-table thead {
-            display: none;
-        }
-        .sw-table,
-        .sw-table tbody {
-            display: block;
-            width: 100%;
-        }
-        .sw-table tbody tr.sw-row {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: .55rem;
-            padding: .9rem;
-            border-bottom: 1px solid #e2e8f0;
-            align-items: start;
-        }
-        .sw-table tbody tr.sw-row:last-child {
-            border-bottom: none;
-        }
-        .sw-table tbody tr.sw-row td {
-            display: block;
-            padding: 0;
-            border: none;
-            text-align: left !important;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-num {
-            grid-column: 1 / 2;
-            grid-row: 1 / 2;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-status {
-            grid-column: 2 / 3;
-            grid-row: 1 / 2;
-            text-align: right !important;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-src {
-            grid-column: 1 / 2;
-            grid-row: 2 / 3;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 9px;
-            padding: .5rem .6rem;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-dst {
-            grid-column: 2 / 3;
-            grid-row: 2 / 3;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 9px;
-            padding: .5rem .6rem;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-reason {
-            grid-column: 1 / 2;
-            grid-row: 3 / 4;
-            align-self: center;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-action {
-            grid-column: 2 / 3;
-            grid-row: 3 / 4;
-            text-align: right !important;
-            align-self: center;
-        }
-        .sw-mobile-label {
-            display: block !important;
-            font-size: .63rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #94a3b8;
-            margin-bottom: .2rem;
-        }
-        .sw-table tbody tr.sw-empty-row,
-        .sw-table tbody tr.sw-empty-row td {
-            display: block;
-            width: 100%;
-        }
-    }
-    @media (max-width: 440px) {
-        .sw-table tbody tr.sw-row td.sw-col-src {
-            grid-column: 1 / 3;
-            grid-row: 2 / 3;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-dst {
-            grid-column: 1 / 3;
-            grid-row: 3 / 4;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-reason {
-            grid-column: 1 / 2;
-            grid-row: 4 / 5;
-        }
-        .sw-table tbody tr.sw-row td.sw-col-action {
-            grid-column: 2 / 3;
-            grid-row: 4 / 5;
         }
     }
 </style>
@@ -715,43 +538,32 @@
                 </a>
             @endif
         </div>
-
-        <form method="GET" action="{{ route('shop-swaps.index') }}" class="sw-search-form">
-            <input type="hidden" name="tab" value="{{ $tab }}">
-            @if(request('shop_id'))<input type="hidden" name="shop_id" value="{{ request('shop_id') }}">@endif
-            <div class="sw-search-wrap">
-                <i class="bi bi-search"></i>
-                <input type="text" name="search" class="sw-search-input" placeholder="Search swap or item..." value="{{ request('search') }}">
-            </div>
-            @if(request('search'))
-            <a href="{{ route('shop-swaps.index', ['tab' => $tab, 'shop_id' => request('shop_id')]) }}" class="btn btn-sm btn-outline-custom" style="height:32px;border-radius:8px;" title="Clear Search">
-                <i class="bi bi-x-lg"></i>
-            </a>
-            @endif
-        </form>
     </div>
 
-    <div>
-        <table class="sw-table">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="swapsTable">
             <thead>
                 <tr>
-                    <th style="width:130px;">Swap #</th>
-                    <th>Source Gives</th>
-                    <th>Destination Gives</th>
-                    <th style="width:160px;">Reason</th>
-                    <th class="text-center" style="width:135px;">Status</th>
-                    <th class="text-end" style="width:95px;">Action</th>
+                    <th data-priority="1" class="all iter-col text-center no-sort" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col" style="min-width: 125px;">Swap #</th>
+                    <th data-priority="2" class="min-tablet-l">Source Gives</th>
+                    <th data-priority="2" class="min-tablet-l">Destination Gives</th>
+                    <th data-priority="4" class="min-tablet-l" style="min-width: 140px;">Reason</th>
+                    <th data-priority="2" class="min-tablet-l text-center" style="min-width: 120px;">Status</th>
+                    <th data-priority="1" class="min-tablet-l no-sort text-end" style="min-width: 95px;">Action</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($swaps as $swap)
+                @foreach($swaps as $swap)
                 @php
                     $isMyDest = auth()->user()->shop_id == $swap->destination_shop_id;
                     $needsMyAction = $swap->status === 'pending_destination' && $isMyDest;
                 @endphp
-                <tr class="sw-row">
+                <tr>
+                    <td class="text-center iter-col">{{ $loop->iteration }}</td>
+
                     {{-- 1. Swap # --}}
-                    <td class="sw-col-num">
+                    <td class="primary-col" data-order="{{ $swap->created_at?->timestamp ?? 0 }}">
                         <a href="{{ route('shop-swaps.show', $swap) }}" class="sw-num-link">
                             {{ $swap->swap_number }}
                         </a>
@@ -759,8 +571,7 @@
                     </td>
 
                     {{-- 2. Source Shop + Offered Item --}}
-                    <td class="sw-col-src">
-                        <span class="sw-mobile-label">Source Gives</span>
+                    <td>
                         <div class="sw-item-line">
                             <span class="sw-item-name">{{ $swap->sourceItem->item_name }}</span>
                             <span class="sw-qty-chip">{{ $swap->source_quantity }} {{ $swap->sourceItem->unit_symbol }}</span>
@@ -772,8 +583,7 @@
                     </td>
 
                     {{-- 3. Destination Shop + Requested Item --}}
-                    <td class="sw-col-dst">
-                        <span class="sw-mobile-label">Destination Gives</span>
+                    <td>
                         <div class="sw-item-line">
                             <span class="sw-item-name">{{ $swap->destinationItem->item_name }}</span>
                             <span class="sw-qty-chip">{{ $swap->destination_quantity }} {{ $swap->destinationItem->unit_symbol }}</span>
@@ -787,7 +597,7 @@
                     </td>
 
                     {{-- 4. Reason --}}
-                    <td class="sw-col-reason">
+                    <td>
                         <div class="fw-600" style="font-size:.77rem;color:var(--text-primary);">{{ $swap->reason_label }}</div>
                         @if($swap->notes)
                         <div class="text-muted text-truncate" style="max-width:155px;font-size:.7rem;" title="{{ $swap->notes }}">
@@ -797,7 +607,7 @@
                     </td>
 
                     {{-- 5. Status --}}
-                    <td class="text-center sw-col-status">
+                    <td class="text-center">
                         @if($needsMyAction)
                             <span class="sw-badge sw-badge-action">
                                 <i class="bi bi-bell-fill"></i> Needs Approval
@@ -822,7 +632,7 @@
                     </td>
 
                     {{-- 6. Action --}}
-                    <td class="text-end sw-col-action">
+                    <td class="text-end">
                         @if($needsMyAction)
                         <a href="{{ route('shop-swaps.show', $swap) }}" class="sw-btn-review">
                             <i class="bi bi-check2-circle"></i> Review
@@ -834,32 +644,29 @@
                         @endif
                     </td>
                 </tr>
-                @empty
-                <tr class="sw-empty-row">
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <i class="bi bi-arrow-left-right fs-2 d-block mb-2 opacity-50"></i>
-                        <div class="fw-700 text-dark mb-1" style="font-size:.92rem;">No Product Swaps Found</div>
-                        @if(auth()->user()->isOwner())
-                        <small>Completed swaps confirmed by branch Shop Admins appear here once done.</small>
-                        @else
-                        <small>No swaps match your current filter.</small>
-                        <div class="mt-3">
-                            <a href="{{ route('shop-swaps.create') }}" class="btn btn-sm btn-accent">
-                                <i class="bi bi-plus-circle me-1"></i> New Swap
-                            </a>
-                        </div>
-                        @endif
-                    </td>
-                </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
-
-    @if($swaps->hasPages())
-    <div class="sw-pagination">
-        {{ $swaps->links() }}
-    </div>
-    @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(function() {
+    $('#swapsTable').DataTable({
+        pageLength: 10,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        order: [[1, 'desc']],
+        columnDefs: [
+            { orderable: false, searchable: false, targets: [0, 6] }
+        ],
+        language: {
+            searchPlaceholder: 'Search swap, item, shop...',
+            emptyTable: '<div class="py-4 text-muted"><i class="bi bi-arrow-left-right fs-3 d-block mb-2 opacity-50"></i><div class="fw-700 text-dark mb-1">No Product Swaps Found</div><small>{{ auth()->user()->isOwner() ? "Completed swaps confirmed by branch Shop Admins appear here once done." : "No swaps match your current filter." }}</small></div>'
+        }
+    });
+});
+</script>
+@endpush

@@ -26,10 +26,13 @@ class UserController extends Controller
 
     public function index()
     {
-        $auth  = Auth::user();
+        $auth = Auth::user();
         $shopName = $auth->isShopAdmin() ? $auth->shop?->shop_name : null;
+        $shops = $auth->isOwner()
+            ? Shop::where('status', 'active')->orderBy('shop_name')->get()
+            : Shop::where('id', $auth->shop_id)->get();
 
-        return view('users.index', compact('shopName'));
+        return view('users.index', compact('shopName', 'shops'));
     }
 
     public function data(Request $request)
@@ -114,14 +117,27 @@ class UserController extends Controller
                 $adminPosHtml = '<span class="badge" style="background:rgba(233,69,96,.15);color:#e94560;font-size:.72rem;font-weight:600;"><i class="bi bi-star-fill me-1"></i>Owner</span>';
             }
 
-            $canManageUser = ($auth->role === 'owner') || ($auth->isSystemAdmin() && $u->role !== 'system_admin');
+            $canManageUser = ($auth->role === 'owner') || ($auth->isSystemAdmin() && $u->role !== 'system_admin') || ($auth->isShopAdmin() && $u->role === 'seller' && $u->shop_id === $auth->shop_id);
 
-            $actions = '<div class="d-flex gap-1">';
+            $actions = '<div class="d-flex gap-1 justify-content-end">';
             if ($canManageUser || $u->id === $auth->id) {
-                $actions .= '<a href="' . route('users.show', $u) . '" class="btn btn-xs btn-outline-custom" title="View"><i class="bi bi-eye"></i></a>';
+                $actions .= '<button type="button" class="btn btn-xs btn-outline-custom btn-view-user"
+                    data-show-url="' . route('users.show', $u) . '"
+                    title="View"><i class="bi bi-eye"></i></button>';
             }
             if ($canManageUser) {
-                $actions .= '<a href="' . route('users.edit', $u) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>';
+                $actions .= '<button type="button" class="btn btn-xs btn-outline-custom btn-edit-user"
+                    data-id="' . $u->id . '"
+                    data-name="' . e($u->name) . '"
+                    data-email="' . e($u->email) . '"
+                    data-phone="' . e($u->phone ?? '') . '"
+                    data-role="' . e($u->role) . '"
+                    data-shop-id="' . ($u->shop_id ?? '') . '"
+                    data-status="' . e($u->status ?? 'active') . '"
+                    data-allow-stock="' . ($u->allow_stock_addition ? '1' : '0') . '"
+                    data-allow-pos="' . ($u->allow_pos_admin ? '1' : '0') . '"
+                    data-update-url="' . route('users.update', $u) . '"
+                    title="Edit"><i class="bi bi-pencil"></i></button>';
             }
 
             if ($canManageUser && $u->role !== 'owner' && $u->id !== $auth->id) {
@@ -245,10 +261,39 @@ class UserController extends Controller
             ->with('success', 'User registered successfully.');
     }
 
-    public function show(User $user)
+    public function show(Request $request, User $user)
     {
         $this->authorizeAccess($user);
         $user->load('shop', 'sales', 'defects');
+
+        if ($request->expectsJson()) {
+            $auth = Auth::user();
+            $canEdit = ($auth->role === 'owner')
+                || ($auth->isSystemAdmin() && $user->role !== 'system_admin')
+                || ($auth->isShopAdmin() && $user->role === 'seller' && $user->shop_id === $auth->shop_id);
+
+            return response()->json([
+                'id'                   => $user->id,
+                'name'                 => $user->name,
+                'email'                => $user->email,
+                'phone'                => $user->phone ?: '',
+                'role'                 => $user->role,
+                'role_label'           => ucwords(str_replace('_', ' ', $user->role)),
+                'shop_id'              => $user->shop_id,
+                'shop_name'            => $user->shop?->shop_name ?? ($user->isSystemAdmin() ? 'Global Access' : 'Unassigned'),
+                'status'               => $user->status,
+                'allow_pos_admin'      => (bool) $user->allow_pos_admin,
+                'allow_stock_addition' => (bool) $user->allow_stock_addition,
+                'sales_count'          => $user->sales->count(),
+                'sales_total'          => (float) $user->sales->sum('total_amount'),
+                'defects_count'        => $user->defects->count(),
+                'created_at'           => $user->created_at ? $user->created_at->format('M d, Y') : '—',
+                'can_edit'             => $canEdit,
+                'full_url'             => route('users.show', $user),
+                'update_url'           => route('users.update', $user),
+            ]);
+        }
+
         return view('users.show', compact('user'));
     }
 

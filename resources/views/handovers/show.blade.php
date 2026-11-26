@@ -57,9 +57,9 @@
         </a>
 
         <!-- Admin Actions -->
-        @if(auth()->user()->isShopAdmin() && in_array($handover->status, ['draft', 'returned']))
+        @if(auth()->user()->isShopAdmin() && in_array($handover->status, ['draft', 'returned', 'submitted']))
         <a href="{{ route('handovers.edit', $handover) }}" class="btn btn-sm btn-outline-warning">
-            <i class="bi bi-pencil me-1"></i> Edit Report
+            <i class="bi bi-pencil me-1"></i> {{ $handover->status === 'submitted' ? 'Edit & Resubmit' : 'Edit Report' }}
         </a>
         @endif
         @if(auth()->user()->isShopAdmin() && in_array($handover->status, ['draft', 'rejected', 'returned']))
@@ -340,6 +340,86 @@
         </div>
     </div>
 </div>
+
+@if(isset($editRequests) && $editRequests->isNotEmpty())
+<div class="card border-0 shadow-sm mt-4 no-print">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-shield-lock-fill me-2 text-warning"></i>Post-Handover Edit &amp; Return Requests</span>
+        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+            {{ $editRequests->where('status', 'pending')->count() }} Pending
+        </span>
+    </div>
+    <div class="card-body p-3">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Record</th>
+                        <th>Action</th>
+                        <th>Requested By</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        @if(auth()->user()->isOwner())
+                        <th class="text-end">Owner Decision</th>
+                        @endif
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($editRequests as $er)
+                    <tr>
+                        <td class="fw-600">
+                            @if($er->record_type === 'sale')
+                                <a href="{{ route('sales.show', $er->record_id) }}" class="text-decoration-none">{{ $er->record_label }}</a>
+                            @else
+                                {{ $er->record_label }}
+                            @endif
+                        </td>
+                        <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $er->action_label }}</span></td>
+                        <td class="small">{{ $er->requester?->name ?? 'User' }}<div class="text-muted" style="font-size:.7rem;">{{ $er->created_at?->format('M d, Y H:i') }}</div></td>
+                        <td class="small" style="max-width:260px;">{{ $er->reason }}</td>
+                        <td>
+                            @if($er->status === 'pending')
+                                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                            @elseif($er->status === 'approved')
+                                <span class="badge bg-info text-dark"><i class="bi bi-unlock-fill me-1"></i>Unlocked</span>
+                            @elseif($er->status === 'consumed')
+                                <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Completed &amp; Re-Locked</span>
+                            @else
+                                <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                            @endif
+                            @if($er->review_remarks)
+                                <div class="small text-muted mt-1" style="font-size:.7rem;">Note: {{ $er->review_remarks }}</div>
+                            @endif
+                        </td>
+                        @if(auth()->user()->isOwner())
+                        <td class="text-end">
+                            @if($er->status === 'pending')
+                                <button type="button" class="btn btn-xs btn-success owner-approve-unlock-btn me-1"
+                                        data-request-id="{{ $er->id }}"
+                                        data-label="{{ $er->record_label }} ({{ $er->action_label }})"
+                                        data-reason="{{ $er->reason }}">
+                                    <i class="bi bi-unlock-fill me-1"></i>Approve
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-danger owner-reject-unlock-btn"
+                                        data-request-id="{{ $er->id }}"
+                                        data-label="{{ $er->record_label }}">
+                                    <i class="bi bi-x-lg me-1"></i>Reject
+                                </button>
+                            @else
+                                <span class="text-muted small">{{ $er->reviewer?->name ?? '—' }}</span>
+                            @endif
+                        </td>
+                        @endif
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+@include('partials.handover_lock_modals')
 
 <!-- Reject Modal (Owner) -->
 @if(auth()->user()->isOwner() && ($handover->status === 'submitted' || $handover->status === 'approved'))

@@ -105,8 +105,22 @@ class CategoryController extends Controller
                 . e($cat->available_items_count . ' available / ' . $cat->items_count . ' total') . '</span>';
             $createdHtml = '<span style="font-size:.75rem;color:var(--text-secondary);">' . ($cat->created_at ? $cat->created_at->format('M d, Y') : '—') . '</span>';
 
-            $actions = '<div class="d-flex gap-1">
-                <a href="' . route('categories.edit', $cat) . '" class="btn btn-xs btn-outline-custom" title="Edit"><i class="bi bi-pencil"></i></a>
+            $actions = '<div class="d-flex gap-1 justify-content-end">
+                <button type="button" class="btn btn-xs btn-outline-custom btn-view-category"
+                    data-id="' . $cat->id . '"
+                    data-name="' . e($cat->category_name) . '"
+                    data-description="' . e($cat->description ?? '') . '"
+                    data-available="' . (int) $cat->available_items_count . '"
+                    data-total="' . (int) $cat->items_count . '"
+                    data-created="' . e($cat->created_at ? $cat->created_at->format('M d, Y') : '—') . '"
+                    data-update-url="' . route('categories.update', $cat) . '"
+                    title="View"><i class="bi bi-eye"></i></button>
+                <button type="button" class="btn btn-xs btn-outline-custom btn-edit-category"
+                    data-id="' . $cat->id . '"
+                    data-name="' . e($cat->category_name) . '"
+                    data-description="' . e($cat->description ?? '') . '"
+                    data-update-url="' . route('categories.update', $cat) . '"
+                    title="Edit"><i class="bi bi-pencil"></i></button>
                 <form method="POST" action="' . route('categories.destroy', $cat) . '" id="del-cat-' . $cat->id . '" class="d-inline">
                     ' . csrf_field() . method_field('DELETE') . '
                     <button type="button" class="btn btn-xs btn-outline-custom"
