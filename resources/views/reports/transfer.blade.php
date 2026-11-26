@@ -1,73 +1,94 @@
 @extends('layouts.app')
 @section('title', 'Transfer Report')
-@section('page-title', 'Stock Transfer Requests Report')
+@section('page-title', 'Transfer Report')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Transfer Report</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f39c12 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Pending Requests</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['pending'] }}</h3>
-                </div>
-                <div class="fs-2" style="color: #f39c12; opacity: 0.25;"><i class="bi bi-clock-history"></i></div>
-            </div>
-        </div>
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-arrow-left-right text-primary me-1"></i>Transfer Report
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi bi-funnel"></i>{{ ucfirst($status) }}
+        </span>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Approved & Transferred</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['approved'] }}</h3>
-                </div>
-                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-check-circle-fill"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Rejected Requests</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['rejected'] }}</h3>
-                </div>
-                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-x-circle-fill"></i></div>
-            </div>
-        </div>
+    <div class="rpt-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
+        </button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-3">
-            <span><i class="bi bi-arrow-left-right me-2" style="color:#58a6ff;"></i>Request & Transfer Log</span>
-            <div class="btn-group btn-group-sm">
-                <a href="{{ route('reports.transfer') }}?status=all" class="btn {{ $status==='all' ? 'btn-accent' : 'btn-outline-custom' }}">All</a>
-                <a href="{{ route('reports.transfer') }}?status=pending" class="btn {{ $status==='pending' ? 'btn-accent' : 'btn-outline-custom' }}">Pending</a>
-                <a href="{{ route('reports.transfer') }}?status=approved" class="btn {{ $status==='approved' ? 'btn-accent' : 'btn-outline-custom' }}">Approved</a>
-                <a href="{{ route('reports.transfer') }}?status=rejected" class="btn {{ $status==='rejected' ? 'btn-accent' : 'btn-outline-custom' }}">Rejected</a>
+{{-- Executive KPI Cards --}}
+<div class="rpt-kpi-grid rpt-kpi-grid-3">
+    <a href="{{ route('reports.transfer') }}?status=pending" class="text-decoration-none">
+        <div class="rpt-kpi-card {{ $status === 'pending' ? 'is-active' : '' }}">
+            <div class="rpt-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div class="rpt-kpi-body">
+                <p class="rpt-kpi-label">Pending Requests</p>
+                <div class="rpt-kpi-val" style="color:#d97706;">{{ number_format($stats['pending']) }}</div>
+                <div class="rpt-kpi-sub">Awaiting approval</div>
             </div>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-            <i class="bi bi-envelope-at"></i>
-            <span>Send via Email</span>
-        </button>
+    </a>
+
+    <a href="{{ route('reports.transfer') }}?status=approved" class="text-decoration-none">
+        <div class="rpt-kpi-card {{ $status === 'approved' ? 'is-active' : '' }}">
+            <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="rpt-kpi-body">
+                <p class="rpt-kpi-label">Approved &amp; Transferred</p>
+                <div class="rpt-kpi-val" style="color:#059669;">{{ number_format($stats['approved']) }}</div>
+                <div class="rpt-kpi-sub">Dispatched to shops</div>
+            </div>
+        </div>
+    </a>
+
+    <a href="{{ route('reports.transfer') }}?status=rejected" class="text-decoration-none">
+        <div class="rpt-kpi-card {{ $status === 'rejected' ? 'is-active' : '' }}">
+            <div class="rpt-kpi-icon" style="background:rgba(220,38,38,.1);color:#dc2626;">
+                <i class="bi bi-x-circle-fill"></i>
+            </div>
+            <div class="rpt-kpi-body">
+                <p class="rpt-kpi-label">Rejected Requests</p>
+                <div class="rpt-kpi-val" style="color:#dc2626;">{{ number_format($stats['rejected']) }}</div>
+                <div class="rpt-kpi-sub">Declined requests</div>
+            </div>
+        </div>
+    </a>
+</div>
+
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <div class="rpt-pills">
+            <a href="{{ route('reports.transfer') }}?status=all" class="rpt-pill-link {{ $status === 'all' ? 'active' : '' }}">All</a>
+            <a href="{{ route('reports.transfer') }}?status=pending" class="rpt-pill-link {{ $status === 'pending' ? 'active' : '' }}">Pending</a>
+            <a href="{{ route('reports.transfer') }}?status=approved" class="rpt-pill-link {{ $status === 'approved' ? 'active' : '' }}">Approved</a>
+            <a href="{{ route('reports.transfer') }}?status=rejected" class="rpt-pill-link {{ $status === 'rejected' ? 'active' : '' }}">Rejected</a>
+        </div>
     </div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="reportsTransferTable">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reportsTransferTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Request ID</th>
-                    <th data-priority="2">Shop</th>
-                    <th data-priority="3">Requester</th>
-                    <th data-priority="3">Request Date</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="2">Items</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Request ID</th>
+                    <th data-priority="2" class="min-tablet-l">Shop</th>
+                    <th data-priority="3" class="min-tablet-l">Requester</th>
+                    <th data-priority="3" class="min-tablet-l">Request Date</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="2" class="min-tablet-l">Items</th>
                 </tr>
             </thead>
             <tbody>

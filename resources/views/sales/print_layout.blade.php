@@ -238,9 +238,32 @@
 <body>
 
 <div class="print-actions">
-    <button class="btn-back" onclick="window.history.back()">← Back</button>
-    <button class="btn-print" onclick="window.print()">🖨 Print</button>
+    <a href="@yield('back_url', route('sales.index'))" class="btn-back" id="btnPrintBack" style="text-decoration:none;display:inline-flex;align-items:center;">← Back</a>
+    <button type="button" class="btn-print" onclick="window.print()">🖨 Print</button>
 </div>
+
+<script>
+document.getElementById('btnPrintBack').addEventListener('click', function (e) {
+    var fallbackUrl = this.getAttribute('href');
+    var hasSameOriginReferrer = false;
+    try {
+        hasSameOriginReferrer = Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin;
+    } catch (err) {
+        hasSameOriginReferrer = false;
+    }
+
+    if (window.history.length > 1 && hasSameOriginReferrer) {
+        e.preventDefault();
+        window.history.back();
+        return;
+    }
+
+    if (!fallbackUrl) {
+        e.preventDefault();
+        window.close();
+    }
+});
+</script>
 
 <div class="page">
     @yield('content')

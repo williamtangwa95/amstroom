@@ -4,156 +4,298 @@
 @section('breadcrumb')
 <li class="breadcrumb-item active">Main Store Stock</li>
 @endsection
-@section('content')
+
+@push('styles')
 <style>
-    .stat-card.premium-stat-card .stat-value {
-        font-size: clamp(0.72rem, 0.85vw, 0.88rem);
+    /* ══════════════════════════════════════════════
+       MAIN STORE STOCK — EXECUTIVE & RESPONSIVE
+       ══════════════════════════════════════════════ */
+    .ms-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .ms-title-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .55rem;
+    }
+    .ms-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #0f172a);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .ms-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .18rem .6rem;
+        border-radius: 50px;
+        background: rgba(0, 119, 182, .08);
+        color: #0077b6;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .ms-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .45rem;
+    }
+    .ms-actions .btn {
+        height: 34px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        font-size: .78rem;
+        font-weight: 600;
+        padding: 0 .8rem;
+    }
+
+    /* ── Executive 5-Card KPI Grid (Matches /stock-reorder & /diary) ── */
+    .ms-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .75rem;
+        margin-bottom: 1.1rem;
+    }
+    .ms-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: .9rem .95rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .ms-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .ms-kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+    }
+    .ms-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .ms-kpi-label {
+        font-size: .66rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ms-kpi-val {
+        font-size: clamp(.84rem, 1.05vw, 1.05rem);
         font-weight: 800;
         line-height: 1.2;
-        white-space: nowrap !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        letter-spacing: -0.2px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.015em;
+        word-break: break-word;
+    }
+    .ms-kpi-sub {
+        font-size: .68rem;
+        color: #94a3b8;
+        margin-top: .16rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Filter & Table Cards ── */
+    .ms-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+    }
+    .ms-filter-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary, #64748b);
+        margin-bottom: .3rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+    }
+
+    @media (max-width: 1199.98px) {
+        .ms-kpi-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
     @media (max-width: 767.98px) {
-        .main-stock-header-actions {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 0.45rem !important;
-            width: 100% !important;
+        .ms-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+            gap: .45rem;
         }
-        .main-stock-header-actions .btn {
-            width: 100% !important;
-            justify-content: center !important;
-            font-size: 0.76rem !important;
-            padding: 0.4rem 0.5rem !important;
+        .ms-actions .btn {
+            width: 100%;
         }
-        .stat-card.premium-stat-card {
-            padding: 0.45rem 0.5rem !important;
-            gap: 0.35rem !important;
+        .ms-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .65rem;
         }
-        .stat-card.premium-stat-card .stat-value {
-            font-size: 0.74rem !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            letter-spacing: -0.3px !important;
+        .ms-kpi-batches {
+            grid-column: 1 / -1;
         }
-        .stat-card.premium-stat-card .stat-label {
-            font-size: 0.60rem !important;
+        .ms-kpi-card {
+            padding: .8rem .85rem;
+            gap: .65rem;
+            border-radius: 12px;
         }
-        .stat-card.premium-stat-card .stat-icon {
-            width: 24px !important;
-            height: 24px !important;
-            font-size: 0.75rem !important;
+        .ms-kpi-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            font-size: .95rem;
+        }
+        .ms-kpi-val {
+            font-size: .9rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .ms-kpi-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-    <div>
-        <h5 class="mb-0 fw-700">Main Store Inventory</h5>
-        <small style="color:var(--text-secondary);">Central warehouse stock management</small>
+@endpush
+
+@section('content')
+{{-- Compact Executive Header --}}
+<div class="ms-header">
+    <div class="ms-title-row">
+        <h5 class="ms-title">
+            <i class="bi bi-building text-primary me-1"></i>Main Store Inventory
+        </h5>
+        <span class="ms-pill">
+            <i class="bi bi-layers"></i>Central Warehouse
+        </span>
     </div>
-    <div class="d-flex gap-2 main-stock-header-actions">
-        <a href="{{ route('main-stock.history') }}" class="btn btn-outline-custom"><i class="bi bi-clock-history me-1"></i>History</a>
+
+    <div class="ms-actions main-stock-header-actions">
+        <a href="{{ route('main-stock.history') }}" class="btn btn-outline-custom">
+            <i class="bi bi-clock-history"></i>History
+        </a>
         <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#uploadMainStockModal">
-            <i class="bi bi-file-earmark-excel me-1"></i>Upload
-        </button>
-        <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#addMainStockModal">
-            <i class="bi bi-plus-circle me-1"></i>Add Stock
+            <i class="bi bi-file-earmark-excel"></i>Upload
         </button>
         <a href="{{ route('main-stock.create') }}" class="btn btn-outline-custom" title="Full Page Form">
-            <i class="bi bi-box-arrow-up-right me-1"></i>Full Form
+            <i class="bi bi-box-arrow-up-right"></i>Full Form
         </a>
+        <button type="button" class="btn btn-accent shadow-sm" data-bs-toggle="modal" data-bs-target="#addMainStockModal">
+            <i class="bi bi-plus-circle"></i>Add Stock
+        </button>
     </div>
 </div>
 
 @if(session('import_errors'))
-<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert" style="background: rgba(233, 69, 96, 0.1); border-color: rgba(233, 69, 96, 0.2); color: #e94560;">
-    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed! Please correct the following errors and try again:</h6>
+<div class="alert alert-danger alert-dismissible fade show mb-3 rounded-3" role="alert" style="font-size:.83rem;">
+    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Import Failed! Please correct the following errors:</h6>
     <ul class="mb-0 ps-3 small" style="max-height: 200px; overflow-y: auto;">
         @foreach(session('import_errors') as $err)
             <li>{{ $err }}</li>
         @endforeach
     </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: invert(1);"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 @endif
 
-<div class="row row-cols-2 row-cols-sm-3 row-cols-lg-5 g-2 mb-4">
-    <!-- Total Cost Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-blue); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-cash-stack"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Cost Value ({{ number_format($stats['totalInitialQty']) }} units)">Total Cost <span class="small">({{ number_format($stats['totalInitialQty']) }})</span></div>
-            </div>
+{{-- Executive KPI Cards --}}
+<div class="ms-kpi-grid">
+    <div class="ms-kpi-card">
+        <div class="ms-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="ms-kpi-body">
+            <p class="ms-kpi-label">Total Cost</p>
+            <div class="ms-kpi-val" style="color:#0077b6;">TZS {{ number_format($stats['totalInitialCost'], 0) }}</div>
+            <div class="ms-kpi-sub">{{ number_format($stats['totalInitialQty']) }} stocked units</div>
         </div>
     </div>
 
-    <!-- Total Sell Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-graph-up-arrow"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0 text-success">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Total Sell Value">Total Sell Value</div>
-            </div>
+    <div class="ms-kpi-card">
+        <div class="ms-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="ms-kpi-body">
+            <p class="ms-kpi-label">Total Sell Value</p>
+            <div class="ms-kpi-val" style="color:#059669;">TZS {{ number_format($stats['totalInitialSell'], 0) }}</div>
+            <div class="ms-kpi-sub">Initial retail value</div>
         </div>
     </div>
 
-    <!-- Remain Stock Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-box-seam"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Stock Value ({{ number_format($stats['totalRemainingQty']) }} units)">Remain Value <span class="small">({{ number_format($stats['totalRemainingQty']) }})</span></div>
-            </div>
+    <div class="ms-kpi-card">
+        <div class="ms-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div class="ms-kpi-body">
+            <p class="ms-kpi-label">Remain Cost</p>
+            <div class="ms-kpi-val" style="color:#7c3aed;">TZS {{ number_format($stats['totalRemainingCost'], 0) }}</div>
+            <div class="ms-kpi-sub">{{ number_format($stats['totalRemainingQty']) }} units left</div>
         </div>
     </div>
 
-    <!-- Remain Sell Value Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-yellow); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-piggy-bank"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0" style="color: var(--accent-yellow) !important;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Remain Sell Value">Remain Sell Value</div>
-            </div>
+    <div class="ms-kpi-card">
+        <div class="ms-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-piggy-bank"></i>
+        </div>
+        <div class="ms-kpi-body">
+            <p class="ms-kpi-label">Remain Sell Value</p>
+            <div class="ms-kpi-val" style="color:#d97706;">TZS {{ number_format($stats['totalRemainingSell'], 0) }}</div>
+            <div class="ms-kpi-sub">Remaining retail</div>
         </div>
     </div>
 
-    <!-- Stock Batches Card -->
-    <div class="col">
-        <div class="stat-card premium-stat-card p-2 d-flex align-items-center gap-2 h-100">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); width: 30px; height: 30px; font-size: 0.9rem; border-radius: 8px; flex-shrink: 0;">
-                <i class="bi bi-layers"></i>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="stat-value mb-0">{{ number_format($stats['stockBatchesCount']) }}</div>
-                <div class="stat-label text-muted text-truncate" style="font-size: 0.65rem; font-weight: 600;" title="Stock Batches">Stock Batches</div>
-            </div>
+    <div class="ms-kpi-card ms-kpi-batches">
+        <div class="ms-kpi-icon" style="background:rgba(220,38,38,.1);color:#dc2626;">
+            <i class="bi bi-layers"></i>
+        </div>
+        <div class="ms-kpi-body">
+            <p class="ms-kpi-label">Stock Batches</p>
+            <div class="ms-kpi-val" style="color:#dc2626;">{{ number_format($stats['stockBatchesCount']) }}</div>
+            <div class="ms-kpi-sub">Recorded batches</div>
         </div>
     </div>
 </div>
 
-<!-- Filter Bar -->
-<div class="card mb-3 border-0 shadow-sm" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-    <div class="card-body py-2.5 px-3">
-        <div class="row g-2 align-items-center">
+{{-- Filter Bar --}}
+<div class="ms-card mb-3">
+    <div class="p-3">
+        <div class="row g-2 align-items-end">
             <div class="col-12 col-sm-6 col-md-4">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
-                    <i class="bi bi-tag me-1 text-accent"></i>Filter by Category
+                <label for="filterCategory" class="ms-filter-label">
+                    <i class="bi bi-tag text-accent"></i>Category
                 </label>
                 <select id="filterCategory" class="form-select form-select-sm">
                     <option value="">All Categories</option>
@@ -163,8 +305,8 @@
                 </select>
             </div>
             <div class="col-12 col-sm-6 col-md-5">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
-                    <i class="bi bi-box-seam me-1 text-accent"></i>Filter by Product
+                <label for="filterProduct" class="ms-filter-label">
+                    <i class="bi bi-box-seam text-accent"></i>Product
                 </label>
                 <select id="filterProduct" class="form-select form-select-sm">
                     <option value="">All Products</option>
@@ -173,42 +315,42 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end align-items-end mt-2 mt-md-0" style="padding-top: 1.25rem;">
-                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100 w-md-auto" title="Reset Filters">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Reset Filters
+            <div class="col-12 col-md-3">
+                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100" style="height:31px;" title="Reset Filters">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reset
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="d-flex align-items-center justify-content-between mb-3 px-3 py-2 rounded border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 px-3 py-2 rounded-3 border d-none" id="bulkActionsBar" style="background: var(--card-bg) !important; border-color: var(--card-border) !important;">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-check2-square text-accent fs-5"></i>
         <span class="fw-600 small" id="selectedCountText" style="color:var(--text-primary);">0 items selected</span>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-xs btn-accent px-3 py-1" id="bulkEnableBtn" style="font-size: .75rem;">Enable Custom Components</button>
         <button type="button" class="btn btn-xs btn-outline-secondary px-3 py-1" id="bulkDisableBtn" style="font-size: .75rem;">Disable Custom Components</button>
         <button type="button" class="btn btn-xs btn-outline-danger px-3 py-1" id="bulkDeleteBtn" style="font-size: .75rem;"><i class="bi bi-trash me-1"></i>Delete Selected Stock</button>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="mainStockTable">
+<div class="ms-card">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table dt-has-checkbox" id="mainStockTable">
             <thead>
                 <tr>
-                    <th data-priority="1000" class="no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Product Details</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="3">Buy Price</th>
-                    <th data-priority="3">Sell Price</th>
-                    <th data-priority="3">Stocked Qty</th>
-                    <th data-priority="3">Remaining Qty</th>
-                    <th data-priority="4">Date</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                    <th data-priority="1000" class="min-tablet-l no-sort text-center" style="width: 30px;"><input type="checkbox" id="checkAllStocks" style="cursor:pointer;"></th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Product Details</th>
+                    <th data-priority="3" class="min-tablet-l">Category</th>
+                    <th data-priority="3" class="min-tablet-l">Buy Price</th>
+                    <th data-priority="3" class="min-tablet-l">Sell Price</th>
+                    <th data-priority="3" class="min-tablet-l">Stocked Qty</th>
+                    <th data-priority="3" class="min-tablet-l">Remaining Qty</th>
+                    <th data-priority="4" class="min-tablet-l">Date</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -810,16 +952,16 @@
                 }
             },
             columns: [
-                { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false },
-                { data: 'no', name: 'no', orderable: false, searchable: false },
-                { data: 'product', name: 'product' },
-                { data: 'category', name: 'category' },
-                { data: 'buying_price', name: 'buying_price' },
-                { data: 'selling_price', name: 'selling_price' },
-                { data: 'stocked_quantity', name: 'stocked_quantity' },
-                { data: 'remaining_quantity', name: 'remaining_quantity' },
-                { data: 'date_received', name: 'date_received' },
-                { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false, responsivePriority: 1000, className: 'min-tablet-l text-center' },
+                { data: 'no', name: 'no', orderable: false, searchable: false, responsivePriority: 1, className: 'all iter-col text-center' },
+                { data: 'product', name: 'product', responsivePriority: 1, className: 'all primary-col' },
+                { data: 'category', name: 'category', responsivePriority: 3, className: 'min-tablet-l' },
+                { data: 'buying_price', name: 'buying_price', responsivePriority: 3, className: 'min-tablet-l' },
+                { data: 'selling_price', name: 'selling_price', responsivePriority: 3, className: 'min-tablet-l' },
+                { data: 'stocked_quantity', name: 'stocked_quantity', responsivePriority: 3, className: 'min-tablet-l' },
+                { data: 'remaining_quantity', name: 'remaining_quantity', responsivePriority: 3, className: 'min-tablet-l' },
+                { data: 'date_received', name: 'date_received', responsivePriority: 4, className: 'min-tablet-l' },
+                { data: 'actions', name: 'actions', orderable: false, searchable: false, responsivePriority: 3, className: 'min-tablet-l text-end' }
             ],
             order: [[8, 'desc']]
         });

@@ -5,96 +5,272 @@
 <li class="breadcrumb-item active">Expenses</li>
 @endsection
 
+@push('styles')
+<style>
+    /* ══════════════════════════════════════════════
+       EXPENSES — EXECUTIVE & RESPONSIVE
+       ══════════════════════════════════════════════ */
+    .ex-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .ex-title-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .55rem;
+    }
+    .ex-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #0f172a);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .ex-total-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .2rem .65rem;
+        border-radius: 50px;
+        background: rgba(225, 29, 72, .08);
+        color: #e11d48;
+        font-size: .74rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .ex-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .45rem;
+    }
+    .ex-controls .btn {
+        height: 34px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+    }
+
+    .ex-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .ex-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: .95rem 1.05rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .ex-kpi-card.is-clickable {
+        cursor: pointer;
+    }
+    .ex-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .ex-kpi-card.is-active {
+        border-color: #0077b6;
+        box-shadow: 0 0 0 3px rgba(0, 119, 182, .1);
+    }
+    .ex-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.12rem;
+        flex-shrink: 0;
+    }
+    .ex-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .ex-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ex-kpi-val {
+        font-size: clamp(.9rem, 1.2vw, 1.15rem);
+        font-weight: 800;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.015em;
+        word-break: break-word;
+    }
+    .ex-kpi-sub {
+        font-size: .7rem;
+        color: #94a3b8;
+        margin-top: .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ex-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+    }
+    .ex-filter-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary, #64748b);
+        margin-bottom: .3rem;
+        display: block;
+    }
+
+    @media (max-width: 991.98px) {
+        .ex-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .65rem;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .ex-controls {
+            width: 100%;
+        }
+        .ex-controls .btn {
+            flex: 1;
+        }
+        .ex-kpi-card {
+            padding: .8rem .85rem;
+            gap: .65rem;
+            border-radius: 12px;
+        }
+        .ex-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        .ex-kpi-val {
+            font-size: .9rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .ex-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <div>
-        <h5 class="mb-0 fw-700">Expenses Ledger</h5>
-        <small style="color:var(--text-secondary);">Total Expenses: <strong id="headerTotalExpenses" style="color:#e94560;">TZS {{ number_format($totalExpenses, 0) }}</strong></small>
+{{-- Compact Header --}}
+<div class="ex-header">
+    <div class="ex-title-row">
+        <h5 class="ex-title">
+            <i class="bi bi-wallet2 text-danger me-1"></i>Expenses Ledger
+        </h5>
+        <span class="ex-total-pill">
+            <span id="headerTotalExpenses">TZS {{ number_format($totalExpenses, 0) }}</span>
+        </span>
     </div>
-    <div class="d-flex flex-wrap align-items-center gap-2">
+
+    <div class="ex-controls">
         @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
         <a href="{{ route('expense-categories.index') }}" class="btn btn-sm btn-outline-custom">
-            <i class="bi bi-tags-fill me-1"></i> Categories
+            <i class="bi bi-tags"></i> Categories
         </a>
         <button type="button" id="btn-bulk-approve" class="btn btn-sm btn-success d-none">
-            <i class="bi bi-check-all me-1"></i> Approve Selected (<span id="selected-count">0</span>)
+            <i class="bi bi-check-all"></i> Approve (<span id="selected-count">0</span>)
         </button>
         @endif
-        <a href="{{ route('expenses.create') }}" class="btn btn-sm btn-accent">
-            <i class="bi bi-plus-circle me-1"></i> Record Expense
+        <a href="{{ route('expenses.create') }}" class="btn btn-sm btn-accent shadow-sm">
+            <i class="bi bi-plus-circle"></i> Record Expense
         </a>
     </div>
 </div>
 
-{{-- Expense Summary Cards --}}
-<div class="row g-2 g-md-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Total Expenses</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(233,69,96,0.15); color:#e94560;">
-                    <i class="bi bi-wallet2 fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0 text-truncate" id="cardTotalExpenses" style="color:#e94560;">TZS {{ number_format($totalExpenses, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;" id="cardPeriodText">Selected Period Total</div>
+{{-- Executive KPI Cards --}}
+<div class="ex-kpi-grid">
+    <div class="ex-kpi-card is-clickable" data-exp-status="" title="Show all expenses">
+        <div class="ex-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-wallet2"></i>
+        </div>
+        <div class="ex-kpi-body">
+            <p class="ex-kpi-label">Total Expenses</p>
+            <div class="ex-kpi-val" id="cardTotalExpenses" style="color:#e11d48;">TZS {{ number_format($totalExpenses, 0) }}</div>
+            <div class="ex-kpi-sub" id="cardPeriodText">Selected period</div>
         </div>
     </div>
 
-    <div class="col-6 col-sm-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Approved</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(63,185,80,0.15); color:#3fb950;">
-                    <i class="bi bi-check-circle-fill fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0 text-truncate" id="cardApprovedExpenses" style="color:#3fb950;">TZS {{ number_format($approvedExpenses, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Approved Expenses</div>
+    <div class="ex-kpi-card is-clickable" data-exp-status="approved" title="Filter approved expenses">
+        <div class="ex-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <div class="ex-kpi-body">
+            <p class="ex-kpi-label">Approved</p>
+            <div class="ex-kpi-val" id="cardApprovedExpenses" style="color:#059669;">TZS {{ number_format($approvedExpenses, 0) }}</div>
+            <div class="ex-kpi-sub">Approved total</div>
         </div>
     </div>
 
-    <div class="col-6 col-sm-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Pending</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(227,179,65,0.15); color:#e3b341;">
-                    <i class="bi bi-hourglass-split fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0 text-truncate" id="cardPendingExpenses" style="color:#e3b341;">TZS {{ number_format($pendingExpenses, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Awaiting Approval</div>
+    <div class="ex-kpi-card is-clickable" data-exp-status="pending" title="Filter pending expenses">
+        <div class="ex-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="ex-kpi-body">
+            <p class="ex-kpi-label">Pending</p>
+            <div class="ex-kpi-val" id="cardPendingExpenses" style="color:#d97706;">TZS {{ number_format($pendingExpenses, 0) }}</div>
+            <div class="ex-kpi-sub">Awaiting approval</div>
         </div>
     </div>
 
-    <div class="col-6 col-sm-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Entries</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(88,166,255,0.15); color:#58a6ff;">
-                    <i class="bi bi-receipt fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardExpensesCount" style="color:#58a6ff;">{{ number_format($expensesCount) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Total Entries</div>
+    <div class="ex-kpi-card is-clickable" data-exp-status="" title="Show all entries">
+        <div class="ex-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-receipt"></i>
+        </div>
+        <div class="ex-kpi-body">
+            <p class="ex-kpi-label">Entries</p>
+            <div class="ex-kpi-val" id="cardExpensesCount" style="color:#0077b6;">{{ number_format($expensesCount) }}</div>
+            <div class="ex-kpi-sub">Total records</div>
         </div>
     </div>
 </div>
 
 {{-- Filter Bar --}}
-<div class="card mb-4 border-0 shadow-sm" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-    <div class="card-body py-2.5 px-3">
+<div class="ex-card mb-3">
+    <div class="p-3">
         <form id="expenseFilterForm" class="row g-2 align-items-end">
-            <div class="col-12 col-sm-6 col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">From Date</label>
+            <div class="col-6 col-md-3">
+                <label for="date_from" class="ex-filter-label">From</label>
                 <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ $dateFrom }}">
             </div>
-            <div class="col-12 col-sm-6 col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">To Date</label>
+            <div class="col-6 col-md-3">
+                <label for="date_to" class="ex-filter-label">To</label>
                 <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
             </div>
-            <div class="col-6 col-sm-6 col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">Category</label>
+            <div class="col-6 col-md-2">
+                <label for="category_id" class="ex-filter-label">Category</label>
                 <select name="category_id" id="category_id" class="form-select form-select-sm">
                     <option value="">All Categories</option>
                     @foreach($categories as $cat)
@@ -102,8 +278,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-sm-6 col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">Status</label>
+            <div class="col-6 col-md-2">
+                <label for="status" class="ex-filter-label">Status</label>
                 <select name="status" id="status" class="form-select form-select-sm">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -112,11 +288,11 @@
                     <option value="editable">Editable</option>
                 </select>
             </div>
-            <div class="col-12 col-md-2 d-flex gap-1 justify-content-end">
-                <button type="submit" class="btn btn-sm btn-accent flex-grow-1" title="Apply Filter">
-                    <i class="bi bi-funnel-fill me-1"></i> Filter
+            <div class="col-12 col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-accent flex-grow-1" style="height:31px;" title="Apply Filter">
+                    <i class="bi bi-funnel me-1"></i> Filter
                 </button>
-                <button type="button" id="btn-reset-filter" class="btn btn-sm btn-outline-custom" title="Reset to This Month">
+                <button type="button" id="btn-reset-filter" class="btn btn-sm btn-outline-custom" style="height:31px;" title="Reset to This Month">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
             </div>
@@ -124,27 +300,24 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center">
-        <i class="bi bi-wallet2 me-2 text-success"></i><strong class="fw-700">Expenses Ledger</strong>
-    </div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="expensesTable">
+<div class="ex-card">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table {{ (auth()->user()->isOwner() || auth()->user()->isShopAdmin()) ? 'dt-has-checkbox' : '' }}" id="expensesTable">
             <thead>
                 <tr>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th data-priority="1000" class="no-sort" style="width: 40px;"><input type="checkbox" id="select-all-expenses" class="form-check-input"></th>
+                    <th data-priority="1000" class="min-tablet-l no-sort text-center" style="width: 40px;"><input type="checkbox" id="select-all-expenses" class="form-check-input"></th>
                     @endif
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="3">Date</th>
-                    <th data-priority="1">Category</th>
-                    <th data-priority="3">Activity</th>
-                    <th data-priority="4">Description</th>
-                    <th data-priority="2">Amount</th>
-                    <th data-priority="4">Recorded By</th>
-                    <th data-priority="4">Approved By</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="3" class="min-tablet-l">Date</th>
+                    <th data-priority="1" class="all primary-col">Category</th>
+                    <th data-priority="3" class="min-tablet-l">Activity</th>
+                    <th data-priority="4" class="min-tablet-l">Description</th>
+                    <th data-priority="2" class="min-tablet-l">Amount</th>
+                    <th data-priority="4" class="min-tablet-l">Recorded By</th>
+                    <th data-priority="4" class="min-tablet-l">Approved By</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -236,9 +409,19 @@ $(function() {
         $('#date_to').val(defaultDateTo);
         $('#category_id').val('');
         $('#status').val('');
+        $('.ex-kpi-card').removeClass('is-active');
         if (table) {
             table.ajax.reload();
         }
+    });
+
+    // Quick-filter via KPI cards
+    $(document).on('click', '.ex-kpi-card[data-exp-status]', function() {
+        const st = $(this).data('exp-status');
+        $('#status').val(st);
+        $('.ex-kpi-card').removeClass('is-active');
+        if (st) $(this).addClass('is-active');
+        if (table) table.ajax.reload();
     });
 
     // Select All

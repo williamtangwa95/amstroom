@@ -22,7 +22,27 @@ class SaleReturnController extends Controller
      */
     public function index()
     {
-        return view('sales-returns.index');
+        $user = Auth::user();
+        $query = SaleReturn::query();
+
+        if ($user->isOwner()) {
+            $query->whereHas('sale', function ($q) {
+                $q->where('is_admin_stock', false);
+            });
+        } else {
+            $query->whereHas('sale', function ($q) use ($user) {
+                $q->where('shop_id', $user->shop_id);
+            });
+        }
+
+        $stats = [
+            'total'    => (clone $query)->count(),
+            'pending'  => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'rejected' => (clone $query)->where('status', 'rejected')->count(),
+        ];
+
+        return view('sales-returns.index', compact('stats'));
     }
 
     public function data(Request $request)
@@ -40,6 +60,10 @@ class SaleReturnController extends Controller
             $query->whereHas('sale', function ($q) use ($user) {
                 $q->where('shop_id', $user->shop_id);
             });
+        }
+
+        if ($request->filled('status') && in_array($request->input('status'), ['pending', 'approved', 'rejected'], true)) {
+            $query->where('sale_returns.status', $request->input('status'));
         }
 
         $recordsTotal = (clone $query)->count();
@@ -162,8 +186,27 @@ class SaleReturnController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $sale->load('items.item', 'shop');
+        $sale->load('items.item', 'items.components.item', 'shop');
         return view('sales-returns.create', compact('sale'));
+    }
+
+    /**
+     * Calculate returnable quantity for a single sale item.
+     */
+    private function getReturnableQuantity(Sale $sale, SaleItem $saleItem): int
+    {
+        $allocations = SaleBatchAllocation::where('sale_item_id', $saleItem->id)->get();
+        if ($allocations->isNotEmpty()) {
+            $totalAllocated = (int) $allocations->sum('quantity');
+            $totalReturned = (int) SaleReturnBatchAllocation::whereIn('sale_batch_allocation_id', $allocations->pluck('id'))->sum('quantity');
+            return max(0, $totalAllocated - $totalReturned);
+        }
+
+        $previouslyReturned = (int) SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
+            $q->where('sale_id', $sale->id)->whereIn('status', ['approved', 'pending']);
+        })->where('item_id', $saleItem->item_id)->sum('quantity');
+
+        return max(0, $saleItem->quantity - $previouslyReturned);
     }
 
     /**
@@ -179,36 +222,79 @@ class SaleReturnController extends Controller
         }
 
         $request->validate([
-            'reason'             => 'required|string|max:500',
-            'items'              => 'required|array|min:1',
+            'reason'               => 'required|string|max:500',
+            'items'                => 'required|array|min:1',
             'items.*.sale_item_id' => 'required|exists:sale_items,id',
-            'items.*.qty'        => 'required|integer|min:1',
+            'items.*.qty'          => 'required|integer|min:1',
         ]);
 
-        // Validate returned quantities against sale quantities & returnable allocations
+        // Collect submitted items keyed by sale_item_id (deduplicating if needed)
+        $entriesBySaleItemId = [];
         foreach ($request->items as $entry) {
-            $saleItem = SaleItem::findOrFail($entry['sale_item_id']);
+            $saleItem = SaleItem::with('item', 'components.item')->findOrFail($entry['sale_item_id']);
             if ($saleItem->sale_id !== $sale->id) {
                 return back()->withInput()->withErrors([
                     'items' => "Invalid item for Sale #{$sale->id}."
                 ]);
             }
 
-            // Calculate returnable quantity based on allocations
-            $allocations = SaleBatchAllocation::where('sale_item_id', $saleItem->id)->get();
-            if ($allocations->isNotEmpty()) {
-                $totalAllocated = (int) $allocations->sum('quantity');
-                $totalReturned = (int) SaleReturnBatchAllocation::whereIn('sale_batch_allocation_id', $allocations->pluck('id'))->sum('quantity');
-                $returnable = max(0, $totalAllocated - $totalReturned);
+            $qty = (int) $entry['qty'];
+            if (isset($entriesBySaleItemId[$saleItem->id])) {
+                $entriesBySaleItemId[$saleItem->id]['qty'] += $qty;
             } else {
-                $previouslyReturned = (int) SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
-                    $q->where('sale_id', $sale->id)->whereIn('status', ['approved', 'pending']);
-                })->where('item_id', $saleItem->item_id)->sum('quantity');
-                $returnable = max(0, $saleItem->quantity - $previouslyReturned);
+                $entriesBySaleItemId[$saleItem->id] = [
+                    'sale_item' => $saleItem,
+                    'qty'       => $qty,
+                ];
+            }
+        }
+
+        // Automatically include attached component items whenever their parent item is selected
+        foreach (array_values($entriesBySaleItemId) as $parentEntry) {
+            $parentItem = $parentEntry['sale_item'];
+            if ($parentItem->parent_id !== null) {
+                continue;
             }
 
+            $children = SaleItem::with('item')
+                ->where('sale_id', $sale->id)
+                ->where('parent_id', $parentItem->id)
+                ->get();
+
+            foreach ($children as $childItem) {
+                $childReturnable = $this->getReturnableQuantity($sale, $childItem);
+                if ($childReturnable <= 0) {
+                    continue;
+                }
+
+                $isFullParentReturn = $parentEntry['qty'] >= $parentItem->quantity;
+                if ($isFullParentReturn) {
+                    // When returning the entire parent, all remaining attached quantity must return with it
+                    // so child attachments are restored to stock instead of cascade-deleted without restocking.
+                    $targetChildQty = min($childItem->quantity, $childReturnable);
+                    $entriesBySaleItemId[$childItem->id] = [
+                        'sale_item' => $childItem,
+                        'qty'       => $targetChildQty,
+                    ];
+                } elseif (!isset($entriesBySaleItemId[$childItem->id])) {
+                    // Partial parent return: calculate proportional attachment quantity
+                    $proportionalQty = (int) round(($childItem->quantity / max(1, $parentItem->quantity)) * $parentEntry['qty']);
+                    $targetChildQty = max(1, min($childItem->quantity, $childReturnable, max(1, $proportionalQty)));
+                    $entriesBySaleItemId[$childItem->id] = [
+                        'sale_item' => $childItem,
+                        'qty'       => $targetChildQty,
+                    ];
+                }
+            }
+        }
+
+        // Validate returned quantities against sale quantities & returnable allocations
+        foreach ($entriesBySaleItemId as $entry) {
+            $saleItem = $entry['sale_item'];
+            $returnable = $this->getReturnableQuantity($sale, $saleItem);
+
             if ($entry['qty'] > $returnable) {
-                $itemName = $saleItem->item->item_name ?? $saleItem->custom_name ?? 'Product';
+                $itemName = $saleItem->display_name;
                 return back()->withInput()->withErrors([
                     'items' => "Unable to process return for \"{$itemName}\". Returnable quantity: {$returnable}, Requested return: {$entry['qty']}. No stock was restored."
                 ]);
@@ -220,7 +306,7 @@ class SaleReturnController extends Controller
         $status = $isAdminOrOwner ? 'approved' : 'pending';
 
         try {
-            $saleReturn = DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner) {
+            $saleReturn = DB::transaction(function () use ($request, $sale, $user, $status, $isAdminOrOwner, $entriesBySaleItemId) {
                 $saleReturn = SaleReturn::create([
                     'sale_id'      => $sale->id,
                     'requested_by' => $user->id,
@@ -230,8 +316,26 @@ class SaleReturnController extends Controller
                     'return_date'  => now()->toDateString(),
                 ]);
 
-                foreach ($request->items as $entry) {
-                    $saleItem = SaleItem::findOrFail($entry['sale_item_id']);
+                // Process child/attachment items BEFORE parent items so parent deletion
+                // never cascades and removes an attachment before its stock is restored.
+                $orderedEntries = collect($entriesBySaleItemId)
+                    ->sortBy(fn ($entry) => $entry['sale_item']->parent_id !== null ? 0 : 1)
+                    ->values();
+
+                // Lock and load all targeted SaleItems up-front before any deletes occur
+                $saleItemIds = $orderedEntries->map(fn ($e) => $e['sale_item']->id)->all();
+                $lockedSaleItems = SaleItem::whereIn('id', $saleItemIds)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                // Phase 1: Create SaleReturnItem records & restore stock allocations for all items
+                $pendingDeletions = [];
+                foreach ($orderedEntries as $entry) {
+                    $saleItem = $lockedSaleItems->get($entry['sale_item']->id);
+                    if (!$saleItem) {
+                        throw new \Exception("Sale item #{$entry['sale_item']->id} could not be found for return.");
+                    }
 
                     $returnItem = SaleReturnItem::create([
                         'sale_return_id' => $saleReturn->id,
@@ -240,7 +344,7 @@ class SaleReturnController extends Controller
                     ]);
 
                     if ($isAdminOrOwner) {
-                        // Restore exact batch allocations
+                        // Restore exact batch allocations while all sale_items and allocations still exist
                         StockAllocationService::restoreReturnAllocations(
                             $saleReturn,
                             $returnItem,
@@ -249,15 +353,26 @@ class SaleReturnController extends Controller
                             $user->id
                         );
 
-                        if ($saleItem->quantity > $entry['qty']) {
-                            $saleItem->decrement('quantity', $entry['qty']);
+                        $pendingDeletions[] = [
+                            'sale_item' => $saleItem,
+                            'qty'       => $entry['qty'],
+                        ];
+                    }
+                }
+
+                // Phase 2: Decrement or delete SaleItem records (children first, then parents)
+                if ($isAdminOrOwner) {
+                    foreach ($pendingDeletions as $step) {
+                        $saleItem = $step['sale_item'];
+                        $qty = $step['qty'];
+
+                        if ($saleItem->quantity > $qty) {
+                            $saleItem->decrement('quantity', $qty);
                         } else {
                             $saleItem->delete();
                         }
                     }
-                }
 
-                if ($isAdminOrOwner) {
                     $remainingCount = $sale->items()->count();
                     if ($remainingCount === 0) {
                         $sale->delete();
@@ -318,26 +433,90 @@ class SaleReturnController extends Controller
 
                 $sale = $saleReturn->sale;
 
-                // Restore exact batch allocations for each item in the return
+                // Load and lock all current sale items up-front before any deletes occur
+                $saleItems = SaleItem::where('sale_id', $sale->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                $matchedSaleItemIds = [];
+                $restorationPlan = [];
+
                 foreach ($saleReturn->items as $returnItem) {
-                    $saleItem = SaleItem::where('sale_id', $sale->id)
-                        ->where('item_id', $returnItem->item_id)
-                        ->first();
+                    $saleItem = $saleItems->first(function ($candidate) use ($returnItem, $matchedSaleItemIds) {
+                        return $candidate->item_id === $returnItem->item_id
+                            && !in_array($candidate->id, $matchedSaleItemIds, true);
+                    });
 
                     if ($saleItem) {
-                        StockAllocationService::restoreReturnAllocations(
-                            $saleReturn,
-                            $returnItem,
-                            $saleItem,
-                            $returnItem->quantity,
-                            $user->id
-                        );
+                        $matchedSaleItemIds[] = $saleItem->id;
+                        $restorationPlan[$saleItem->id] = [
+                            'return_item' => $returnItem,
+                            'sale_item'   => $saleItem,
+                            'qty'         => (int) $returnItem->quantity,
+                        ];
+                    }
+                }
 
-                        if ($saleItem->quantity > $returnItem->quantity) {
-                            $saleItem->decrement('quantity', $returnItem->quantity);
-                        } else {
-                            $saleItem->delete();
+                // Safety net: if a parent item is being fully returned, ensure any remaining
+                // attached child components are also returned and restocked before parent deletion.
+                foreach (array_values($restorationPlan) as $planEntry) {
+                    $parentItem = $planEntry['sale_item'];
+                    if ($parentItem->parent_id !== null || $planEntry['qty'] < $parentItem->quantity) {
+                        continue;
+                    }
+
+                    $attachedChildren = $saleItems->where('parent_id', $parentItem->id);
+                    foreach ($attachedChildren as $childItem) {
+                        if (isset($restorationPlan[$childItem->id])) {
+                            continue;
                         }
+
+                        $childReturnable = $this->getReturnableQuantity($sale, $childItem);
+                        $childQty = min($childItem->quantity, $childReturnable);
+                        if ($childQty <= 0) {
+                            continue;
+                        }
+
+                        $childReturnItem = SaleReturnItem::create([
+                            'sale_return_id' => $saleReturn->id,
+                            'item_id'        => $childItem->item_id,
+                            'quantity'       => $childQty,
+                        ]);
+
+                        $restorationPlan[$childItem->id] = [
+                            'return_item' => $childReturnItem,
+                            'sale_item'   => $childItem,
+                            'qty'         => $childQty,
+                        ];
+                    }
+                }
+
+                // Process child/attachment items BEFORE parent items so parent deletion
+                // never cascades and removes an attachment before its stock is restored.
+                $orderedPlan = collect($restorationPlan)
+                    ->sortBy(fn ($entry) => $entry['sale_item']->parent_id !== null ? 0 : 1)
+                    ->values();
+
+                // Phase 1: Restore batch allocations while all sale_items still exist
+                foreach ($orderedPlan as $entry) {
+                    StockAllocationService::restoreReturnAllocations(
+                        $saleReturn,
+                        $entry['return_item'],
+                        $entry['sale_item'],
+                        $entry['qty'],
+                        $user->id
+                    );
+                }
+
+                // Phase 2: Decrement or delete SaleItem records (children first, then parents)
+                foreach ($orderedPlan as $entry) {
+                    $saleItem = $entry['sale_item'];
+                    $qty = $entry['qty'];
+
+                    if ($saleItem->quantity > $qty) {
+                        $saleItem->decrement('quantity', $qty);
+                    } else {
+                        $saleItem->delete();
                     }
                 }
 

@@ -24,9 +24,11 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\HandoverReportController;
 use App\Http\Controllers\DiaryController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\ShopProductSwapController;
+use App\Http\Controllers\ShopProductTransferController;
 use Illuminate\Support\Facades\Route;
 
 // ─── GUEST ROUTES ────────────────────────────────────────────────────────────
@@ -182,7 +184,20 @@ Route::middleware('auth')->group(function () {
         Route::post('shop-swaps/{shopProductSwap}/cancel', [ShopProductSwapController::class, 'cancel'])->name('shop-swaps.cancel');
         Route::post('shop-swaps/{shopProductSwap}/revert', [ShopProductSwapController::class, 'revert'])->name('shop-swaps.revert');
 
-        // Shop stock price update
+        // Inter-Shop Product Transfers (Shop-to-Shop One-Way Stock Transfer)
+        Route::get('product-transfers', [ShopProductTransferController::class, 'index'])->name('product-transfers.index');
+        Route::get('product-transfers/create', [ShopProductTransferController::class, 'create'])->name('product-transfers.create');
+        Route::get('product-transfers/source-items', [ShopProductTransferController::class, 'getSourceItems'])->name('product-transfers.source-items');
+        Route::post('product-transfers', [ShopProductTransferController::class, 'store'])->name('product-transfers.store');
+        Route::get('product-transfers/{productTransfer}', [ShopProductTransferController::class, 'show'])->name('product-transfers.show');
+        Route::post('product-transfers/{productTransfer}/confirm', [ShopProductTransferController::class, 'confirm'])->name('product-transfers.confirm');
+        Route::post('product-transfers/{productTransfer}/reject', [ShopProductTransferController::class, 'reject'])->name('product-transfers.reject');
+        Route::post('product-transfers/{productTransfer}/cancel', [ShopProductTransferController::class, 'cancel'])->name('product-transfers.cancel');
+        Route::post('product-transfers/{productTransfer}/revert', [ShopProductTransferController::class, 'revert'])->name('product-transfers.revert');
+
+        // Shop stock price update & global Shop Admin price-change popup reminders
+        Route::get('shop-stock/price-reminders', [ShopStockController::class, 'priceReminders'])->name('shop-stock.price-reminders');
+        Route::post('shop-stock/price-reminders/dismiss', [ShopStockController::class, 'dismissPriceReminders'])->name('shop-stock.price-reminders.dismiss');
         Route::patch('shop-stock/{shopStock}/price', [ShopStockController::class, 'updatePrice'])->name('shop-stock.update-price');
         Route::post('shop-stock/quick-restock', [ShopStockController::class, 'quickRestock'])->name('shop-stock.quick-restock');
         Route::get('shop-stock/warehouse-available', [ShopStockController::class, 'warehouseAvailable'])->name('shop-stock.warehouse-available');
@@ -251,6 +266,15 @@ Route::middleware('auth')->group(function () {
         Route::get('sales/{sale}/items/{saleItem}/available-components', [SaleController::class, 'availableComponents'])->name('sales.available-components');
         Route::post('sales/{sale}/items/{saleItem}/components', [SaleController::class, 'addComponent'])->name('sales.add-component');
         Route::delete('sales/{sale}/components/{componentItem}', [SaleController::class, 'removeComponent'])->name('sales.remove-component');
+
+        // Standalone Documents Center (Invoices, Proforma Quotes, Delivery Notes)
+        Route::get('documents', [DocumentController::class, 'index'])->name('documents.index');
+        Route::get('documents/data', [DocumentController::class, 'data'])->name('documents.data');
+        Route::get('documents/lookup-sale', [DocumentController::class, 'lookupSale'])->name('documents.lookup-sale');
+        Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
+        Route::get('documents/{document}/print', [DocumentController::class, 'print'])->name('documents.print');
+        Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+        Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
 
 

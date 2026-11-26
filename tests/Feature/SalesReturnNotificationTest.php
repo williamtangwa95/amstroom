@@ -271,4 +271,227 @@ class SalesReturnNotificationTest extends TestCase
         $this->assertNull($this->sale->deleted_at);
         $this->assertEquals(5000, $this->sale->total_amount);
     }
+
+    public function test_returning_parent_and_attachment_restores_both_to_stock_without_cascade_error()
+    {
+        $this->actingAs($this->admin);
+
+        $mouseItem = Item::create([
+            'item_name'       => 'Logitech M100 Wired Mouse',
+            'category_id'     => $this->item->category_id,
+            'specification'   => 'Wired Mouse',
+            'brand'           => 'Logitech',
+            'model'           => 'M100',
+            'warranty_period' => 'None',
+        ]);
+
+        $parentStock = \App\Models\ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $this->item->id,
+            'quantity'           => 5,
+            'remaining_quantity' => 4,
+            'buying_price'       => 800,
+            'selling_price'      => 1000,
+            'allow_components'   => true,
+            'is_sellable'        => true,
+            'is_admin_stock'     => false,
+            'date_received'      => today(),
+        ]);
+
+        $mouseStock = \App\Models\ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $mouseItem->id,
+            'quantity'           => 10,
+            'remaining_quantity' => 9,
+            'buying_price'       => 100,
+            'selling_price'      => 200,
+            'is_sellable'        => true,
+            'is_admin_stock'     => false,
+            'date_received'      => today(),
+        ]);
+
+        $bundleSale = Sale::create([
+            'shop_id'        => $this->shop->id,
+            'seller_id'      => $this->admin->id,
+            'customer_name'  => 'Walk-in Customer',
+            'payment_method' => 'cash',
+            'sale_date'      => today(),
+            'total_amount'   => 1000,
+            'status'         => 'completed',
+            'is_admin_stock' => false,
+        ]);
+
+        $parentSaleItem = SaleItem::create([
+            'sale_id'           => $bundleSale->id,
+            'parent_id'         => null,
+            'item_id'           => $this->item->id,
+            'quantity'          => 1,
+            'selling_price'     => 1000,
+            'owner_cost_price'  => 800,
+            'owner_realized_sp' => 1000,
+            'shop_cost_price'   => 800,
+            'shop_realized_sp'  => 1000,
+            'is_admin_stock'    => false,
+        ]);
+
+        $childSaleItem = SaleItem::create([
+            'sale_id'           => $bundleSale->id,
+            'parent_id'         => $parentSaleItem->id,
+            'item_id'           => $mouseItem->id,
+            'quantity'          => 1,
+            'selling_price'     => 0,
+            'owner_cost_price'  => 0,
+            'owner_realized_sp' => 0,
+            'shop_cost_price'   => 0,
+            'shop_realized_sp'  => 0,
+            'is_admin_stock'    => false,
+        ]);
+
+        \App\Models\SaleBatchAllocation::create([
+            'sale_id'      => $bundleSale->id,
+            'sale_item_id' => $parentSaleItem->id,
+            'stock_type'   => 'shop',
+            'stock_id'     => $parentStock->id,
+            'quantity'     => 1,
+        ]);
+
+        \App\Models\SaleBatchAllocation::create([
+            'sale_id'      => $bundleSale->id,
+            'sale_item_id' => $childSaleItem->id,
+            'stock_type'   => 'shop',
+            'stock_id'     => $mouseStock->id,
+            'quantity'     => 1,
+        ]);
+
+        // Submit BOTH parent and attachment (parent first in payload, replicating browser form order)
+        $response = $this->post(route('sales-returns.store', $bundleSale), [
+            'reason' => 'Customer returned laptop with attached mouse',
+            'items'  => [
+                ['sale_item_id' => $parentSaleItem->id, 'qty' => 1],
+                ['sale_item_id' => $childSaleItem->id, 'qty' => 1],
+            ],
+        ]);
+
+        $response->assertRedirect(route('sales-returns.index'));
+        $response->assertSessionHasNoErrors();
+
+        $parentStock->refresh();
+        $mouseStock->refresh();
+
+        $this->assertEquals(5, $parentStock->remaining_quantity);
+        $this->assertEquals(10, $mouseStock->remaining_quantity);
+
+        $this->assertDatabaseMissing('sale_items', ['id' => $parentSaleItem->id]);
+        $this->assertDatabaseMissing('sale_items', ['id' => $childSaleItem->id]);
+        $this->assertSoftDeleted('sales', ['id' => $bundleSale->id]);
+    }
+
+    public function test_returning_only_parent_automatically_includes_and_restocks_attachment()
+    {
+        $this->actingAs($this->admin);
+
+        $mouseItem = Item::create([
+            'item_name'       => 'USB Mouse',
+            'category_id'     => $this->item->category_id,
+            'specification'   => 'Mouse',
+            'brand'           => 'Logitech',
+            'model'           => 'M100',
+            'warranty_period' => 'None',
+        ]);
+
+        $parentStock = \App\Models\ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $this->item->id,
+            'quantity'           => 3,
+            'remaining_quantity' => 2,
+            'buying_price'       => 800,
+            'selling_price'      => 1000,
+            'allow_components'   => true,
+            'is_sellable'        => true,
+            'is_admin_stock'     => false,
+            'date_received'      => today(),
+        ]);
+
+        $mouseStock = \App\Models\ShopStock::create([
+            'shop_id'            => $this->shop->id,
+            'item_id'            => $mouseItem->id,
+            'quantity'           => 5,
+            'remaining_quantity' => 4,
+            'buying_price'       => 100,
+            'selling_price'      => 200,
+            'is_sellable'        => true,
+            'is_admin_stock'     => false,
+            'date_received'      => today(),
+        ]);
+
+        $bundleSale = Sale::create([
+            'shop_id'        => $this->shop->id,
+            'seller_id'      => $this->admin->id,
+            'customer_name'  => 'Walk-in Customer',
+            'payment_method' => 'cash',
+            'sale_date'      => today(),
+            'total_amount'   => 1000,
+            'status'         => 'completed',
+            'is_admin_stock' => false,
+        ]);
+
+        $parentSaleItem = SaleItem::create([
+            'sale_id'           => $bundleSale->id,
+            'parent_id'         => null,
+            'item_id'           => $this->item->id,
+            'quantity'          => 1,
+            'selling_price'     => 1000,
+            'owner_cost_price'  => 800,
+            'owner_realized_sp' => 1000,
+            'shop_cost_price'   => 800,
+            'shop_realized_sp'  => 1000,
+            'is_admin_stock'    => false,
+        ]);
+
+        $childSaleItem = SaleItem::create([
+            'sale_id'           => $bundleSale->id,
+            'parent_id'         => $parentSaleItem->id,
+            'item_id'           => $mouseItem->id,
+            'quantity'          => 1,
+            'selling_price'     => 0,
+            'owner_cost_price'  => 0,
+            'owner_realized_sp' => 0,
+            'shop_cost_price'   => 0,
+            'shop_realized_sp'  => 0,
+            'is_admin_stock'    => false,
+        ]);
+
+        \App\Models\SaleBatchAllocation::create([
+            'sale_id'      => $bundleSale->id,
+            'sale_item_id' => $parentSaleItem->id,
+            'stock_type'   => 'shop',
+            'stock_id'     => $parentStock->id,
+            'quantity'     => 1,
+        ]);
+
+        \App\Models\SaleBatchAllocation::create([
+            'sale_id'      => $bundleSale->id,
+            'sale_item_id' => $childSaleItem->id,
+            'stock_type'   => 'shop',
+            'stock_id'     => $mouseStock->id,
+            'quantity'     => 1,
+        ]);
+
+        // Submit ONLY parent item — backend should auto-include attachment and restock both
+        $response = $this->post(route('sales-returns.store', $bundleSale), [
+            'reason' => 'Returning parent item',
+            'items'  => [
+                ['sale_item_id' => $parentSaleItem->id, 'qty' => 1],
+            ],
+        ]);
+
+        $response->assertRedirect(route('sales-returns.index'));
+        $response->assertSessionHasNoErrors();
+
+        $parentStock->refresh();
+        $mouseStock->refresh();
+
+        $this->assertEquals(3, $parentStock->remaining_quantity);
+        $this->assertEquals(5, $mouseStock->remaining_quantity);
+    }
 }

@@ -4,92 +4,245 @@
 @section('breadcrumb')
 <li class="breadcrumb-item active">Sales</li>
 @endsection
+
+@push('styles')
+<style>
+    /* ══════════════════════════════════════════════
+       SALES — EXECUTIVE & RESPONSIVE
+       ══════════════════════════════════════════════ */
+    .sl-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .sl-title-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .55rem;
+    }
+    .sl-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #0f172a);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .sl-rev-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .2rem .65rem;
+        border-radius: 50px;
+        background: rgba(16, 185, 129, .1);
+        color: #059669;
+        font-size: .74rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Executive 4-Card KPI Grid ── */
+    .sl-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .sl-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: .95rem 1.05rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .sl-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .sl-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.12rem;
+        flex-shrink: 0;
+    }
+    .sl-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .sl-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sl-kpi-val {
+        font-size: clamp(.9rem, 1.2vw, 1.15rem);
+        font-weight: 800;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.015em;
+        word-break: break-word;
+    }
+    .sl-kpi-sub {
+        font-size: .7rem;
+        color: #94a3b8;
+        margin-top: .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sl-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+    }
+    .sl-filter-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary, #64748b);
+        margin-bottom: .3rem;
+        display: block;
+    }
+
+    @media (max-width: 991.98px) {
+        .sl-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .65rem;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .sl-kpi-card {
+            padding: .8rem .85rem;
+            gap: .65rem;
+            border-radius: 12px;
+        }
+        .sl-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        .sl-kpi-val {
+            font-size: .9rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .sl-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-    <div>
-        <h5 class="mb-0 fw-700">
+{{-- Compact Header --}}
+<div class="sl-header">
+    <div class="sl-title-row">
+        <h5 class="sl-title">
+            <i class="bi bi-cart-check-fill text-primary me-1"></i>
             @if(request('status') === 'draft_proforma')
                 Proforma Quotes
             @elseif(request('status') === 'completed')
-                Completed Invoices / Sales
+                Completed Sales
             @else
                 Sales Transactions
             @endif
         </h5>
-        <small style="color:var(--text-secondary);">Total Revenue: <strong id="totalRevenueText" style="color:#3fb950;">TZS {{ number_format($totalRevenue, 0) }}</strong></small>
+        <span class="sl-rev-pill">
+            <i class="bi bi-graph-up"></i>
+            <span id="totalRevenueText">TZS {{ number_format($totalRevenue, 0) }}</span>
+        </span>
     </div>
-    <a href="{{ route('sales.create') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i> New Sale</a>
+    <a href="{{ route('sales.create') }}" class="btn btn-sm btn-accent shadow-sm" style="height:34px;border-radius:9px;display:inline-flex;align-items:center;gap:.35rem;">
+        <i class="bi bi-plus-circle"></i> New Sale
+    </a>
 </div>
 
-{{-- Payment Method Summary Cards --}}
-<div class="row g-2 g-md-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Cash</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(63,185,80,0.15); color:#3fb950;">
-                    <i class="bi bi-cash-stack fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardCashAmount" style="color:#3fb950;">TZS {{ number_format($paymentSummary['cash'] ?? 0, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Physical Cash</div>
+{{-- Executive Payment Summary Cards --}}
+<div class="sl-kpi-grid">
+    <div class="sl-kpi-card">
+        <div class="sl-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="sl-kpi-body">
+            <p class="sl-kpi-label">Cash</p>
+            <div class="sl-kpi-val" id="cardCashAmount" style="color:#059669;">TZS {{ number_format($paymentSummary['cash'] ?? 0, 0) }}</div>
+            <div class="sl-kpi-sub">Physical cash</div>
         </div>
     </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Mobile Money</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(57,178,255,0.15); color:#39b2ff;">
-                    <i class="bi bi-phone fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardMobileAmount" style="color:#39b2ff;">TZS {{ number_format($paymentSummary['mobile_money'] ?? 0, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">M-Pesa / Tigo Pesa</div>
+    <div class="sl-kpi-card">
+        <div class="sl-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-phone"></i>
+        </div>
+        <div class="sl-kpi-body">
+            <p class="sl-kpi-label">Mobile Money</p>
+            <div class="sl-kpi-val" id="cardMobileAmount" style="color:#0077b6;">TZS {{ number_format($paymentSummary['mobile_money'] ?? 0, 0) }}</div>
+            <div class="sl-kpi-sub">M-Pesa / Tigo Pesa</div>
         </div>
     </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Card Sales</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(188,140,255,0.15); color:#bc8cff;">
-                    <i class="bi bi-credit-card fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardCardAmount" style="color:#bc8cff;">TZS {{ number_format($paymentSummary['card'] ?? 0, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">POS / Credit Card</div>
+    <div class="sl-kpi-card">
+        <div class="sl-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-credit-card"></i>
+        </div>
+        <div class="sl-kpi-body">
+            <p class="sl-kpi-label">Card Sales</p>
+            <div class="sl-kpi-val" id="cardCardAmount" style="color:#7c3aed;">TZS {{ number_format($paymentSummary['card'] ?? 0, 0) }}</div>
+            <div class="sl-kpi-sub">POS / Credit card</div>
         </div>
     </div>
 
-    <div class="col-6 col-md-3">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Bank Transfer</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; background:rgba(227,179,65,0.15); color:#e3b341;">
-                    <i class="bi bi-bank fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardBankAmount" style="color:#e3b341;">TZS {{ number_format($paymentSummary['bank_transfer'] ?? 0, 0) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Direct Bank</div>
+    <div class="sl-kpi-card">
+        <div class="sl-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-bank"></i>
+        </div>
+        <div class="sl-kpi-body">
+            <p class="sl-kpi-label">Bank Transfer</p>
+            <div class="sl-kpi-val" id="cardBankAmount" style="color:#d97706;">TZS {{ number_format($paymentSummary['bank_transfer'] ?? 0, 0) }}</div>
+            <div class="sl-kpi-sub">Direct bank</div>
         </div>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body py-2">
+{{-- Filter Bar --}}
+<div class="sl-card mb-3">
+    <div class="p-3">
         <form id="filterForm" method="GET" action="{{ route('sales.index') }}" class="row g-2 align-items-end">
-            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
-                <label class="form-label mb-1" style="font-size:.75rem;">From Date</label>
+            <div class="col-6 {{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
+                <label class="sl-filter-label">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', $dateFrom) }}">
             </div>
-            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
-                <label class="form-label mb-1" style="font-size:.75rem;">To Date</label>
+            <div class="col-6 {{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
+                <label class="sl-filter-label">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', $dateTo) }}">
             </div>
             @if(auth()->user()->isOwner())
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Shop Name</label>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="sl-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm">
                     <option value="">All Shops</option>
                     <option value="main_store" {{ request('shop_id') === 'main_store' ? 'selected' : '' }}>Main Store (Owner)</option>
@@ -99,40 +252,42 @@
                 </select>
             </div>
             @endif
-            <div class="{{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-2' }}">
-                <label class="form-label mb-1" style="font-size:.75rem;">Status</label>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="sl-filter-label">Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All Statuses</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
                     <option value="draft_proforma" {{ request('status') === 'draft_proforma' ? 'selected' : '' }}>Proforma</option>
                 </select>
             </div>
-            <div class="{{ auth()->user()->isOwner() ? 'col-md-1' : 'col-md-2' }}">
-                <button type="submit" class="btn btn-sm btn-accent w-100"><i class="bi bi-filter me-1"></i> Filter</button>
-            </div>
-            <div class="{{ auth()->user()->isOwner() ? 'col-md-1' : 'col-md-2' }}">
-                <a href="{{ route('sales.index') }}" class="btn btn-sm btn-outline-custom w-100">Reset</a>
+            <div class="col-12 {{ auth()->user()->isOwner() ? 'col-md-3' : 'col-md-4' }} d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-accent flex-grow-1" style="height:31px;">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a href="{{ route('sales.index') }}" class="btn btn-sm btn-outline-custom" style="height:31px;display:inline-flex;align-items:center;" title="Reset">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </a>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="salesTable">
+<div class="sl-card">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="salesTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Sale ID</th>
-                    <th data-priority="3">Shop</th>
-                    <th data-priority="4">Seller</th>
-                    <th data-priority="2">Customer</th>
-                    <th data-priority="3">Items</th>
-                    <th data-priority="4">Payment</th>
-                    <th data-priority="2">Total Amount</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="3">Date</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 110px;">Actions</th>
+                    <th data-priority="5" class="min-tablet-l text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all id-col">Sale ID</th>
+                    <th data-priority="3" class="min-tablet-l">Shop</th>
+                    <th data-priority="4" class="min-tablet-l">Seller</th>
+                    <th data-priority="1" class="all primary-col">Customer</th>
+                    <th data-priority="3" class="min-tablet-l">Items</th>
+                    <th data-priority="4" class="min-tablet-l">Payment</th>
+                    <th data-priority="2" class="min-tablet-l">Total Amount</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l">Date</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 110px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -267,28 +422,90 @@
 
         function refreshSaleDetails(saleId) {
             delete detailsCache[saleId];
+            var mobileContainer = $('#salesTable tbody .mobile-inline-details[data-details-id="' + saleId + '"]');
             var btn = $('.toggle-details[data-id="' + saleId + '"]');
             var tr = btn.closest('tr');
-            var row = table.row(tr);
-            if (row.child.isShown()) {
+            var isInsideChildRow = tr.hasClass('child') || tr.hasClass('dtr-child') || btn.closest('.dtr-details').length > 0;
+
+            if (mobileContainer.length && mobileContainer.is(':visible')) {
                 $.ajax({
                     url: "{{ url('sales') }}/" + saleId + "/details",
                     method: 'GET',
                     success: function(html) {
                         detailsCache[saleId] = html;
-                        row.child(html).show();
+                        mobileContainer.html(html);
                     }
                 });
+                return;
+            }
+
+            if (!isInsideChildRow) {
+                var row = table.row(tr);
+                if (row && row.child.isShown()) {
+                    $.ajax({
+                        url: "{{ url('sales') }}/" + saleId + "/details",
+                        method: 'GET',
+                        success: function(html) {
+                            detailsCache[saleId] = html;
+                            row.child(html).show();
+                        }
+                    });
+                }
             }
         }
 
         $('#salesTable tbody').on('click', '.toggle-details', function(e) {
             e.preventDefault();
-            var tr = $(this).closest('tr');
-            var row = table.row(tr);
-            var saleId = $(this).data('id');
-            var icon = $(this).find('i');
+            e.stopPropagation();
+            var btn = $(this);
+            var tr = btn.closest('tr');
+            var saleId = btn.data('id');
+            var icon = btn.find('i');
+            var isInsideChildRow = tr.hasClass('child') || tr.hasClass('dtr-child') || btn.closest('.dtr-details').length > 0;
 
+            // Mobile mode: button lives inside DataTables Responsive tr.child drawer
+            if (isInsideChildRow) {
+                var childCell = btn.closest('td.child');
+                if (!childCell.length) {
+                    childCell = tr.find('td.child').first();
+                }
+                var container = childCell.find('.mobile-inline-details[data-details-id="' + saleId + '"]');
+
+                if (container.length && container.is(':visible')) {
+                    container.slideUp(180);
+                    icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                    return;
+                }
+
+                if (!container.length) {
+                    container = $('<div class="mobile-inline-details mt-2 w-100" data-details-id="' + saleId + '" style="display:none;"></div>');
+                    childCell.append(container);
+                }
+
+                icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+
+                if (detailsCache[saleId]) {
+                    container.html(detailsCache[saleId]).slideDown(200);
+                } else {
+                    container.html('<div class="p-3 text-center text-muted small"><div class="spinner-border spinner-border-sm me-2" role="status"></div> Loading sold items...</div>').slideDown(180);
+
+                    $.ajax({
+                        url: "{{ url('sales') }}/" + saleId + "/details",
+                        method: 'GET',
+                        success: function(html) {
+                            detailsCache[saleId] = html;
+                            container.html(html);
+                        },
+                        error: function() {
+                            container.html('<div class="p-3 text-center text-danger small"><i class="bi bi-exclamation-triangle me-1"></i> Unable to load sale details.</div>');
+                        }
+                    });
+                }
+                return;
+            }
+
+            // Desktop mode: standard DataTables row.child()
+            var row = table.row(tr);
             if (row.child.isShown()) {
                 row.child.hide();
                 tr.removeClass('shown');

@@ -56,7 +56,14 @@ class Notification extends Model
             }
         }
 
-        // 3. Specific Stock Transfer (e.g. Transfer #12)
+        // 3. Inter-Shop Product Transfer (e.g. PT-00001 or "Product Transfer")
+        if (stripos($text, 'Product Transfer') !== false || preg_match('/\bPT-\d+\b/', $text)) {
+            if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
+                return route('product-transfers.index');
+            }
+        }
+
+        // 4. Specific Stock Transfer (e.g. Transfer #12)
         if (preg_match('/[Tt]ransfer\s*#(\d+)/', $text, $matches)) {
             $id = $matches[1];
             if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
@@ -80,7 +87,15 @@ class Notification extends Model
             }
         }
 
-        // 6. Stock Requests (General)
+        // 6. Price Update Notifications (check before general Transfer/Main Store keywords
+        //    since messages like "Main Store updated transfer price..." belong on Shop Stock)
+        if (stripos($text, 'Price Updated') !== false || stripos($text, 'Price Change') !== false) {
+            if (auth()->check()) {
+                return route('shop-stock.index');
+            }
+        }
+
+        // 7. Stock Requests (General)
         if (stripos($text, 'Stock Request') !== false || stripos($text, 'Request') !== false && stripos($text, 'Stock') !== false) {
             if (auth()->check() && (auth()->user()->isOwner() || auth()->user()->isShopAdmin())) {
                 return route('stock-requests.index');

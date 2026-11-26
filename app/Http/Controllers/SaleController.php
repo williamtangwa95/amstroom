@@ -287,9 +287,6 @@ class SaleController extends Controller
             $saleDate = $sale->sale_date->format('M d, Y');
 
             $showUrl = route('sales.show', $sale);
-            $invoiceUrl = route('sales.invoice', $sale);
-            $proformaUrl = route('sales.proforma', $sale);
-            $deliveryNoteUrl = route('sales.delivery-note', $sale);
             $receiptUrl = route('sales.receipt', $sale);
 
             $actions = '<div class="d-flex gap-1 flex-wrap">';
@@ -297,14 +294,8 @@ class SaleController extends Controller
             $actions .= '<button type="button" class="btn btn-xs btn-outline-custom edit-customer-btn" data-id="' . $sale->id . '" data-name="' . $rawCustomerName . '" title="Add / Edit Customer Name"><i class="bi bi-person-gear"></i></button>';
 
             if ($sale->status === 'completed') {
-                $actions .= '<a href="' . $invoiceUrl . '" class="btn btn-xs btn-outline-custom" title="Print Invoice" target="_blank"><i class="bi bi-file-earmark-text"></i></a>';
-                $actions .= '<a href="' . $proformaUrl . '" class="btn btn-xs btn-outline-custom" title="Print Proforma" target="_blank"><i class="bi bi-file-earmark"></i></a>';
-                $actions .= '<a href="' . $deliveryNoteUrl . '" class="btn btn-xs btn-outline-custom" title="Print Delivery Note" target="_blank"><i class="bi bi-truck"></i></a>';
                 $actions .= '<a href="' . $receiptUrl . '" class="btn btn-xs btn-accent" title="Print Receipt"><i class="bi bi-receipt"></i></a>';
             } else {
-                $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Invoice requires a completed sale."><i class="bi bi-file-earmark-text"></i></button>';
-                $actions .= '<a href="' . $proformaUrl . '" class="btn btn-xs btn-outline-custom" title="Print Proforma Invoice" target="_blank"><i class="bi bi-file-earmark"></i></a>';
-                $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Delivery Note requires a completed sale."><i class="bi bi-truck"></i></button>';
                 $actions .= '<button class="btn btn-xs btn-outline-secondary" disabled title="Receipt requires a completed sale."><i class="bi bi-receipt"></i></button>';
             }
 

@@ -20,17 +20,17 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="shopsTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="shopsTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Shop Name</th>
-                    <th data-priority="3">Location</th>
-                    <th data-priority="3">Phone</th>
-                    <th data-priority="2">Users</th>
-                    <th data-priority="2">Sales</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Shop Name</th>
+                    <th data-priority="3" class="min-tablet-l">Location</th>
+                    <th data-priority="3" class="min-tablet-l">Phone</th>
+                    <th data-priority="2" class="min-tablet-l">Users</th>
+                    <th data-priority="2" class="min-tablet-l">Sales</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

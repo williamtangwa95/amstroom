@@ -1475,16 +1475,238 @@
                 gap: .3rem !important;
             }
 
-            /* Global Responsive Tables: prevent column collapsing, force scroll within card */
-            .table {
-                min-width: 800px !important;
+            /* Global Responsive Tables:
+               - Only force horizontal scroll on plain non-DataTable tables inside .table-responsive
+               - DataTables use Responsive accordion drawers with ZERO horizontal scrolling on mobile */
+            .table-responsive > .table:not(.dataTable):not(.dt-mobile-table):not(.mobile-fit-table) {
+                min-width: 640px;
             }
 
-            .card-body,
-            .table-responsive,
-            .dataTables_wrapper {
+            .table-responsive {
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch;
+            }
+
+            .dataTables_wrapper,
+            .dataTables_wrapper .row > div {
+                overflow-x: hidden !important;
+                max-width: 100% !important;
+            }
+
+            table.table.dataTable,
+            table.dataTable,
+            table.dt-mobile-table,
+            table.mobile-fit-table {
+                min-width: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+        }
+
+        /* ═════════════════════════════════════════════════════════
+           UNIFIED SHOP-STOCK STYLE MOBILE DATATABLE SYSTEM (< 768px)
+           Zero horizontal scroll, crisp 2-col summary row + clean drawer
+           ═════════════════════════════════════════════════════════ */
+        @media (max-width: 767.98px) {
+            .dataTables_wrapper,
+            .dataTables_wrapper .row,
+            .dataTables_wrapper .row > div {
+                overflow-x: hidden !important;
+                max-width: 100% !important;
+            }
+
+            /* Stack DataTables top toolbar & pagination cleanly on phones */
+            .dataTables_wrapper .d-flex {
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+            }
+            .dataTables_wrapper .dataTables_length,
+            .dataTables_wrapper .dataTables_filter {
+                width: 100% !important;
+                text-align: left !important;
+                margin-bottom: 0.35rem;
+            }
+            .dataTables_wrapper .dataTables_filter label,
+            .dataTables_wrapper .dataTables_filter input {
+                width: 100% !important;
+                margin-left: 0 !important;
+            }
+            .dataTables_wrapper .dt-buttons {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 0.35rem !important;
+                width: 100% !important;
+            }
+            .dataTables_wrapper .dataTables_info {
+                font-size: 0.76rem !important;
+                text-align: center !important;
+                width: 100% !important;
+                padding-top: 0.35rem !important;
+            }
+            .dataTables_wrapper .dataTables_paginate {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: center !important;
+                margin-top: 0.4rem !important;
+            }
+            .dataTables_wrapper .dataTables_paginate .pagination {
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+            }
+
+            table.table.dt-mobile-table,
+            table.dt-mobile-table.dataTable,
+            table.dt-mobile-table {
+                min-width: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                table-layout: fixed !important;
+            }
+
+            table.dt-mobile-table th.iter-col,
+            table.dt-mobile-table td.iter-col {
+                width: 56px !important;
+                padding-left: 1.75rem !important;
+                padding-right: 0.35rem !important;
+                white-space: nowrap !important;
+            }
+
+            table.dt-mobile-table th.id-col,
+            table.dt-mobile-table td.id-col {
+                width: 96px !important;
+                padding-left: 1.75rem !important;
+                padding-right: 0.4rem !important;
+                white-space: nowrap !important;
+            }
+
+            table.dt-mobile-table th.compact-lead-col,
+            table.dt-mobile-table td.compact-lead-col {
+                width: 112px !important;
+                padding-left: 1.75rem !important;
+                padding-right: 0.45rem !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+            }
+
+            table.dt-mobile-table > tbody > tr > td.dtr-control {
+                padding-left: 1.75rem !important;
+            }
+
+            table.dt-mobile-table th.primary-col,
+            table.dt-mobile-table td.primary-col,
+            table.dt-mobile-table th.all:not(.iter-col):not(.id-col):not(.compact-lead-col),
+            table.dt-mobile-table td:not(.dtr-control):not(.iter-col):not(.id-col):not(.compact-lead-col) {
+                width: auto !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+
+            table.dt-mobile-table td .d-flex {
+                min-width: 0;
+                max-width: 100%;
+            }
+            table.dt-mobile-table td .d-flex > div:last-child {
+                min-width: 0;
+            }
+
+            /* Clean full-width mobile accordion child drawer (like /shop-stock) */
+            table.dataTable > tbody > tr.child td.child {
+                padding: 0.55rem 0.4rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+            }
+
+            table.dataTable > tbody > tr.child ul.dtr-details {
+                width: 100% !important;
+                max-width: 100% !important;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 0.25rem 0.75rem !important;
+            }
+
+            table.dataTable > tbody > tr.child ul.dtr-details > li {
+                padding: 0.52rem 0 !important;
+                gap: 0.5rem !important;
+                align-items: flex-start !important;
+                font-size: 0.82rem !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+
+            table.dataTable > tbody > tr.child ul.dtr-details > li:last-child {
+                border-bottom: none !important;
+                padding-top: 0.6rem !important;
+                padding-bottom: 0.4rem !important;
+            }
+
+            table.dataTable > tbody > tr.child span.dtr-title {
+                min-width: 108px !important;
+                width: 108px !important;
+                font-size: 0.74rem !important;
+                font-weight: 700 !important;
+                color: #475569 !important;
+                line-height: 1.35 !important;
+                padding-top: 0.08rem;
+            }
+
+            table.dataTable > tbody > tr.child span.dtr-data {
+                flex: 1 1 0% !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                font-size: 0.82rem !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            table.dataTable > tbody > tr.child span.dtr-data > * {
+                max-width: 100% !important;
+            }
+
+            table.dataTable > tbody > tr.child span.dtr-data .btn,
+            table.dataTable > tbody > tr.child span.dtr-data button,
+            table.dataTable > tbody > tr.child span.dtr-data a.btn {
+                white-space: nowrap !important;
+            }
+
+            /* Hide bulk-select checkbox row inside mobile drawer (col 0) */
+            table.dt-has-checkbox > tbody > tr.child ul.dtr-details > li[data-dtr-index="0"] {
+                display: none !important;
+            }
+
+            /* Nested diff tables (e.g. Activity Logs field changes) stay compact */
+            table.dataTable > tbody > tr.child table.table,
+            table.mobile-fit-table {
+                min-width: 0 !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+                font-size: 0.74rem !important;
+            }
+            table.dataTable > tbody > tr.child table.table th,
+            table.dataTable > tbody > tr.child table.table td,
+            table.mobile-fit-table th,
+            table.mobile-fit-table td {
+                padding: 0.35rem 0.4rem !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+            }
+        }
+
+        @media (max-width: 399.98px) {
+            table.dataTable > tbody > tr.child ul.dtr-details > li {
+                flex-direction: column !important;
+                gap: 0.2rem !important;
+            }
+            table.dataTable > tbody > tr.child span.dtr-title {
+                width: auto !important;
+                min-width: 0 !important;
+                font-size: 0.7rem !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.03em !important;
             }
         }
 
@@ -1647,7 +1869,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-            $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*');
+            $isStocksActive = request()->routeIs('main-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('shop-stock.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*') || request()->routeIs('product-transfers.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1666,6 +1888,9 @@
                         </a>
                         <a href="{{ route('shop-swaps.index') }}" class="nav-link-custom {{ request()->routeIs('shop-swaps.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right text-info"></i> Product Swaps
+                        </a>
+                        <a href="{{ route('product-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('product-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-box-arrow-right text-warning"></i> Product Transfer
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -1719,7 +1944,8 @@
 
             {{-- Documents collapsible --}}
             @php
-            $isDocsActive = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActive = request()->routeIs('documents.*');
+            $docTypeParam = request()->query('type', '');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActive ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1730,13 +1956,16 @@
                 </a>
                 <div class="collapse {{ $isDocsActive ? 'show' : '' }}" id="docsCollapseOwner" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index') }}" class="nav-link-custom {{ $isDocsActive && $docTypeParam === '' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-folder2-open"></i> All Documents
+                        </a>
+                        <a href="{{ route('documents.index', ['type' => 'invoice']) }}" class="nav-link-custom {{ $isDocsActive && $docTypeParam === 'invoice' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
                         </a>
-                        <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-file-earmark"></i> Proforma Quotes
+                        <a href="{{ route('documents.index', ['type' => 'proforma']) }}" class="nav-link-custom {{ $isDocsActive && $docTypeParam === 'proforma' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-ruled"></i> Proforma Quotes
                         </a>
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index', ['type' => 'delivery']) }}" class="nav-link-custom {{ $isDocsActive && $docTypeParam === 'delivery' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-truck"></i> Delivery Notes
                         </a>
                     </div>
@@ -1838,7 +2067,7 @@
 
             {{-- Stocks collapsible --}}
             @php
-            $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*');
+            $isStocksActiveAdmin = request()->routeIs('shop-stock.*') || request()->routeIs('stock-requests.*') || request()->routeIs('stock-transfers.*') || request()->routeIs('reorder.*') || request()->routeIs('shop-swaps.*') || request()->routeIs('product-transfers.*');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isStocksActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1859,6 +2088,11 @@
                             <i class="bi bi-arrow-left-right text-info"></i> Product Swaps
                             @php $myIncomingSwaps = \App\Models\ShopProductSwap::where('status', 'pending_destination')->where('destination_shop_id', auth()->user()->shop_id)->count() @endphp
                             @if($myIncomingSwaps > 0) <span class="nav-badge bg-warning text-dark">{{ $myIncomingSwaps }}</span> @endif
+                        </a>
+                        <a href="{{ route('product-transfers.index') }}" class="nav-link-custom {{ request()->routeIs('product-transfers.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-box-arrow-right text-warning"></i> Product Transfer
+                            @php $myIncomingPt = \Illuminate\Support\Facades\Schema::hasTable('shop_product_transfers') ? \App\Models\ShopProductTransfer::where('status', 'pending')->where('from_shop_id', auth()->user()->shop_id)->count() : 0; @endphp
+                            @if($myIncomingPt > 0) <span class="nav-badge bg-warning text-dark">{{ $myIncomingPt }}</span> @endif
                         </a>
                         <a href="{{ route('stock-requests.index') }}" class="nav-link-custom {{ request()->routeIs('stock-requests.*') ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-arrow-left-right"></i> Stock Requests
@@ -1911,7 +2145,8 @@
 
             {{-- Documents collapsible --}}
             @php
-            $isDocsActiveAdmin = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActiveAdmin = request()->routeIs('documents.*');
+            $docTypeParamAdmin = request()->query('type', '');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActiveAdmin ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -1922,13 +2157,16 @@
                 </a>
                 <div class="collapse {{ $isDocsActiveAdmin ? 'show' : '' }}" id="docsCollapseAdmin" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index') }}" class="nav-link-custom {{ $isDocsActiveAdmin && $docTypeParamAdmin === '' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-folder2-open"></i> All Documents
+                        </a>
+                        <a href="{{ route('documents.index', ['type' => 'invoice']) }}" class="nav-link-custom {{ $isDocsActiveAdmin && $docTypeParamAdmin === 'invoice' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
                         </a>
-                        <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-file-earmark"></i> Proforma Quotes
+                        <a href="{{ route('documents.index', ['type' => 'proforma']) }}" class="nav-link-custom {{ $isDocsActiveAdmin && $docTypeParamAdmin === 'proforma' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-ruled"></i> Proforma Quotes
                         </a>
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index', ['type' => 'delivery']) }}" class="nav-link-custom {{ $isDocsActiveAdmin && $docTypeParamAdmin === 'delivery' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-truck"></i> Delivery Notes
                         </a>
                     </div>
@@ -2054,7 +2292,8 @@
 
             {{-- Documents collapsible --}}
             @php
-            $isDocsActiveSeller = request()->routeIs('sales.*') && request()->has('status');
+            $isDocsActiveSeller = request()->routeIs('documents.*');
+            $docTypeParamSeller = request()->query('type', '');
             @endphp
             <div class="nav-item-custom">
                 <a class="nav-link-custom {{ $isDocsActiveSeller ? 'active' : 'collapsed' }} d-flex justify-content-between align-items-center"
@@ -2065,13 +2304,16 @@
                 </a>
                 <div class="collapse {{ $isDocsActiveSeller ? 'show' : '' }}" id="docsCollapseSeller" data-bs-parent="#sidebarAccordion">
                     <div style="padding-left:1.6rem;border-left:2px solid rgba(255,255,255,.2);margin:.25rem 0 .25rem 1rem;">
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index') }}" class="nav-link-custom {{ $isDocsActiveSeller && $docTypeParamSeller === '' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-folder2-open"></i> All Documents
+                        </a>
+                        <a href="{{ route('documents.index', ['type' => 'invoice']) }}" class="nav-link-custom {{ $isDocsActiveSeller && $docTypeParamSeller === 'invoice' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-file-earmark-text"></i> Invoices
                         </a>
-                        <a href="{{ route('sales.index') }}?status=draft_proforma" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
-                            <i class="bi bi-file-earmark"></i> Proforma Quotes
+                        <a href="{{ route('documents.index', ['type' => 'proforma']) }}" class="nav-link-custom {{ $isDocsActiveSeller && $docTypeParamSeller === 'proforma' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
+                            <i class="bi bi-file-earmark-ruled"></i> Proforma Quotes
                         </a>
-                        <a href="{{ route('sales.index') }}?status=completed" class="nav-link-custom" style="font-size:.78rem;padding:.35rem .6rem;">
+                        <a href="{{ route('documents.index', ['type' => 'delivery']) }}" class="nav-link-custom {{ $isDocsActiveSeller && $docTypeParamSeller === 'delivery' ? 'active' : '' }}" style="font-size:.78rem;padding:.35rem .6rem;">
                             <i class="bi bi-truck"></i> Delivery Notes
                         </a>
                     </div>
@@ -2866,6 +3108,518 @@
                 justify-content: center;
                 width: 100%;
             }
+        }
+    </style>
+
+    {{-- ── Shop Admin: Item Price Change Action Required Popup Modal ── --}}
+    <div class="modal fade" id="pendingPriceReminderModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="pendingPriceReminderLabel" aria-hidden="true" style="z-index: 1085;">
+        <div class="modal-dialog modal-dialog-centered modal-lg ppr-modal-dialog">
+            <div class="modal-content ppr-modal-content">
+                {{-- Warm Amber Executive Header --}}
+                <div class="modal-header ppr-modal-header">
+                    <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+                        <div class="ppr-header-icon">
+                            <i class="bi bi-tags-fill"></i>
+                            <span class="ppr-pulse-dot" aria-hidden="true"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="ppr-eyebrow-pill">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Price Action Required
+                                </span>
+                                <span class="ppr-count-pill" id="pprPendingCountBadge">1 Item Updated</span>
+                            </div>
+                            <h6 class="modal-title mb-0 ppr-modal-title" id="pendingPriceReminderLabel">Main Store Updated Product Buying Price</h6>
+                            <p class="ppr-modal-sub mb-0" id="pprModalSubtitle">Review and update your shop selling price(s) now so affected items stay accurate and ready for sale.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ppr-dismiss-trigger ms-2" aria-label="Remind me in 1 hour" title="Remind me in 1 hour"></button>
+                </div>
+
+                {{-- Summary KPI Strip --}}
+                <div class="ppr-summary-strip">
+                    <div class="ppr-summary-cell">
+                        <span class="ppr-summary-label"><i class="bi bi-tag"></i> Affected Products</span>
+                        <span class="ppr-summary-val" id="pprStatItems">1 Product</span>
+                    </div>
+                    <div class="ppr-summary-cell">
+                        <span class="ppr-summary-label"><i class="bi bi-boxes"></i> Stock Impacted</span>
+                        <span class="ppr-summary-val" id="pprStatQty">0 Pcs</span>
+                    </div>
+                    <div class="ppr-summary-cell">
+                        <span class="ppr-summary-label"><i class="bi bi-shield-exclamation"></i> Sales Status</span>
+                        <span class="ppr-summary-val ppr-status-blocked" id="pprStatStatus">Review Needed</span>
+                    </div>
+                </div>
+
+                {{-- Affected Items List with Inline Quick Price Update --}}
+                <div class="modal-body ppr-modal-body">
+                    <div id="pprItemsList" class="ppr-list"></div>
+                </div>
+
+                {{-- Action Footer --}}
+                <div class="modal-footer ppr-modal-footer">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="ppr-btn-dismiss ppr-dismiss-trigger" id="btnDismissPriceReminder">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Remind Me in 1 Hour</span>
+                        </button>
+                        <span class="ppr-snooze-note d-none d-sm-inline">Re-alerts automatically if still pending</span>
+                    </div>
+                    <a href="{{ route('shop-stock.index') }}" class="ppr-btn-primary" id="btnOpenPriceShopStock">
+                        <i class="bi bi-shop"></i>
+                        <span>Open Shop Stock</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .ppr-modal-dialog {
+            max-width: 680px;
+        }
+        .ppr-modal-content {
+            border: 1px solid rgba(15, 23, 42, .08);
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28), 0 4px 16px rgba(15, 23, 42, .08);
+            overflow: hidden;
+            background: #ffffff;
+        }
+        .ppr-modal-header {
+            padding: 1.15rem 1.35rem;
+            background: linear-gradient(135deg, #d97706 0%, #b45309 55%, #78350f 100%);
+            border-bottom: none;
+            align-items: flex-start;
+            color: #ffffff;
+        }
+        .ppr-header-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 13px;
+            background: rgba(255, 255, 255, .16);
+            border: 1px solid rgba(255, 255, 255, .26);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .ppr-pulse-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            border: 2px solid #92400e;
+            animation: pprPulse 1.5s infinite;
+        }
+        @keyframes pprPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, .75); }
+            70%  { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .ppr-eyebrow-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .14rem .55rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .2);
+            border: 1px solid rgba(255, 255, 255, .32);
+            color: #fef3c7;
+            font-size: .64rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .ppr-count-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: .14rem .55rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, .24);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #ffffff;
+            font-size: .65rem;
+            font-weight: 600;
+        }
+        .ppr-modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.3;
+            margin-top: .32rem;
+            letter-spacing: -.01em;
+        }
+        .ppr-modal-sub {
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .86);
+            margin-top: .16rem;
+            line-height: 1.35;
+        }
+        .ppr-summary-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .ppr-summary-cell {
+            padding: .7rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .14rem;
+            border-right: 1px solid #f1f5f9;
+        }
+        .ppr-summary-cell:last-child {
+            border-right: none;
+        }
+        .ppr-summary-label {
+            font-size: .65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+        }
+        .ppr-summary-val {
+            font-size: .84rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .ppr-status-blocked {
+            color: #dc2626;
+        }
+        .ppr-status-review {
+            color: #b45309;
+        }
+        .ppr-modal-body {
+            padding: 1rem 1.25rem;
+            max-height: 430px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        .ppr-list {
+            display: flex;
+            flex-direction: column;
+            gap: .85rem;
+        }
+        .ppr-card {
+            background: #ffffff;
+            border: 1px solid #fde68a;
+            border-left: 4px solid #d97706;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+            transition: border-color .2s ease, opacity .2s ease;
+        }
+        .ppr-card.is-resolved {
+            border-color: #bbf7d0;
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .ppr-card-top {
+            padding: .8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .ppr-thumb {
+            width: 42px;
+            height: 42px;
+            border-radius: 9px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+            color: #b45309;
+            font-size: 1.05rem;
+        }
+        .ppr-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 2px;
+            background: #ffffff;
+        }
+        .ppr-prod-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .ppr-prod-name {
+            font-size: .86rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.25;
+        }
+        .ppr-prod-meta {
+            font-size: .71rem;
+            color: #64748b;
+            margin-top: .12rem;
+        }
+        .ppr-badges {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .ppr-badge-lock {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            padding: .18rem .52rem;
+            border-radius: 999px;
+            font-size: .66rem;
+            font-weight: 700;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .ppr-badge-pending {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            padding: .18rem .52rem;
+            border-radius: 999px;
+            font-size: .66rem;
+            font-weight: 700;
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .ppr-badge-stock {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            padding: .18rem .52rem;
+            border-radius: 999px;
+            font-size: .66rem;
+            font-weight: 700;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+        .ppr-prices-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: .5rem;
+            padding: .65rem 1rem;
+            background: #fffdf7;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .ppr-price-box {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .ppr-price-k {
+            font-size: .63rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #64748b;
+        }
+        .ppr-price-v {
+            font-size: .82rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: .08rem;
+        }
+        .ppr-price-v.is-new-bp {
+            color: #b45309;
+        }
+        .ppr-price-v.is-loss {
+            color: #dc2626;
+        }
+        .ppr-action-bar {
+            padding: .7rem 1rem;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+        .ppr-action-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            flex: 1;
+            min-width: 220px;
+        }
+        .ppr-action-input-wrap label {
+            font-size: .72rem;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+            margin-bottom: 0;
+        }
+        .ppr-input-group {
+            display: flex;
+            align-items: stretch;
+            flex: 1;
+            max-width: 210px;
+        }
+        .ppr-input-prefix {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 .55rem;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            font-size: .72rem;
+            font-weight: 700;
+            color: #475569;
+        }
+        .ppr-price-input {
+            width: 100%;
+            padding: .36rem .6rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0 8px 8px 0;
+            font-size: .82rem;
+            font-weight: 700;
+            color: #0f172a;
+            outline: none;
+        }
+        .ppr-price-input:focus {
+            border-color: #d97706;
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, .16);
+        }
+        .ppr-save-price-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .42rem .9rem;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, #d97706, #b45309);
+            color: #ffffff;
+            font-size: .76rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(180, 83, 9, .24);
+            transition: all .15s ease;
+        }
+        .ppr-save-price-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #b45309, #92400e);
+            transform: translateY(-1px);
+        }
+        .ppr-save-price-btn:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+        }
+        .ppr-card-error {
+            width: 100%;
+            font-size: .72rem;
+            font-weight: 600;
+            color: #dc2626;
+            margin-top: .25rem;
+            display: none;
+        }
+        .ppr-resolved-banner {
+            padding: .68rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            color: #15803d;
+            font-size: .78rem;
+            font-weight: 700;
+        }
+        .ppr-modal-footer {
+            padding: .9rem 1.25rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+        .ppr-snooze-note {
+            font-size: .71rem;
+            color: #94a3b8;
+        }
+        .ppr-btn-dismiss {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .48rem .9rem;
+            border-radius: 9px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .ppr-btn-dismiss:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+        .ppr-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            padding: .52rem 1.1rem;
+            border-radius: 9px;
+            border: none;
+            background: linear-gradient(135deg, #0077b6, #005691);
+            color: #ffffff;
+            text-decoration: none;
+            font-size: .8rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 119, 182, .25);
+            transition: all .15s ease;
+        }
+        .ppr-btn-primary:hover {
+            background: linear-gradient(135deg, #00669e, #004473);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 575.98px) {
+            .ppr-modal-header { padding: .95rem 1rem; }
+            .ppr-summary-strip { grid-template-columns: 1fr; }
+            .ppr-summary-cell {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: .52rem 1rem;
+                border-right: none;
+                border-bottom: 1px solid #f1f5f9;
+            }
+            .ppr-summary-cell:last-child { border-bottom: none; }
+            .ppr-prices-grid { grid-template-columns: 1fr 1fr; }
+            .ppr-modal-body { padding: .85rem .9rem; }
+            .ppr-action-bar { flex-direction: column; align-items: stretch; }
+            .ppr-action-input-wrap { min-width: 0; }
+            .ppr-input-group { max-width: none; }
+            .ppr-save-price-btn { justify-content: center; width: 100%; }
+            .ppr-modal-footer {
+                padding: .8rem .95rem;
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+            .ppr-btn-dismiss,
+            .ppr-btn-primary { justify-content: center; width: 100%; }
         }
     </style>
     @endif
@@ -3670,6 +4424,13 @@
                 document.addEventListener('keydown', unlockHandler, { once: true });
             }
 
+            function isOnStockTransfersPage() {
+                if ({{ request()->routeIs('stock-transfers.*') ? 'true' : 'false' }}) {
+                    return true;
+                }
+                return /^\/stock-transfers(?:\/|$)/i.test(window.location.pathname || '');
+            }
+
             function getCurrentViewingTransferId() {
                 const match = window.location.pathname.match(/\/stock-transfers\/(\d+)(?:\/|$)/);
                 return match ? parseInt(match[1], 10) : null;
@@ -3847,6 +4608,7 @@
             }
 
             function checkPendingTransferReminders() {
+                if (isOnStockTransfersPage()) return;
                 if (isModalOpen) return;
                 // Do not stack over another open modal
                 if ($('.modal.show').length > 0) return;
@@ -3919,14 +4681,469 @@
                         clearInterval(liveElapsedTimer);
                         liveElapsedTimer = null;
                     }
+                    if (typeof window.checkPendingPriceReminders === 'function') {
+                        setTimeout(window.checkPendingPriceReminders, 450);
+                    }
                 });
             }
 
             $(document).ready(function() {
+                if (isOnStockTransfersPage()) return;
                 setTimeout(checkPendingTransferReminders, 900);
                 setInterval(function() {
+                    if (isOnStockTransfersPage()) return;
                     if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
                         checkPendingTransferReminders();
+                    }
+                }, POLL_INTERVAL_MS);
+            });
+        })();
+
+        // ── Shop Admin: Item Price Change Action Required Popup ──
+        (function() {
+            const USER_ID = {{ (int) auth()->id() }};
+            const SNOOZE_MS = 60 * 60 * 1000; // 1 hour
+            const STORAGE_KEY = 'amstroom_price_reminder_snooze_u' + USER_ID;
+            const NAV_SKIP_KEY = 'amstroom_price_popup_nav_skip_u' + USER_ID;
+            const POLL_INTERVAL_MS = 15000;
+
+            let currentDueItems = [];
+            let currentRingtoneUrl = null;
+            let isPriceModalOpen = false;
+            let pendingPriceAudioUnlock = false;
+
+            function escapeHtmlPpr(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function formatTzsPpr(amount) {
+                if (amount === null || amount === undefined || isNaN(amount)) return 'TZS 0';
+                return 'TZS ' + Number(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+
+            function formatNumPpr(amount) {
+                if (amount === null || amount === undefined || isNaN(amount)) return '';
+                return Number(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+
+            function getPriceSnoozeKey(itemId, updatedAtTs) {
+                return String(itemId) + '_' + String(updatedAtTs);
+            }
+
+            function getLocalPriceSnoozes() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    const parsed = raw ? JSON.parse(raw) : {};
+                    const now = Date.now();
+                    const cleaned = {};
+                    Object.keys(parsed).forEach(function(k) {
+                        if (parsed[k] && parsed[k] > now) {
+                            cleaned[k] = parsed[k];
+                        }
+                    });
+                    return cleaned;
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            function saveLocalPriceSnoozes(items) {
+                try {
+                    const map = getLocalPriceSnoozes();
+                    const until = Date.now() + SNOOZE_MS;
+                    items.forEach(function(it) {
+                        map[getPriceSnoozeKey(it.item_id, it.updated_at_ts)] = until;
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+                } catch (e) {
+                    // ignore storage errors
+                }
+            }
+
+            function playPriceAlertChime(fallbackRingtoneUrl) {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const ctx = new AudioCtx();
+                    const runNotes = function() {
+                        const notes = [
+                            { freq: 784,  delay: 0,    dur: 0.22 },
+                            { freq: 1047, delay: 0.14, dur: 0.24 },
+                            { freq: 1318, delay: 0.28, dur: 0.36 }
+                        ];
+                        notes.forEach(function(n) {
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.type = 'triangle';
+                            const startAt = ctx.currentTime + n.delay;
+                            osc.frequency.setValueAtTime(n.freq, startAt);
+                            gain.gain.setValueAtTime(0.001, startAt);
+                            gain.gain.linearRampToValueAtTime(0.24, startAt + 0.02);
+                            gain.gain.exponentialRampToValueAtTime(0.001, startAt + n.dur);
+                            osc.start(startAt);
+                            osc.stop(startAt + n.dur);
+                        });
+                    };
+
+                    if (ctx.state === 'running') {
+                        runNotes();
+                    } else {
+                        ctx.resume().then(function() {
+                            if (ctx.state === 'running') runNotes();
+                            else schedulePriceSoundOnGesture(fallbackRingtoneUrl || null);
+                        }).catch(function() {
+                            schedulePriceSoundOnGesture(fallbackRingtoneUrl || null);
+                        });
+                    }
+                } catch (e) {
+                    schedulePriceSoundOnGesture(fallbackRingtoneUrl || null);
+                }
+            }
+
+            function playPriceAlertSound(ringtoneUrl) {
+                if (ringtoneUrl) {
+                    const audio = new Audio(ringtoneUrl);
+                    audio.play().catch(function() {
+                        playPriceAlertChime(ringtoneUrl);
+                    });
+                } else {
+                    playPriceAlertChime(null);
+                }
+            }
+
+            function schedulePriceSoundOnGesture(ringtoneUrl) {
+                if (pendingPriceAudioUnlock) return;
+                pendingPriceAudioUnlock = true;
+                const unlock = function() {
+                    pendingPriceAudioUnlock = false;
+                    document.removeEventListener('pointerdown', unlock);
+                    document.removeEventListener('keydown', unlock);
+                    if (isPriceModalOpen) {
+                        playPriceAlertSound(ringtoneUrl);
+                    }
+                };
+                document.addEventListener('pointerdown', unlock, { once: true });
+                document.addEventListener('keydown', unlock, { once: true });
+            }
+
+            function showPriceToast(message, isSuccess) {
+                const iconClass = isSuccess ? 'bi-check-circle-fill text-success' : 'bi-clock-history text-warning';
+                const $toast = $(`
+                    <div class="toast align-items-center text-white bg-dark border-0 shadow" role="alert" style="position:fixed;bottom:22px;right:22px;z-index:1095;border-radius:10px;font-size:.8rem;">
+                        <div class="d-flex">
+                            <div class="toast-body"><i class="bi ${iconClass} me-2"></i>${escapeHtmlPpr(message)}</div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `);
+                $('body').append($toast);
+                const bsToast = new bootstrap.Toast($toast[0], { delay: 3800 });
+                bsToast.show();
+                $toast[0].addEventListener('hidden.bs.toast', function() { $toast.remove(); });
+            }
+
+            function updatePriceModalStats(items, shopName) {
+                const count = items.length;
+                const totalQty = items.reduce(function(acc, it) { return acc + (it.remaining_qty || 0); }, 0);
+                const totalBatches = items.reduce(function(acc, it) { return acc + (it.batches_count || 1); }, 0);
+                const anyBlocked = items.some(function(it) { return !it.is_sellable; });
+
+                $('#pprPendingCountBadge').text(count + ' ' + (count === 1 ? 'Item Updated' : 'Items Updated'));
+                $('#pprStatItems').text(count + ' ' + (count === 1 ? 'Product' : 'Products'));
+                $('#pprStatQty').text(totalQty + ' Pcs · ' + totalBatches + ' ' + (totalBatches === 1 ? 'Batch' : 'Batches'));
+
+                const $statusEl = $('#pprStatStatus');
+                if (anyBlocked) {
+                    $statusEl.text('Sales Blocked on POS').removeClass('ppr-status-review').addClass('ppr-status-blocked');
+                } else {
+                    $statusEl.text('Approval Required').removeClass('ppr-status-blocked').addClass('ppr-status-review');
+                }
+
+                if (shopName) {
+                    $('#pprModalSubtitle').text(shopName + ' — Main Store updated product price(s). Update your selling price below so this item is ready before a sale.');
+                }
+            }
+
+            function renderPriceItems(items, indexUrl, shopName) {
+                const $list = $('#pprItemsList');
+                updatePriceModalStats(items, shopName);
+                $('#btnOpenPriceShopStock').attr('href', indexUrl);
+
+                let html = '';
+                items.forEach(function(it) {
+                    const thumbHtml = it.image_url
+                        ? `<img src="${escapeHtmlPpr(it.image_url)}" alt="${escapeHtmlPpr(it.name)}">`
+                        : `<i class="bi bi-tag-fill"></i>`;
+                    const metaHtml = it.meta
+                        ? `<div class="ppr-prod-meta">${escapeHtmlPpr(it.meta)} &middot; Updated ${escapeHtmlPpr(it.elapsed_human)}</div>`
+                        : `<div class="ppr-prod-meta">Updated ${escapeHtmlPpr(it.elapsed_human)}</div>`;
+
+                    const statusBadge = !it.is_sellable
+                        ? `<span class="ppr-badge-lock"><i class="bi bi-lock-fill"></i> POS Locked</span>`
+                        : `<span class="ppr-badge-pending"><i class="bi bi-exclamation-circle-fill"></i> Price Pending</span>`;
+
+                    const lossNote = it.is_below_cost
+                        ? ` <span class="badge bg-danger ms-1" style="font-size:.6rem;">Below Cost!</span>`
+                        : '';
+
+                    const btnLabel = it.action_method === 'PATCH' ? 'Update &amp; Unlock' : 'Approve Price';
+
+                    html += `
+                        <div class="ppr-card" data-item-id="${it.item_id}" data-shop-stock-id="${it.shop_stock_id}" data-updated-ts="${it.updated_at_ts}" data-action-url="${escapeHtmlPpr(it.action_url)}" data-action-method="${escapeHtmlPpr(it.action_method)}" data-buying-price="${it.buying_price}">
+                            <div class="ppr-card-top">
+                                <div class="ppr-thumb">${thumbHtml}</div>
+                                <div class="ppr-prod-info">
+                                    <div class="ppr-prod-name">${escapeHtmlPpr(it.name)}</div>
+                                    ${metaHtml}
+                                </div>
+                                <div class="ppr-badges">
+                                    ${statusBadge}
+                                    <span class="ppr-badge-stock">${it.remaining_qty} ${escapeHtmlPpr(it.unit || 'pcs')}</span>
+                                </div>
+                            </div>
+
+                            <div class="ppr-prices-grid">
+                                <div class="ppr-price-box">
+                                    <span class="ppr-price-k">New Buying Price</span>
+                                    <span class="ppr-price-v is-new-bp">${formatTzsPpr(it.buying_price)}</span>
+                                </div>
+                                <div class="ppr-price-box">
+                                    <span class="ppr-price-k">Current Selling Price</span>
+                                    <span class="ppr-price-v ${it.is_below_cost ? 'is-loss' : ''}">${formatTzsPpr(it.selling_price)}${lossNote}</span>
+                                </div>
+                                <div class="ppr-price-box">
+                                    <span class="ppr-price-k">Changed On</span>
+                                    <span class="ppr-price-v" style="font-size:.74rem; color:#475569;">${escapeHtmlPpr(it.updated_at_display)}</span>
+                                </div>
+                            </div>
+
+                            <div class="ppr-action-bar">
+                                <div class="ppr-action-input-wrap">
+                                    <label for="ppr_input_${it.item_id}">New Selling Price:</label>
+                                    <div class="ppr-input-group">
+                                        <span class="ppr-input-prefix">TZS</span>
+                                        <input type="text"
+                                               inputmode="numeric"
+                                               class="ppr-price-input currency-input"
+                                               id="ppr_input_${it.item_id}"
+                                               value="${formatNumPpr(it.suggested_price)}"
+                                               placeholder="Enter selling price">
+                                    </div>
+                                </div>
+                                <button type="button" class="ppr-save-price-btn">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>${btnLabel}</span>
+                                </button>
+                                <div class="ppr-card-error"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                $list.html(html);
+            }
+
+            function isOnStockTransfersPagePpr() {
+                if ({{ request()->routeIs('stock-transfers.*') ? 'true' : 'false' }}) {
+                    return true;
+                }
+                return /^\/stock-transfers(?:\/|$)/i.test(window.location.pathname || '');
+            }
+
+            window.checkPendingPriceReminders = function() {
+                if (isOnStockTransfersPagePpr()) return;
+                if (isPriceModalOpen) return;
+                if ($('.modal.show').length > 0) return;
+
+                // If user just clicked "Open Shop Stock" from this popup, skip re-popping briefly on arrival
+                try {
+                    const skipUntil = parseInt(sessionStorage.getItem(NAV_SKIP_KEY) || '0', 10);
+                    if (skipUntil && Date.now() < skipUntil && window.location.pathname.indexOf('/shop-stock') === 0) {
+                        return;
+                    }
+                } catch (e) {}
+
+                $.ajax({
+                    url: "{{ route('shop-stock.price-reminders') }}",
+                    type: 'GET',
+                    success: function(response) {
+                        const rawDue = response.due_items || [];
+                        const localSnoozes = getLocalPriceSnoozes();
+
+                        const dueItems = rawDue.filter(function(it) {
+                            const snoozedUntil = localSnoozes[getPriceSnoozeKey(it.item_id, it.updated_at_ts)];
+                            return !snoozedUntil || Date.now() >= snoozedUntil;
+                        });
+
+                        if (dueItems.length === 0) return;
+
+                        currentDueItems = dueItems;
+                        currentRingtoneUrl = response.ringtone_url || null;
+
+                        renderPriceItems(dueItems, response.index_url || "{{ route('shop-stock.index') }}", response.shop_name || '');
+
+                        const modalEl = document.getElementById('pendingPriceReminderModal');
+                        if (!modalEl) return;
+
+                        isPriceModalOpen = true;
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                        playPriceAlertSound(currentRingtoneUrl);
+                    }
+                });
+            };
+
+            // Inline Quick Price Update right inside the popup
+            $(document).on('click', '.ppr-save-price-btn', function() {
+                const $btn = $(this);
+                const $card = $btn.closest('.ppr-card');
+                const $input = $card.find('.ppr-price-input');
+                const $err = $card.find('.ppr-card-error');
+
+                const actionUrl = $card.attr('data-action-url');
+                const actionMethod = $card.attr('data-action-method') || 'PATCH';
+                const buyingPrice = parseFloat($card.attr('data-buying-price') || '0');
+                const itemId = parseInt($card.attr('data-item-id'), 10);
+                const rawVal = String($input.val() || '').replace(/,/g, '').trim();
+                const newPrice = parseFloat(rawVal);
+
+                $err.hide().text('');
+
+                if (isNaN(newPrice) || newPrice <= 0) {
+                    $err.text('Please enter a valid selling price.').show();
+                    $input.focus();
+                    return;
+                }
+
+                if (newPrice < buyingPrice) {
+                    $err.text('Selling price must be at least the new buying price (' + formatTzsPpr(buyingPrice) + ').').show();
+                    $input.focus();
+                    return;
+                }
+
+                const origHtml = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span><span>Saving...</span>');
+
+                const payload = {
+                    _token: "{{ csrf_token() }}",
+                    selling_price: newPrice
+                };
+                if (actionMethod === 'PATCH') {
+                    payload._method = 'PATCH';
+                }
+
+                $.ajax({
+                    url: actionUrl,
+                    type: 'POST',
+                    data: payload,
+                    headers: { 'Accept': 'application/json' },
+                    success: function(res) {
+                        $card.addClass('is-resolved');
+                        $card.find('.ppr-action-bar').replaceWith(`
+                            <div class="ppr-resolved-banner">
+                                <span><i class="bi bi-check-circle-fill me-1"></i>Selling price updated to ${formatTzsPpr(newPrice)} — ready for sale!</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Resolved</span>
+                            </div>
+                        `);
+
+                        currentDueItems = currentDueItems.filter(function(it) { return it.item_id !== itemId; });
+                        updatePriceModalStats(currentDueItems, '');
+
+                        // Live-refresh Shop Stock table if currently viewing Shop Stock page
+                        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#shopStockTable')) {
+                            $('#shopStockTable').DataTable().ajax.reload(null, false);
+                        }
+
+                        if (currentDueItems.length === 0) {
+                            $('.ss-price-banner').fadeOut(250);
+                            showPriceToast(res.message || 'All pending item prices updated and unlocked!', true);
+                            setTimeout(function() {
+                                const modalEl = document.getElementById('pendingPriceReminderModal');
+                                if (modalEl) {
+                                    const modal = bootstrap.Modal.getInstance(modalEl);
+                                    if (modal) modal.hide();
+                                }
+                            }, 850);
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html(origHtml);
+                        let msg = 'Failed to update price. Please try again.';
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.errors && xhr.responseJSON.errors.selling_price) {
+                                msg = xhr.responseJSON.errors.selling_price[0];
+                            } else if (xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                        }
+                        $err.text(msg).show();
+                    }
+                });
+            });
+
+            // Allow pressing Enter inside the quick price input to submit that card
+            $(document).on('keydown', '.ppr-price-input', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $(this).closest('.ppr-card').find('.ppr-save-price-btn').trigger('click');
+                }
+            });
+
+            // Brief skip when clicking "Open Shop Stock" from the popup
+            $(document).on('click', '#btnOpenPriceShopStock', function() {
+                try {
+                    sessionStorage.setItem(NAV_SKIP_KEY, String(Date.now() + 30000));
+                } catch (e) {}
+            });
+
+            // Snooze for 1 hour
+            $(document).on('click', '.ppr-dismiss-trigger', function() {
+                if (currentDueItems.length > 0) {
+                    saveLocalPriceSnoozes(currentDueItems);
+                    $.ajax({
+                        url: "{{ route('shop-stock.price-reminders.dismiss') }}",
+                        type: 'POST',
+                        data: {
+                            items: currentDueItems.map(function(it) {
+                                return { item_id: it.item_id, updated_at_ts: it.updated_at_ts };
+                            }),
+                            _token: "{{ csrf_token() }}"
+                        }
+                    });
+                }
+
+                const modalEl = document.getElementById('pendingPriceReminderModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                if (currentDueItems.length > 0) {
+                    showPriceToast('Price reminder snoozed for 1 hour. You will be alerted again if still pending.', false);
+                }
+            });
+
+            const priceModalEl = document.getElementById('pendingPriceReminderModal');
+            if (priceModalEl) {
+                priceModalEl.addEventListener('hidden.bs.modal', function() {
+                    isPriceModalOpen = false;
+                });
+            }
+
+            $(document).ready(function() {
+                if (isOnStockTransfersPagePpr()) return;
+                setTimeout(window.checkPendingPriceReminders, 1300);
+                setInterval(function() {
+                    if (isOnStockTransfersPagePpr()) return;
+                    if (typeof window.isUserActiveForPolling !== 'function' || window.isUserActiveForPolling()) {
+                        window.checkPendingPriceReminders();
                     }
                 }, POLL_INTERVAL_MS);
             });

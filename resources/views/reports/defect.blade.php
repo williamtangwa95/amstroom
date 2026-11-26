@@ -1,55 +1,73 @@
 @extends('layouts.app')
 @section('title', 'Defect Report')
-@section('page-title', 'Defective Items Report')
+@section('page-title', 'Defect Report')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Defect Report</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Defective Units Reported</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ number_format($totalDefective) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-exclamation-triangle-fill"></i></div>
-            </div>
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-shield-exclamation text-danger me-1"></i>Defective Items Report
+        </h5>
+        <span class="rpt-pill" style="background:rgba(220,38,38,.08);color:#dc2626;">
+            <i class="bi bi-exclamation-octagon"></i>Audit Log
+        </span>
+    </div>
+    <div class="rpt-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
+        </button>
+    </div>
+</div>
+
+{{-- Executive KPI Cards --}}
+<div class="rpt-kpi-grid rpt-kpi-grid-2">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(220,38,38,.1);color:#dc2626;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Defective Units</p>
+            <div class="rpt-kpi-val" style="color:#dc2626;">{{ number_format($totalDefective) }}</div>
+            <div class="rpt-kpi-sub">Total damaged units reported</div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Incidents Reported</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $defects->count() }}</h3>
-                </div>
-                <div class="fs-2" style="color: #3498db; opacity: 0.25;"><i class="bi bi-shield-exclamation"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-shield-exclamation"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Incidents Reported</p>
+            <div class="rpt-kpi-val" style="color:#0077b6;">{{ number_format($defects->count()) }}</div>
+            <div class="rpt-kpi-sub">Logged defect reports</div>
         </div>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-exclamation-octagon me-2" style="color:#e94560;"></i>Defective Items Audit Log</span>
-        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-            <i class="bi bi-envelope-at"></i>
-            <span>Send via Email</span>
-        </button>
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-exclamation-octagon text-danger"></i>Defective Items Audit Log</h6>
     </div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="reportsDefectTable">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reportsDefectTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="3">Date</th>
-                    <th data-priority="2">Shop / Warehouse</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="2">Qty Defective</th>
-                    <th data-priority="4">Reason</th>
-                    <th data-priority="4">Reported By</th>
-                    <th data-priority="2">Status</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="3" class="min-tablet-l">Date</th>
+                    <th data-priority="2" class="min-tablet-l">Shop / Warehouse</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="2" class="min-tablet-l">Qty Defective</th>
+                    <th data-priority="4" class="min-tablet-l">Reason</th>
+                    <th data-priority="4" class="min-tablet-l">Reported By</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
                 </tr>
             </thead>
             <tbody>

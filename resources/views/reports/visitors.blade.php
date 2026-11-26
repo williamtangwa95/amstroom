@@ -7,80 +7,33 @@
 @endsection
 
 @push('styles')
+@include('reports._styles')
 <style>
 :root {
-    --an-blue:   #0088cc;
-    --an-green:  #10b981;
-    --an-amber:  #f59e0b;
-    --an-purple: #8b5cf6;
-    --an-teal:   #14b8a6;
-    --an-red:    #ef4444;
+    --an-blue:   #0077b6;
+    --an-green:  #059669;
+    --an-amber:  #d97706;
+    --an-purple: #7c3aed;
+    --an-teal:   #0d9488;
+    --an-red:    #dc2626;
 }
-.visitor-kpi-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid var(--card-border);
-    padding: 1.25rem 1.4rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,.04);
-    transition: transform .2s, box-shadow .2s;
-    position: relative;
-    overflow: hidden;
-    height: 100%;
-}
-.visitor-kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.08);
-}
-.visitor-kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--kpi-color, var(--an-blue));
-}
-.kpi-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-}
-.kpi-label {
-    font-size: .75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--text-secondary);
-}
-.kpi-value {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    line-height: 1.2;
-}
-
 .an-card {
     background: #fff;
     border: 1px solid var(--card-border);
-    border-radius: 16px;
-    padding: 1.3rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+    border-radius: 14px;
+    padding: 1.15rem 1.3rem;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
     height: 100%;
 }
 .an-section-title {
-    font-size: .82rem;
+    font-size: .78rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .08em;
+    letter-spacing: .06em;
     color: var(--text-secondary);
-    padding-bottom: .6rem;
-    border-bottom: 2px solid var(--card-border);
-    margin-bottom: 1.2rem;
+    padding-bottom: .55rem;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 1.1rem;
     display: flex;
     align-items: center;
     gap: .5rem;
@@ -103,9 +56,9 @@
 }
 
 .badge-method-get {
-    background: rgba(0, 136, 204, 0.1);
+    background: rgba(0, 119, 182, 0.1);
     color: var(--an-blue);
-    border: 1px solid rgba(0, 136, 204, 0.25);
+    border: 1px solid rgba(0, 119, 182, 0.25);
     font-size: 0.65rem;
     font-weight: 700;
     padding: 0.2rem 0.5rem;
@@ -121,9 +74,9 @@
     border-radius: 4px;
 }
 .badge-user-account {
-    background: rgba(0, 136, 204, 0.08);
+    background: rgba(0, 119, 182, 0.08);
     color: var(--an-blue);
-    border: 1px solid rgba(0, 136, 204, 0.18);
+    border: 1px solid rgba(0, 119, 182, 0.18);
     font-size: 0.72rem;
     font-weight: 600;
     padding: 0.25rem 0.6rem;
@@ -155,53 +108,66 @@
 @endpush
 
 @section('content')
-{{-- KPI CARDS ROW --}}
-<div class="row g-3 mb-4">
-    @php
-    $kpis = [
-        [
-            'label' => 'Total Page Views',
-            'value' => number_format($totalPageViews),
-            'icon'  => 'bi-eye',
-            'color' => 'var(--an-blue)',
-            'bg'    => 'rgba(0, 136, 204, 0.1)'
-        ],
-        [
-            'label' => 'Unique Visitors',
-            'value' => number_format($uniqueVisitors),
-            'icon'  => 'bi-people',
-            'color' => 'var(--an-green)',
-            'bg'    => 'rgba(16, 185, 129, 0.1)'
-        ],
-        [
-            'label' => 'Top Device',
-            'value' => $topDevice ?: 'Desktop',
-            'icon'  => 'bi-laptop',
-            'color' => 'var(--an-amber)',
-            'bg'    => 'rgba(245, 158, 11, 0.1)'
-        ],
-        [
-            'label' => 'Top Country',
-            'value' => $topCountry ?: 'Tanzania',
-            'icon'  => 'bi-globe',
-            'color' => 'var(--an-purple)',
-            'bg'    => 'rgba(139, 92, 246, 0.1)'
-        ],
-    ];
-    @endphp
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-globe text-primary me-1"></i>Visitor Analytics
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi bi-activity"></i>Traffic &amp; Devices
+        </span>
+    </div>
+</div>
 
+{{-- Executive KPI Grid --}}
+@php
+$kpis = [
+    [
+        'label' => 'Page Views',
+        'value' => number_format($totalPageViews),
+        'sub'   => 'Total recorded hits',
+        'icon'  => 'bi-eye',
+        'color' => '#0077b6',
+        'bg'    => 'rgba(0, 119, 182, 0.1)'
+    ],
+    [
+        'label' => 'Unique Visitors',
+        'value' => number_format($uniqueVisitors),
+        'sub'   => 'Distinct IP addresses',
+        'icon'  => 'bi-people',
+        'color' => '#059669',
+        'bg'    => 'rgba(16, 185, 129, 0.12)'
+    ],
+    [
+        'label' => 'Top Device',
+        'value' => $topDevice ?: 'Desktop',
+        'sub'   => 'Most common platform',
+        'icon'  => 'bi-laptop',
+        'color' => '#d97706',
+        'bg'    => 'rgba(217, 119, 6, 0.12)'
+    ],
+    [
+        'label' => 'Top Country',
+        'value' => $topCountry ?: 'Tanzania',
+        'sub'   => 'Primary visitor region',
+        'icon'  => 'bi-globe',
+        'color' => '#7c3aed',
+        'bg'    => 'rgba(124, 58, 237, 0.12)'
+    ],
+];
+@endphp
+
+<div class="rpt-kpi-grid rpt-kpi-grid-4">
     @foreach($kpis as $kpi)
-    <div class="col-6 col-md-3">
-        <div class="visitor-kpi-card" style="--kpi-color: {{ $kpi['color'] }}">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="kpi-label mb-1">{{ $kpi['label'] }}</div>
-                    <div class="kpi-value">{{ $kpi['value'] }}</div>
-                </div>
-                <div class="kpi-icon" style="background: {{ $kpi['bg'] }}; color: {{ $kpi['color'] }};">
-                    <i class="bi {{ $kpi['icon'] }}"></i>
-                </div>
-            </div>
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:{{ $kpi['bg'] }};color:{{ $kpi['color'] }};">
+            <i class="bi {{ $kpi['icon'] }}"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">{{ $kpi['label'] }}</p>
+            <div class="rpt-kpi-val" style="color:{{ $kpi['color'] }};">{{ $kpi['value'] }}</div>
+            <div class="rpt-kpi-sub">{{ $kpi['sub'] }}</div>
         </div>
     </div>
     @endforeach
@@ -301,15 +267,15 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-card-list me-2 text-accent"></i><strong class="fw-700">Visitor Request Log</strong> <span class="badge badge-soft-secondary ms-2 small">Last 1000 hits</span></div>
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="visitorLogTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="visitorLogTable">
             <thead>
                 <tr>
-                    <th data-priority="1">Time</th>
-                    <th data-priority="3">IP Address</th>
-                    <th data-priority="2">Location</th>
-                    <th data-priority="3">Device / Browser</th>
-                    <th data-priority="2">Request</th>
-                    <th data-priority="1">User Account</th>
+                    <th data-priority="1" class="all compact-lead-col">Time</th>
+                    <th data-priority="3" class="min-tablet-l">IP Address</th>
+                    <th data-priority="2" class="min-tablet-l">Location</th>
+                    <th data-priority="3" class="min-tablet-l">Device / Browser</th>
+                    <th data-priority="2" class="min-tablet-l">Request</th>
+                    <th data-priority="1" class="all primary-col">User Account</th>
                 </tr>
             </thead>
             <tbody>

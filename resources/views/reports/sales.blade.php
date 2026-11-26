@@ -1,25 +1,48 @@
 @extends('layouts.app')
 @section('title', 'Sales Report')
-@section('page-title', 'Sales Performance Report')
+@section('page-title', 'Sales Report')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Sales Report</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-<div class="card mb-4">
-    <div class="card-body py-2">
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-graph-up-arrow text-primary me-1"></i>Sales Performance
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi bi-calendar3"></i>{{ ucfirst($period) }}
+        </span>
+    </div>
+    <div class="rpt-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
+        </button>
+    </div>
+</div>
+
+{{-- Filter Bar --}}
+<div class="rpt-card mb-3">
+    <div class="p-3">
         <form method="GET" action="{{ route('reports.sales') }}" class="row g-2 align-items-end">
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">Time Period</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">Period</label>
                 <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Daily (Today)</option>
-                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>Monthly (This Month)</option>
-                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>Yearly (This Year)</option>
-                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
+                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Today</option>
+                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>This Month</option>
+                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>This Year</option>
+                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Range</option>
                 </select>
             </div>
             @if(auth()->user()->isOwner())
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Shops</option>
                     <option value="owner" {{ request('shop_id') === 'owner' ? 'selected' : '' }}>Main Store (Owner)</option>
@@ -29,164 +52,146 @@
                 </select>
             </div>
             @else
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" disabled>
                     <option value="{{ auth()->user()->shop_id }}" selected>{{ auth()->user()->shop?->shop_name ?? 'My Shop' }}</option>
                 </select>
             </div>
             @endif
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Item</label>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="rpt-filter-label">Product</label>
                 <select name="item_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="" {{ empty(request('item_id')) ? 'selected' : '' }}>All Items</option>
+                    <option value="" {{ empty(request('item_id')) ? 'selected' : '' }}>All Products</option>
                     @foreach($items as $i)
                     <option value="{{ $i->id }}" {{ (string)request('item_id') === (string)$i->id ? 'selected' : '' }}>{{ $i->item_name }}</option>
                     @endforeach
                 </select>
             </div>
             @if(!auth()->user()->isOwner())
-            <div class="col-md-2.5 col-lg-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Stock Type</label>
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="rpt-filter-label">Stock Type</label>
                 <select name="stock_type" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="" {{ $stockType === '' ? 'selected' : '' }}>All Stocks</option>
-                    <option value="normal" {{ $stockType === 'normal' ? 'selected' : '' }}>Normal Stock Only</option>
-                    <option value="admin" {{ $stockType === 'admin' ? 'selected' : '' }}>Admin Stock Only</option>
+                    <option value="normal" {{ $stockType === 'normal' ? 'selected' : '' }}>Normal Stock</option>
+                    <option value="admin" {{ $stockType === 'admin' ? 'selected' : '' }}>Admin Stock</option>
                 </select>
             </div>
             @endif
             @if($period === 'custom')
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">From</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">To</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-sm btn-accent w-100" style="height:31px;">Apply</button>
             </div>
             @endif
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-                    <i class="bi bi-envelope-at"></i>
-                    <span>Send via Email</span>
-                </button>
-            </div>
         </form>
     </div>
 </div>
 
+{{-- Executive KPI Cards --}}
 @if(auth()->user()->isOwner())
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Revenue ({{ ucfirst($period) }})</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalRevenue, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-cash-stack"></i></div>
-            </div>
+<div class="rpt-kpi-grid rpt-kpi-grid-3">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Total Revenue ({{ ucfirst($period) }})</p>
+            <div class="rpt-kpi-val is-currency" style="color:#059669;">TZS {{ number_format($totalRevenue, 0) }}</div>
+            <div class="rpt-kpi-sub">Gross sales generated</div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f1c40f !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Profit ({{ ucfirst($period) }})</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalProfit, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #f1c40f; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Total Profit ({{ ucfirst($period) }})</p>
+            <div class="rpt-kpi-val is-currency" style="color:#d97706;">TZS {{ number_format($totalProfit, 0) }}</div>
+            <div class="rpt-kpi-sub">{{ $totalRevenue > 0 ? number_format(($totalProfit / $totalRevenue) * 100, 1) . '% margin' : 'Profit earned' }}</div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Sales Transactions</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $sales->count() }}</h3>
-                </div>
-                <div class="fs-2" style="color: #3498db; opacity: 0.25;"><i class="bi bi-receipt"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-receipt"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Transactions</p>
+            <div class="rpt-kpi-val" style="color:#0077b6;">{{ number_format($sales->count()) }}</div>
+            <div class="rpt-kpi-sub">Completed sales</div>
         </div>
     </div>
 </div>
 @else
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Revenue ({{ ucfirst($period) }})</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.45rem;">TZS {{ number_format($totalRevenue, 0) }}</h3>
-                    <div class="small text-secondary mt-1" style="font-size:.7rem;">
-                        Transactions: <strong>{{ $sales->count() }}</strong>
-                    </div>
-                </div>
-                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-cash-stack"></i></div>
-            </div>
+<div class="rpt-kpi-grid rpt-kpi-grid-4">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Revenue ({{ ucfirst($period) }})</p>
+            <div class="rpt-kpi-val is-currency" style="color:#059669;">TZS {{ number_format($totalRevenue, 0) }}</div>
+            <div class="rpt-kpi-sub">{{ number_format($sales->count()) }} transactions</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f1c40f !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Profit ({{ ucfirst($period) }})</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.45rem;">TZS {{ number_format($totalProfit, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #f1c40f; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Total Profit</p>
+            <div class="rpt-kpi-val is-currency" style="color:#d97706;">TZS {{ number_format($totalProfit, 0) }}</div>
+            <div class="rpt-kpi-sub">{{ $totalRevenue > 0 ? number_format(($totalProfit / $totalRevenue) * 100, 1) . '% margin' : 'Net profit' }}</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #bc8cff !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Admin Stock Summary</h6>
-                    <div class="text-dark fw-700" style="font-size:0.95rem;">
-                        <span class="text-secondary small font-normal">Rev:</span> TZS {{ number_format($totalAdminRevenue, 0) }}
-                        <div class="text-secondary small font-normal mt-1">
-                            Profit: <strong class="text-dark">TZS {{ number_format($totalAdminProfit, 0) }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="fs-2" style="color: #bc8cff; opacity: 0.25;"><i class="bi bi-person-badge-fill"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-person-badge-fill"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Admin Stock</p>
+            <div class="rpt-kpi-val is-currency" style="color:#7c3aed;">TZS {{ number_format($totalAdminRevenue, 0) }}</div>
+            <div class="rpt-kpi-sub">Profit: TZS {{ number_format($totalAdminProfit, 0) }}</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #d29922 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Normal Stock Summary</h6>
-                    <div class="text-dark fw-700" style="font-size:0.95rem;">
-                        <span class="text-secondary small font-normal">Rev:</span> TZS {{ number_format($totalNormalRevenue, 0) }}
-                        <div class="text-secondary small font-normal mt-1">
-                            Profit: <strong class="text-dark">TZS {{ number_format($totalNormalProfit, 0) }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="fs-2" style="color: #d29922; opacity: 0.25;"><i class="bi bi-shop-window"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-shop-window"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Normal Stock</p>
+            <div class="rpt-kpi-val is-currency" style="color:#0077b6;">TZS {{ number_format($totalNormalRevenue, 0) }}</div>
+            <div class="rpt-kpi-sub">Profit: TZS {{ number_format($totalNormalProfit, 0) }}</div>
         </div>
     </div>
 </div>
 @endif
 
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-shop me-2 text-accent"></i><strong class="fw-700">Revenue &amp; Profit Breakdown by Shop</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="salesByShopTable">
+<div class="rpt-card mb-4">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-shop text-accent"></i>Revenue &amp; Profit by Shop</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="salesByShopTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Shop Name</th>
-                    <th data-priority="2">Total Transactions</th>
-                    <th data-priority="1">Revenue Generated</th>
-                    <th data-priority="2">Profit Generated</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Shop Name</th>
+                    <th data-priority="2" class="min-tablet-l">Total Transactions</th>
+                    <th data-priority="1" class="min-tablet-l">Revenue Generated</th>
+                    <th data-priority="2" class="min-tablet-l">Profit Generated</th>
                 </tr>
             </thead>
             <tbody>
@@ -204,21 +209,23 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-list-check me-2 text-accent"></i><strong class="fw-700">Sales Log</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="salesReportLogTable">
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-list-check text-accent"></i>Sales Log</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="salesReportLogTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="2">Date</th>
-                    <th data-priority="3">Shop</th>
-                    <th data-priority="4">Seller</th>
-                    <th data-priority="3">Customer</th>
-                    <th data-priority="2">Items Sold</th>
-                    <th data-priority="4">Method</th>
-                    <th data-priority="1">Revenue</th>
-                    <th data-priority="2">Profit</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="2" class="min-tablet-l">Date</th>
+                    <th data-priority="3" class="min-tablet-l">Shop</th>
+                    <th data-priority="4" class="min-tablet-l">Seller</th>
+                    <th data-priority="3" class="min-tablet-l">Customer</th>
+                    <th data-priority="1" class="all primary-col">Items Sold</th>
+                    <th data-priority="4" class="min-tablet-l">Method</th>
+                    <th data-priority="2" class="min-tablet-l">Revenue</th>
+                    <th data-priority="2" class="min-tablet-l">Profit</th>
                 </tr>
             </thead>
             <tbody>
@@ -377,6 +384,16 @@ $(() => {
                     });
                 }
             }
+        });
+    }
+
+    if ($('#salesByShopTable tbody tr').length > 0 && !$('#salesByShopTable tbody tr td[colspan]').length) {
+        $('#salesByShopTable').DataTable({
+            paging: false,
+            searching: false,
+            info: false,
+            ordering: false,
+            dom: 'rt'
         });
     }
 

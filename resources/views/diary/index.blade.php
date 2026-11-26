@@ -307,24 +307,22 @@
 {{-- DataTable --}}
 <div class="card border-0 shadow-sm" style="background:var(--card-bg);border:1px solid var(--card-border) !important;border-radius:12px;">
     <div class="card-body p-0 p-md-2">
-        <div class="table-responsive">
-            <table id="diaryTable" class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
-                <thead>
-                    <tr style="color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;">
-                        <th>#</th>
-                        <th>Type / Shop</th>
-                        <th>Event Name</th>
-                        <th>Description</th>
-                        <th>Event Date</th>
-                        <th>Due Date</th>
-                        <th>Cost</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <table id="diaryTable" class="table table-hover align-middle w-100 mb-0 dt-mobile-table" style="font-size:0.85rem;">
+            <thead>
+                <tr style="color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;">
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="3" class="min-tablet-l">Type / Shop</th>
+                    <th data-priority="1" class="all primary-col">Event Name</th>
+                    <th data-priority="4" class="min-tablet-l">Description</th>
+                    <th data-priority="2" class="min-tablet-l">Event Date</th>
+                    <th data-priority="3" class="min-tablet-l">Due Date</th>
+                    <th data-priority="2" class="min-tablet-l">Cost</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 </div>
 

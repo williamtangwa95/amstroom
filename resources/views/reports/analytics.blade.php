@@ -7,37 +7,19 @@
 @endsection
 
 @push('styles')
+@include('reports._styles')
 <style>
 :root {
-    --an-blue:   #0088cc;
-    --an-green:  #10b981;
-    --an-amber:  #f59e0b;
-    --an-red:    #ef4444;
-    --an-purple: #8b5cf6;
-    --an-teal:   #14b8a6;
+    --an-blue:   #0077b6;
+    --an-green:  #059669;
+    --an-amber:  #d97706;
+    --an-red:    #dc2626;
+    --an-purple: #7c3aed;
+    --an-teal:   #0d9488;
 }
-.an-filter-bar {
-    background:#fff;border:1px solid var(--card-border);
-    border-radius:14px;padding:.85rem 1.2rem;
-    box-shadow:0 2px 8px rgba(0,0,0,.05);
-}
-.kpi-card {
-    background:#fff;border-radius:16px;border:1px solid var(--card-border);
-    padding:1.2rem 1.4rem;box-shadow:0 2px 10px rgba(0,0,0,.05);
-    transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;
-}
-.kpi-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08);}
-.kpi-card::before{
-    content:'';position:absolute;top:0;left:0;right:0;height:4px;
-    background:var(--kpi-color,var(--an-blue));border-radius:16px 16px 0 0;
-}
-.kpi-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
-.kpi-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);}
-.kpi-value{font-size:1.3rem;font-weight:800;color:var(--text-primary);line-height:1.2;}
-.kpi-sub{font-size:.72rem;color:var(--text-secondary);margin-top:.15rem;}
 .an-section-title{
-    font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
-    color:var(--text-secondary);padding-bottom:.4rem;border-bottom:2px solid var(--card-border);
+    font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-secondary);padding-bottom:.55rem;border-bottom:1px solid #f1f5f9;
     margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;
 }
 .an-section-title i{font-size:1rem;}
@@ -60,9 +42,9 @@
 .suggestion-card.ok      {border-left-color:#94a3b8;}
 .staff-bar-wrap{background:#f1f5f9;border-radius:20px;height:8px;overflow:hidden;}
 .staff-bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--an-blue),var(--an-teal));}
-.chart-card{background:#fff;border:1px solid var(--card-border);border-radius:16px;padding:1.2rem 1.4rem;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+.chart-card{background:#fff;border:1px solid var(--card-border);border-radius:14px;padding:1.15rem 1.3rem;box-shadow:0 2px 10px rgba(15,23,42,.04);}
 .chart-card canvas{max-height:300px;}
-.an-card{background:#fff;border:1px solid var(--card-border);border-radius:16px;padding:1.3rem;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+.an-card{background:#fff;border:1px solid var(--card-border);border-radius:14px;padding:1.15rem 1.3rem;box-shadow:0 2px 10px rgba(15,23,42,.04);}
 .an-card .table{font-size:.78rem;}
 .an-card .table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);font-weight:700;background:#f8fafc;}
 .velocity-bar{height:6px;border-radius:4px;background:#e2e8f0;overflow:hidden;}
@@ -73,74 +55,82 @@
 @section('content')
 @php $user = auth()->user(); @endphp
 
-{{-- FILTER BAR --}}
-<div class="an-filter-bar mb-4">
-    <form method="GET" action="{{ route('reports.analytics') }}" class="row g-2 align-items-end">
-        <div class="col-6 col-md-2">
-            <label class="form-label mb-1" style="font-size:.73rem;">Period</label>
-            <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="daily"   {{ $period==='daily'   ?'selected':'' }}>Today</option>
-                <option value="monthly" {{ $period==='monthly' ?'selected':'' }}>This Month</option>
-                <option value="yearly"  {{ $period==='yearly'  ?'selected':'' }}>This Year</option>
-                <option value="custom"  {{ $period==='custom'  ?'selected':'' }}>Custom Range</option>
-            </select>
-        </div>
-        @if($user->isOwner())
-        <div class="col-6 col-md-2">
-            <label class="form-label mb-1" style="font-size:.73rem;">Shop</label>
-            <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">All Shops</option>
-                <option value="owner" {{ $shopId==='owner'?'selected':'' }}>Main Store (Owner)</option>
-                @foreach($shops as $s)
-                <option value="{{ $s->id }}" {{ $shopId==$s->id&&$shopId!=='owner'?'selected':'' }}>{{ $s->shop_name }}</option>
-                @endforeach
-            </select>
-        </div>
-        @endif
-        @if($period==='custom')
-        <div class="col-6 col-md-2">
-            <label class="form-label mb-1" style="font-size:.73rem;">From</label>
-            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from',$dateFrom) }}">
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label mb-1" style="font-size:.73rem;">To</label>
-            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to',$dateTo) }}">
-        </div>
-        <div class="col-6 col-md-2">
-            <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
-        </div>
-        @endif
-        <div class="col-auto ms-auto d-flex align-items-center">
-            <span class="badge" style="background:rgba(0,136,204,.1);color:var(--an-blue);font-size:.7rem;padding:.35rem .75rem;border-radius:20px;font-weight:600;">
-                {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }} — {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}
-            </span>
-        </div>
-    </form>
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-stars text-primary me-1"></i>Analytics &amp; Insights
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi bi-calendar3"></i>
+            {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }} &mdash; {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}
+        </span>
+    </div>
 </div>
 
-{{-- KPI ROW --}}
-<div class="row g-3 mb-4">
-    @php
-    $kpis = [
-        ['label'=>'Total Revenue',   'value'=>'TZS '.number_format($totalRevenue,0),    'icon'=>'bi-cash-stack',      'color'=>'var(--an-blue)',   'sub'=>number_format($totalTransactions).' transactions'],
-        ['label'=>'Total Profit',    'value'=>'TZS '.number_format($totalProfit,0),     'icon'=>'bi-graph-up-arrow',  'color'=>'var(--an-green)',  'sub'=>($totalRevenue>0?number_format(($totalProfit/$totalRevenue)*100,1).'% margin':'—')],
-        ['label'=>'Total Cost',      'value'=>'TZS '.number_format($totalCost,0),       'icon'=>'bi-box-seam',        'color'=>'var(--an-amber)',  'sub'=>'Cost of goods sold'],
-        ['label'=>'Avg Order Value', 'value'=>'TZS '.number_format($avgOrderValue,0),   'icon'=>'bi-receipt',         'color'=>'var(--an-purple)', 'sub'=>'Per transaction'],
-        ['label'=>'Products Sold',   'value'=>number_format($byItem->count()),           'icon'=>'bi-tags-fill',       'color'=>'var(--an-teal)',   'sub'=>$fastItems->count().' fast-moving'],
-        ['label'=>'Active Staff',    'value'=>number_format($staffPerformance->count()), 'icon'=>'bi-people-fill',     'color'=>'var(--an-red)',    'sub'=>'Contributing sellers'],
-    ];
-    @endphp
-    @foreach($kpis as $kpi)
-    <div class="col-6 col-md-4 col-lg-2">
-        <div class="kpi-card" style="--kpi-color:{{ $kpi['color'] }}">
-            <div class="d-flex align-items-start gap-2 mb-2">
-                <div class="kpi-icon" style="background:{{ $kpi['color'] }}1a;color:{{ $kpi['color'] }};justify-content:center;">
-                    <i class="bi {{ $kpi['icon'] }}"></i>
-                </div>
+{{-- Filter Bar --}}
+<div class="rpt-card mb-3">
+    <div class="p-3">
+        <form method="GET" action="{{ route('reports.analytics') }}" class="row g-2 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">Period</label>
+                <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="daily"   {{ $period==='daily'   ?'selected':'' }}>Today</option>
+                    <option value="monthly" {{ $period==='monthly' ?'selected':'' }}>This Month</option>
+                    <option value="yearly"  {{ $period==='yearly'  ?'selected':'' }}>This Year</option>
+                    <option value="custom"  {{ $period==='custom'  ?'selected':'' }}>Custom Range</option>
+                </select>
             </div>
-            <div class="kpi-label">{{ $kpi['label'] }}</div>
-            <div class="kpi-value">{{ $kpi['value'] }}</div>
-            <div class="kpi-sub">{{ $kpi['sub'] }}</div>
+            @if($user->isOwner())
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
+                <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Shops</option>
+                    <option value="owner" {{ $shopId==='owner'?'selected':'' }}>Main Store (Owner)</option>
+                    @foreach($shops as $s)
+                    <option value="{{ $s->id }}" {{ $shopId==$s->id&&$shopId!=='owner'?'selected':'' }}>{{ $s->shop_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            @if($period==='custom')
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">From</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from',$dateFrom) }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">To</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to',$dateTo) }}">
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-sm btn-accent w-100" style="height:31px;">Apply</button>
+            </div>
+            @endif
+        </form>
+    </div>
+</div>
+
+{{-- Executive KPI Grid (3x2 on desktop -> 2x3 on tablet/mobile) --}}
+@php
+$kpis = [
+    ['label'=>'Total Revenue',   'value'=>'TZS '.number_format($totalRevenue,0),    'icon'=>'bi-cash-stack',      'color'=>'#0077b6', 'bg'=>'rgba(0,119,182,.1)',    'currency'=>true,  'sub'=>number_format($totalTransactions).' transactions'],
+    ['label'=>'Total Profit',    'value'=>'TZS '.number_format($totalProfit,0),     'icon'=>'bi-graph-up-arrow',  'color'=>'#059669', 'bg'=>'rgba(16,185,129,.12)',  'currency'=>true,  'sub'=>($totalRevenue>0?number_format(($totalProfit/$totalRevenue)*100,1).'% margin':'—')],
+    ['label'=>'Total Cost',      'value'=>'TZS '.number_format($totalCost,0),       'icon'=>'bi-box-seam',        'color'=>'#d97706', 'bg'=>'rgba(217,119,6,.12)',   'currency'=>true,  'sub'=>'Cost of goods sold'],
+    ['label'=>'Avg Order Value', 'value'=>'TZS '.number_format($avgOrderValue,0),   'icon'=>'bi-receipt',         'color'=>'#7c3aed', 'bg'=>'rgba(124,58,237,.12)',  'currency'=>true,  'sub'=>'Per transaction'],
+    ['label'=>'Products Sold',   'value'=>number_format($byItem->count()),           'icon'=>'bi-tags-fill',       'color'=>'#0d9488', 'bg'=>'rgba(13,148,136,.12)',  'currency'=>false, 'sub'=>$fastItems->count().' fast-moving'],
+    ['label'=>'Active Staff',    'value'=>number_format($staffPerformance->count()), 'icon'=>'bi-people-fill',     'color'=>'#dc2626', 'bg'=>'rgba(220,38,38,.1)',    'currency'=>false, 'sub'=>'Contributing sellers'],
+];
+@endphp
+<div class="rpt-kpi-grid rpt-kpi-grid-6">
+    @foreach($kpis as $kpi)
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:{{ $kpi['bg'] }};color:{{ $kpi['color'] }};">
+            <i class="bi {{ $kpi['icon'] }}"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">{{ $kpi['label'] }}</p>
+            <div class="rpt-kpi-val {{ $kpi['currency'] ? 'is-currency' : '' }}" style="color:{{ $kpi['color'] }};">{{ $kpi['value'] }}</div>
+            <div class="rpt-kpi-sub">{{ $kpi['sub'] }}</div>
         </div>
     </div>
     @endforeach
@@ -252,15 +242,15 @@
                 <canvas id="marginChart" style="max-height:160px;"></canvas>
             </div>
             <div style="max-height:280px;overflow-y:auto;">
-                <table class="table table-sm mb-0">
-                    <thead><tr><th>#</th><th>Product</th><th>Category</th><th>Revenue</th><th>Profit</th><th>Margin</th></tr></thead>
+                <table class="table table-sm mb-0 mobile-fit-table">
+                    <thead><tr><th style="width:32px;">#</th><th>Product</th><th class="d-none d-sm-table-cell">Category</th><th class="d-none d-sm-table-cell">Revenue</th><th>Profit</th><th style="width:68px;">Margin</th></tr></thead>
                     <tbody>
                     @forelse($marginItems->take(25) as $idx => $item)
                     <tr>
                         <td class="text-muted">{{ $idx+1 }}</td>
                         <td style="font-weight:600;">{{ Str::limit($item->item_name,24) }}</td>
-                        <td style="color:var(--text-secondary);">{{ $item->category }}</td>
-                        <td>{{ number_format($item->revenue,0) }}</td>
+                        <td class="d-none d-sm-table-cell" style="color:var(--text-secondary);">{{ $item->category }}</td>
+                        <td class="d-none d-sm-table-cell">{{ number_format($item->revenue,0) }}</td>
                         <td>{{ number_format($item->profit,0) }}</td>
                         <td><span class="margin-pill margin-{{ $item->margin_tier }}">{{ number_format($item->margin_pct,1) }}%</span></td>
                     </tr>
@@ -362,7 +352,7 @@
 
             <div style="max-height:220px;overflow-y:auto;">
                 <h6 style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--text-secondary);margin-bottom:.5rem;">Operating Expenses by Category</h6>
-                <table class="table table-sm mb-0">
+                <table class="table table-sm mb-0 mobile-fit-table">
                     <thead>
                         <tr>
                             <th>Category</th>
@@ -448,17 +438,17 @@
         <i class="bi bi-table text-accent me-2"></i><strong class="fw-700">All Products — Velocity &amp; Margin Detail</strong>
     </div>
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="allProductsTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="allProductsTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="2">Units Sold</th>
-                    <th data-priority="1">Revenue (TZS)</th>
-                    <th data-priority="2">Profit (TZS)</th>
-                    <th data-priority="3">Margin</th>
-                    <th data-priority="2">Velocity</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="3" class="min-tablet-l">Category</th>
+                    <th data-priority="2" class="min-tablet-l">Units Sold</th>
+                    <th data-priority="1" class="min-tablet-l">Revenue (TZS)</th>
+                    <th data-priority="2" class="min-tablet-l">Profit (TZS)</th>
+                    <th data-priority="3" class="min-tablet-l">Margin</th>
+                    <th data-priority="2" class="min-tablet-l">Velocity</th>
                 </tr>
             </thead>
             <tbody>

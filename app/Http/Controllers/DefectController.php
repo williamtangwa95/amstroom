@@ -15,7 +15,22 @@ class DefectController extends Controller
 {
     public function index(Request $request)
     {
-        return view('defects.index');
+        $user = Auth::user();
+        $query = Defect::query();
+
+        if (!$user->isOwner()) {
+            $query->where('defects.shop_id', $user->shop_id);
+        }
+
+        $stats = [
+            'total'       => (clone $query)->count(),
+            'reported'    => (clone $query)->where('status', 'reported')->count(),
+            'reviewed'    => (clone $query)->where('status', 'reviewed')->count(),
+            'resolved'    => (clone $query)->where('status', 'resolved')->count(),
+            'total_units' => (int) (clone $query)->sum('quantity'),
+        ];
+
+        return view('defects.index', compact('stats'));
     }
 
     public function data(Request $request)
@@ -25,6 +40,10 @@ class DefectController extends Controller
 
         if (!$user->isOwner()) {
             $query->where('defects.shop_id', $user->shop_id);
+        }
+
+        if ($request->filled('status') && in_array($request->input('status'), ['reported', 'reviewed', 'resolved'], true)) {
+            $query->where('defects.status', $request->input('status'));
         }
 
         $recordsTotal = (clone $query)->count();

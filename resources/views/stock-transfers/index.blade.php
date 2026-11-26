@@ -446,21 +446,21 @@
     </div>
 
     <div class="sti-table-body">
-        <table class="table table-hover align-middle w-100" id="transfersTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table {{ $isOwner ? 'dt-has-checkbox' : '' }}" id="transfersTable">
             <thead>
                 <tr>
                     @if($isOwner)
-                        <th data-priority="1000" style="width: 38px;" class="no-sort">
+                        <th data-priority="1000" style="width: 38px;" class="min-tablet-l no-sort text-center">
                             <input type="checkbox" class="form-check-input" id="selectAllTransfers" style="cursor:pointer;">
                         </th>
                     @endif
-                    <th data-priority="1" class="text-center" style="width: 60px;">ID</th>
-                    <th data-priority="2">Transfer Date</th>
-                    <th data-priority="1">Destination Shop</th>
-                    <th data-priority="2">Items</th>
-                    <th data-priority="4">Dispatched By</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="1" class="no-sort text-end" style="min-width: 110px;">Actions</th>
+                    <th data-priority="1" class="all id-col text-center" style="width: 60px;">ID</th>
+                    <th data-priority="2" class="min-tablet-l">Transfer Date</th>
+                    <th data-priority="1" class="all primary-col">Destination Shop</th>
+                    <th data-priority="2" class="min-tablet-l">Items</th>
+                    <th data-priority="4" class="min-tablet-l">Dispatched By</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 110px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

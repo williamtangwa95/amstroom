@@ -1,45 +1,91 @@
 @extends('layouts.app')
 @section('title', 'Stock Report')
-@section('page-title', 'Stock Valuation & Inventory Report')
+@section('page-title', 'Stock Report')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Stock Report</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-@if(auth()->user()->isOwner())
-<div class="card mb-4">
-    <div class="card-body py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="btn-group btn-group-sm">
-            <a href="{{ route('reports.stock') }}?type=main" class="btn {{ $type==='main' ? 'btn-accent' : 'btn-outline-custom' }}">Main Store Stock</a>
-            <a href="{{ route('reports.stock') }}?type=shop" class="btn {{ $type==='shop' ? 'btn-accent' : 'btn-outline-custom' }}">Shop Stock Distribution</a>
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-bar-chart-fill text-primary me-1"></i>Stock Valuation
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi {{ $type === 'main' ? 'bi-building' : 'bi-shop' }}"></i>
+            {{ $type === 'main' ? 'Main Warehouse' : 'Shop Distribution' }}
+        </span>
+    </div>
+
+    <div class="rpt-controls">
+        @if(auth()->user()->isOwner())
+        <div class="rpt-pills">
+            <a href="{{ route('reports.stock') }}?type=main" class="rpt-pill-link {{ $type === 'main' ? 'active' : '' }}">Main Store</a>
+            <a href="{{ route('reports.stock') }}?type=shop" class="rpt-pill-link {{ $type === 'shop' ? 'active' : '' }}">Shop Stock</a>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-            <i class="bi bi-envelope-at"></i>
-            <span>Send via Email</span>
+        @endif
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
         </button>
     </div>
 </div>
-@else
-<div class="d-flex justify-content-end mb-3">
-    <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-        <i class="bi bi-envelope-at"></i>
-        <span>Send via Email</span>
-    </button>
-</div>
-@endif
 
+{{-- Executive KPI Cards --}}
 @if($type === 'main')
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-building-fill me-2 text-warning"></i><strong class="fw-700">Main Warehouse Stock Summary</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="reportsMainStockTable">
+<div class="rpt-kpi-grid rpt-kpi-grid-3">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-boxes"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Remaining Units</p>
+            <div class="rpt-kpi-val" style="color:#0077b6;">{{ number_format($mainTotalQty) }}</div>
+            <div class="rpt-kpi-sub">In Main Warehouse</div>
+        </div>
+    </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Cost Valuation</p>
+            <div class="rpt-kpi-val is-currency" style="color:#7c3aed;">TZS {{ number_format($mainTotalValue, 0) }}</div>
+            <div class="rpt-kpi-sub">Based on buying price</div>
+        </div>
+    </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Expected Sales Value</p>
+            <div class="rpt-kpi-val is-currency" style="color:#059669;">TZS {{ number_format($mainTotalSellValue, 0) }}</div>
+            <div class="rpt-kpi-sub">Projected retail value</div>
+        </div>
+    </div>
+</div>
+
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-building-fill text-warning"></i>Main Warehouse Stock Summary</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reportsMainStockTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="2">Total Remaining Qty</th>
-                    <th data-priority="2">Stock Value (Cost)</th>
-                    <th data-priority="2">Expected Sales Value</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="3" class="min-tablet-l">Category</th>
+                    <th data-priority="2" class="min-tablet-l">Total Remaining Qty</th>
+                    <th data-priority="2" class="min-tablet-l">Stock Value (Cost)</th>
+                    <th data-priority="2" class="min-tablet-l">Expected Sales Value</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,19 +94,45 @@
     </div>
 </div>
 @else
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-shop me-2 text-success"></i><strong class="fw-700">Shop Stocks Inventory</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="reportsShopStockTable">
+<div class="rpt-kpi-grid rpt-kpi-grid-2">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-boxes"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Shop Units Remaining</p>
+            <div class="rpt-kpi-val" style="color:#0077b6;">{{ number_format($shopTotalQty) }}</div>
+            <div class="rpt-kpi-sub">Active retail inventory</div>
+        </div>
+    </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Total Shop Valuation</p>
+            <div class="rpt-kpi-val is-currency" style="color:#059669;">TZS {{ number_format($shopTotalValuation, 0) }}</div>
+            <div class="rpt-kpi-sub">Based on selling price</div>
+        </div>
+    </div>
+</div>
+
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-shop text-success"></i>Shop Stocks Inventory</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reportsShopStockTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="2">Shop</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="2">Remaining Qty</th>
-                    <th data-priority="2">Selling Price</th>
-                    <th data-priority="2">Total Valuation</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="2" class="min-tablet-l">Shop</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="3" class="min-tablet-l">Category</th>
+                    <th data-priority="2" class="min-tablet-l">Remaining Qty</th>
+                    <th data-priority="2" class="min-tablet-l">Selling Price</th>
+                    <th data-priority="2" class="min-tablet-l">Total Valuation</th>
                 </tr>
             </thead>
             <tbody>

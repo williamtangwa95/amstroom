@@ -30,20 +30,20 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="usersTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="usersTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Name</th>
-                    <th data-priority="3">Email</th>
-                    <th data-priority="3">Phone</th>
-                    <th data-priority="2">Role</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Name</th>
+                    <th data-priority="3" class="min-tablet-l">Email</th>
+                    <th data-priority="3" class="min-tablet-l">Phone</th>
+                    <th data-priority="2" class="min-tablet-l">Role</th>
                     @if(auth()->user()->isOwner())
-                    <th data-priority="2">Assigned Shop</th>
+                    <th data-priority="2" class="min-tablet-l">Assigned Shop</th>
                     @endif
-                    <th data-priority="2" class="text-center" style="min-width: 90px;">Admin POS</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                    <th data-priority="2" class="min-tablet-l text-center" style="min-width: 90px;">Admin POS</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

@@ -36,21 +36,21 @@
             </div>
         </div>
 
-        <table class="table table-hover align-middle w-100" id="itemsTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table dt-has-checkbox" id="itemsTable">
             <thead>
                 <tr>
-                    <th style="width: 38px;" class="text-center no-sort">
+                    <th data-priority="1000" style="width: 38px;" class="min-tablet-l text-center no-sort">
                         <input type="checkbox" class="form-check-input" id="selectAllItems" title="Select all on this page">
                     </th>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="2">Category</th>
-                    <th data-priority="3">Unit</th>
-                    <th data-priority="3">Brand / Model</th>
-                    <th data-priority="4">Warranty</th>
-                    <th data-priority="2">Main Stock</th>
-                    <th data-priority="2">Shop Stock</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="2" class="min-tablet-l">Category</th>
+                    <th data-priority="3" class="min-tablet-l">Unit</th>
+                    <th data-priority="3" class="min-tablet-l">Brand / Model</th>
+                    <th data-priority="4" class="min-tablet-l">Warranty</th>
+                    <th data-priority="2" class="min-tablet-l">Main Stock</th>
+                    <th data-priority="2" class="min-tablet-l">Shop Stock</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -173,16 +173,16 @@ $(function() {
         serverSide: true,
         ajax: '{{ route("items.data") }}',
         columns: [
-            { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false, className: 'text-center' },
-            { data: 'no', name: 'no', orderable: false, searchable: false, className: 'text-center' },
-            { data: 'product', name: 'product' },
-            { data: 'category', name: 'category' },
-            { data: 'unit', name: 'unit', orderable: false, searchable: false },
-            { data: 'brand_model', name: 'brand_model' },
-            { data: 'warranty', name: 'warranty' },
-            { data: 'main_stock', name: 'main_stock', orderable: false, searchable: false },
-            { data: 'shop_stock', name: 'shop_stock', orderable: false, searchable: false },
-            { data: 'actions', name: 'actions', orderable: false, searchable: false }
+            { data: 'checkbox', name: 'checkbox', orderable: false, searchable: false, responsivePriority: 1000, className: 'min-tablet-l text-center' },
+            { data: 'no', name: 'no', orderable: false, searchable: false, responsivePriority: 1, className: 'all iter-col text-center' },
+            { data: 'product', name: 'product', responsivePriority: 1, className: 'all primary-col' },
+            { data: 'category', name: 'category', responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'unit', name: 'unit', orderable: false, searchable: false, responsivePriority: 3, className: 'min-tablet-l' },
+            { data: 'brand_model', name: 'brand_model', responsivePriority: 3, className: 'min-tablet-l' },
+            { data: 'warranty', name: 'warranty', responsivePriority: 4, className: 'min-tablet-l' },
+            { data: 'main_stock', name: 'main_stock', orderable: false, searchable: false, responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'shop_stock', name: 'shop_stock', orderable: false, searchable: false, responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, responsivePriority: 3, className: 'min-tablet-l text-end' }
         ],
         order: [[2, 'asc']],
         drawCallback: function() {

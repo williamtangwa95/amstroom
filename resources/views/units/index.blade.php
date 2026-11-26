@@ -6,6 +6,139 @@
 <li class="breadcrumb-item active">Units</li>
 @endsection
 
+@push('styles')
+<style>
+    /* ── Units Executive KPI Cards (Matches /diary) ── */
+    .unit-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .unit-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .unit-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+
+    .unit-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+    .unit-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .unit-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .unit-kpi-val {
+        font-size: clamp(1rem, 1.4vw, 1.28rem);
+        font-weight: 800;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .unit-kpi-sub {
+        font-size: .71rem;
+        color: #94a3b8;
+        margin-top: .2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .unit-example-list {
+        display: flex;
+        flex-direction: column;
+        gap: .26rem;
+        margin-top: .12rem;
+    }
+    .unit-example-item {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .73rem;
+        color: var(--text-secondary, #64748b);
+        min-width: 0;
+    }
+    .unit-example-item span:last-child {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .unit-example-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        padding: .1rem .38rem;
+        border-radius: 6px;
+        background: rgba(0, 119, 182, .1);
+        color: #0077b6;
+        font-size: .68rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 991.98px) {
+        .unit-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .unit-kpi-examples {
+            grid-column: 1 / -1;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .unit-kpi-grid {
+            grid-template-columns: 1fr;
+            gap: .65rem;
+        }
+        .unit-kpi-card {
+            padding: .85rem .9rem;
+            gap: .7rem;
+            border-radius: 12px;
+        }
+        .unit-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
@@ -23,42 +156,44 @@
 </div>
 
 {{-- Summary Cards --}}
-<div class="row g-2 g-md-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Total Units</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(88,166,255,0.15); color:#58a6ff;">
-                    <i class="bi bi-rulers fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" id="cardTotalUnits" style="color:#58a6ff;">{{ number_format($totalUnits) }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Registered Measurement Units</div>
+<div class="unit-kpi-grid">
+    <div class="unit-kpi-card">
+        <div class="unit-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-rulers"></i>
+        </div>
+        <div class="unit-kpi-body">
+            <p class="unit-kpi-label">Total Units</p>
+            <div class="unit-kpi-val" id="cardTotalUnits" style="color:#0077b6;">{{ number_format($totalUnits) }}</div>
+            <div class="unit-kpi-sub">Registered Measurement Units</div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-md-4">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Default Unit</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(63,185,80,0.15); color:#3fb950;">
-                    <i class="bi bi-check-circle-fill fs-6"></i>
-                </div>
-            </div>
-            <div class="fw-800 fs-5 mb-0" style="color:#3fb950;">{{ $defaultUnit ? $defaultUnit->name . ' (' . $defaultUnit->symbol . ')' : 'None' }}</div>
-            <div class="small text-muted" style="font-size:0.68rem;">Applied to items without explicit unit</div>
+
+    <div class="unit-kpi-card">
+        <div class="unit-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <div class="unit-kpi-body">
+            <p class="unit-kpi-label">Default Unit</p>
+            <div class="unit-kpi-val" style="color:#059669;">{{ $defaultUnit ? $defaultUnit->name . ' (' . $defaultUnit->symbol . ')' : 'None' }}</div>
+            <div class="unit-kpi-sub">Applied to items without explicit unit</div>
         </div>
     </div>
-    <div class="col-12 col-sm-12 col-md-4">
-        <div class="card h-100 border-0 shadow-sm p-3" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="small fw-700 text-uppercase tracking-wider" style="color:var(--text-secondary); font-size:0.72rem;">Usage Examples</span>
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:34px; height:34px; background:rgba(227,179,65,0.15); color:#e3b341;">
-                    <i class="bi bi-lightbulb-fill fs-6"></i>
+
+    <div class="unit-kpi-card unit-kpi-examples">
+        <div class="unit-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-lightbulb-fill"></i>
+        </div>
+        <div class="unit-kpi-body">
+            <p class="unit-kpi-label">Usage Examples</p>
+            <div class="unit-example-list">
+                <div class="unit-example-item">
+                    <span class="unit-example-badge">pc</span>
+                    <span>Dell Latitude (3 pc)</span>
                 </div>
-            </div>
-            <div class="small text-muted" style="font-size:0.78rem;">
-                <span class="badge me-1" style="background:rgba(88,166,255,0.15);color:#58a6ff;">pc</span> e.g. Dell Latitude (3 pc)<br>
-                <span class="badge me-1" style="background:rgba(88,166,255,0.15);color:#58a6ff;">m</span> e.g. CAT 6 UTP Cable (305 m)
+                <div class="unit-example-item">
+                    <span class="unit-example-badge">m</span>
+                    <span>CAT 6 UTP Cable (305 m)</span>
+                </div>
             </div>
         </div>
     </div>
@@ -67,21 +202,19 @@
 {{-- DataTable Card --}}
 <div class="card border-0 shadow-sm" style="background:var(--card-bg);border:1px solid var(--card-border) !important;border-radius:12px;">
     <div class="card-body p-0 p-md-3">
-        <div class="table-responsive">
-            <table id="unitsTable" class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
-                <thead>
-                    <tr style="color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;">
-                        <th>#</th>
-                        <th>Unit Name</th>
-                        <th>Symbol / Code</th>
-                        <th>Description</th>
-                        <th>Assigned Products</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <table id="unitsTable" class="table table-hover align-middle w-100 mb-0 dt-mobile-table" style="font-size:0.85rem;">
+            <thead>
+                <tr style="color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;">
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Unit Name</th>
+                    <th data-priority="2" class="min-tablet-l">Symbol / Code</th>
+                    <th data-priority="3" class="min-tablet-l">Description</th>
+                    <th data-priority="2" class="min-tablet-l">Assigned Products</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 </div>
 
@@ -167,12 +300,12 @@ $(function () {
             url: '{{ route("units.data") }}'
         },
         columns: [
-            { data: 'id',          orderable: false, width: '40px' },
-            { data: 'name',        orderable: true },
-            { data: 'symbol',      orderable: true },
-            { data: 'description', orderable: false },
-            { data: 'items_count', orderable: true },
-            { data: 'actions',     orderable: false, className: 'text-end' }
+            { data: 'id',          orderable: false, responsivePriority: 1, className: 'all iter-col text-center' },
+            { data: 'name',        orderable: true,  responsivePriority: 1, className: 'all primary-col' },
+            { data: 'symbol',      orderable: true,  responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'description', orderable: false, responsivePriority: 3, className: 'min-tablet-l' },
+            { data: 'items_count', orderable: true,  responsivePriority: 2, className: 'min-tablet-l' },
+            { data: 'actions',     orderable: false, responsivePriority: 3, className: 'min-tablet-l text-end' }
         ],
         order: [[1, 'asc']],
         pageLength: 15,

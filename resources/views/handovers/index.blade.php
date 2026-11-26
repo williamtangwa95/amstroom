@@ -1,111 +1,309 @@
 @extends('layouts.app')
 @section('title', 'Sales Cash Handover')
-@section('page-title', 'Sales Cash Handover & Settlement')
+@section('page-title', 'Cash Handovers')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Cash Handovers</li>
 @endsection
 
-@section('content')
-<!-- Dashboard Stats -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Pending Handovers</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $stats['pending'] + $stats['under_review'] }}</h3>
-                </div>
-                <div class="fs-2" style="color: #cbd5e1;"><i class="bi bi-hourglass-split"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f1c40f !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Expected Amount</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($stats['total_expected'], 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #cbd5e1;"><i class="bi bi-wallet2"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #0056b3 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Cash Received</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($stats['total_received'], 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #0056b3; opacity: 0.25;"><i class="bi bi-cash-stack"></i></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #f39c12 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Shortages</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format(abs($stats['total_shortage']), 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #f39c12; opacity: 0.25;"><i class="bi bi-exclamation-triangle"></i></div>
-            </div>
-        </div>
-    </div>
-</div>
+@push('styles')
+<style>
+    /* ══════════════════════════════════════════════
+       CASH HANDOVERS — EXECUTIVE & RESPONSIVE
+       ══════════════════════════════════════════════ */
+    .ho-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .ho-title-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .55rem;
+    }
+    .ho-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #0f172a);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .ho-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .18rem .6rem;
+        border-radius: 50px;
+        background: rgba(0, 119, 182, .08);
+        color: #0077b6;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .ho-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem;
+    }
+    .ho-select-wrap {
+        display: inline-flex;
+        align-items: center;
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 9px;
+        padding: 0 .2rem 0 .6rem;
+        height: 34px;
+    }
+    .ho-select-wrap i {
+        color: #64748b;
+        font-size: .8rem;
+        margin-right: .35rem;
+    }
+    .ho-select-wrap select {
+        border: none;
+        background: transparent;
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--text-primary, #0f172a);
+        padding: .2rem 1.65rem .2rem .1rem;
+        cursor: pointer;
+        box-shadow: none !important;
+    }
+    .ho-select-wrap select:focus {
+        outline: none;
+    }
 
-<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
-    <div>
-        @if(auth()->user()->isOwner())
-        <!-- Owner Filtering -->
-        <form method="GET" action="{{ route('handovers.index') }}" class="row g-2 align-items-center">
-            <div class="col-auto">
-                <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All Shops</option>
-                    @foreach($shops as $shop)
-                    <option value="{{ $shop->id }}" {{ request('shop_id') == $shop->id ? 'selected' : '' }}>{{ $shop->shop_name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-auto">
-                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All Statuses</option>
-                    <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
-                    <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Submitted</option>
-                    <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    <option value="returned" {{ request('status') === 'returned' ? 'selected' : '' }}>Returned</option>
-                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
-                </select>
-            </div>
-        </form>
-        @endif
+    .ho-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.15rem;
+    }
+    .ho-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: .95rem 1.05rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .ho-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .ho-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.12rem;
+        flex-shrink: 0;
+    }
+    .ho-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .ho-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ho-kpi-val {
+        font-size: clamp(.9rem, 1.2vw, 1.15rem);
+        font-weight: 800;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.015em;
+        word-break: break-word;
+    }
+    .ho-kpi-sub {
+        font-size: .7rem;
+        color: #94a3b8;
+        margin-top: .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ho-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        overflow: hidden;
+    }
+
+    @media (max-width: 991.98px) {
+        .ho-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .65rem;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .ho-controls {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .45rem;
+        }
+        .ho-select-wrap,
+        .ho-select-wrap select {
+            width: 100%;
+        }
+        .ho-controls .btn {
+            grid-column: 1 / -1;
+            width: 100%;
+            justify-content: center;
+        }
+        .ho-kpi-card {
+            padding: .8rem .85rem;
+            gap: .65rem;
+            border-radius: 12px;
+        }
+        .ho-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        .ho-kpi-val {
+            font-size: .9rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .ho-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
+@section('content')
+{{-- Compact Header & Filters --}}
+<div class="ho-header">
+    <div class="ho-title-row">
+        <h5 class="ho-title">
+            <i class="bi bi-cash-coin text-primary me-1"></i>Cash Handovers
+        </h5>
+        <span class="ho-pill">
+            <i class="bi bi-shield-check"></i>Settlement Ledger
+        </span>
     </div>
-    @if(auth()->user()->isShopAdmin())
-    <a href="{{ route('handovers.create') }}" class="btn btn-sm btn-accent align-self-start">
-        <i class="bi bi-plus-circle me-1"></i> New Handover Report
-    </a>
+
+    @if(auth()->user()->isOwner())
+    <form method="GET" action="{{ route('handovers.index') }}" class="ho-controls">
+        <div class="ho-select-wrap">
+            <i class="bi bi-shop"></i>
+            <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter by Shop">
+                <option value="">All Shops</option>
+                @foreach($shops as $shop)
+                <option value="{{ $shop->id }}" {{ request('shop_id') == $shop->id ? 'selected' : '' }}>{{ $shop->shop_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="ho-select-wrap">
+            <i class="bi bi-flag"></i>
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter by Status">
+                <option value="">All Statuses</option>
+                <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
+                <option value="submitted" {{ request('status') === 'submitted' ? 'selected' : '' }}>Submitted</option>
+                <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                <option value="returned" {{ request('status') === 'returned' ? 'selected' : '' }}>Returned</option>
+                <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+            </select>
+        </div>
+    </form>
+    @elseif(auth()->user()->isShopAdmin())
+    <div class="ho-controls">
+        <a href="{{ route('handovers.create') }}" class="btn btn-sm btn-accent shadow-sm" style="height:34px;border-radius:9px;display:inline-flex;align-items:center;gap:.35rem;">
+            <i class="bi bi-plus-circle"></i> New Handover
+        </a>
+    </div>
     @endif
 </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header"><i class="bi bi-clock-history me-2" style="color:var(--accent);"></i>Handover History</div>
-    <div class="card-body p-3">
-        <table class="table table-hover align-middle w-100" id="handoversTable">
+{{-- Executive KPI Cards --}}
+<div class="ho-kpi-grid">
+    <div class="ho-kpi-card">
+        <div class="ho-kpi-icon" style="background:rgba(217,119,6,.12);color:#d97706;">
+            <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="ho-kpi-body">
+            <p class="ho-kpi-label">Pending</p>
+            <div class="ho-kpi-val" style="color:#d97706;">{{ number_format($stats['pending'] + $stats['under_review']) }}</div>
+            <div class="ho-kpi-sub">Awaiting settlement</div>
+        </div>
+    </div>
+
+    <div class="ho-kpi-card">
+        <div class="ho-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-wallet2"></i>
+        </div>
+        <div class="ho-kpi-body">
+            <p class="ho-kpi-label">Expected</p>
+            <div class="ho-kpi-val" style="color:#0077b6;">TZS {{ number_format($stats['total_expected'], 0) }}</div>
+            <div class="ho-kpi-sub">Expected cash total</div>
+        </div>
+    </div>
+
+    <div class="ho-kpi-card">
+        <div class="ho-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="ho-kpi-body">
+            <p class="ho-kpi-label">Cash Received</p>
+            <div class="ho-kpi-val" style="color:#059669;">TZS {{ number_format($stats['total_received'], 0) }}</div>
+            <div class="ho-kpi-sub">Submitted amount</div>
+        </div>
+    </div>
+
+    <div class="ho-kpi-card">
+        <div class="ho-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div class="ho-kpi-body">
+            <p class="ho-kpi-label">Shortages</p>
+            <div class="ho-kpi-val" style="color:#e11d48;">TZS {{ number_format(abs($stats['total_shortage']), 0) }}</div>
+            <div class="ho-kpi-sub">Total variance</div>
+        </div>
+    </div>
+</div>
+
+<div class="ho-card">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="handoversTable">
             <thead>
                 <tr>
-                    <th data-priority="1">Handover ID</th>
-                    <th data-priority="3">Shop</th>
-                    <th data-priority="4">Shop Admin</th>
-                    <th data-priority="3">Period</th>
-                    <th data-priority="4">Owner Sales</th>
-                    <th data-priority="5">Admin Sales</th>
-                    <th data-priority="4">Expenses</th>
-                    <th data-priority="2">Expected</th>
-                    <th data-priority="2">Actual Submitted</th>
-                    <th data-priority="2">Difference</th>
-                    <th data-priority="2">Status</th>
-                    <th data-priority="4">Submitted At</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                    <th data-priority="1" class="all compact-lead-col">Handover ID</th>
+                    <th data-priority="1" class="all primary-col">Shop</th>
+                    <th data-priority="4" class="min-tablet-l">Shop Admin</th>
+                    <th data-priority="3" class="min-tablet-l">Period</th>
+                    <th data-priority="4" class="min-tablet-l">Owner Sales</th>
+                    <th data-priority="5" class="min-tablet-l">Admin Sales</th>
+                    <th data-priority="4" class="min-tablet-l">Expenses</th>
+                    <th data-priority="2" class="min-tablet-l">Expected</th>
+                    <th data-priority="2" class="min-tablet-l">Actual Submitted</th>
+                    <th data-priority="2" class="min-tablet-l">Difference</th>
+                    <th data-priority="2" class="min-tablet-l">Status</th>
+                    <th data-priority="4" class="min-tablet-l">Submitted At</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
                 <tbody>

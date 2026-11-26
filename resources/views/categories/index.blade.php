@@ -19,15 +19,15 @@
 </div>
 <div class="card shadow-sm border-0">
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="catTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="catTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Category Name</th>
-                    <th data-priority="3">Description</th>
-                    <th data-priority="2">Products</th>
-                    <th data-priority="4">Created</th>
-                    <th data-priority="1" class="no-sort text-end" style="min-width: 90px;">Actions</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Category Name</th>
+                    <th data-priority="3" class="min-tablet-l">Description</th>
+                    <th data-priority="2" class="min-tablet-l">Products</th>
+                    <th data-priority="4" class="min-tablet-l">Created</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 90px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

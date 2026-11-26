@@ -1,25 +1,48 @@
 @extends('layouts.app')
 @section('title', 'Sales vs Expenses')
-@section('page-title', 'Revenue vs Expenses Analysis')
+@section('page-title', 'Sales vs Expenses')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Sales vs Expenses</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-<div class="card mb-4">
-    <div class="card-body py-2">
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-file-earmark-bar-graph text-primary me-1"></i>Revenue vs Expenses
+        </h5>
+        <span class="rpt-pill">
+            <i class="bi bi-calendar3"></i>{{ ucfirst($period) }}
+        </span>
+    </div>
+    <div class="rpt-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
+        </button>
+    </div>
+</div>
+
+{{-- Filter Bar --}}
+<div class="rpt-card mb-3">
+    <div class="p-3">
         <form method="GET" action="{{ route('reports.sales-vs-expenses') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Time Period</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Period</label>
                 <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Daily (Today)</option>
-                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>Monthly (This Month)</option>
-                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>Yearly (This Year)</option>
-                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
+                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Today</option>
+                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>This Month</option>
+                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>This Year</option>
+                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Range</option>
                 </select>
             </div>
             @if(auth()->user()->isOwner())
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Shops</option>
                     <option value="owner" {{ request('shop_id') === 'owner' ? 'selected' : '' }}>Main Store (Owner)</option>
@@ -29,111 +52,94 @@
                 </select>
             </div>
             @else
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" disabled>
                     <option value="{{ auth()->user()->shop_id }}" selected>{{ auth()->user()->shop?->shop_name ?? 'My Shop' }}</option>
                 </select>
             </div>
             @endif
             @if($period === 'custom')
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">From</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">To</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-sm btn-accent w-100" style="height:31px;">Apply</button>
             </div>
             @endif
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-                    <i class="bi bi-envelope-at"></i>
-                    <span>Send via Email</span>
-                </button>
-            </div>
         </form>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #10b981 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Sales Revenue</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalSales, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #10b981; opacity: 0.25;"><i class="bi bi-graph-up-arrow"></i></div>
-            </div>
+{{-- Executive KPI Cards --}}
+<div class="rpt-kpi-grid rpt-kpi-grid-3">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Sales Revenue</p>
+            <div class="rpt-kpi-val is-currency" style="color:#059669;">TZS {{ number_format($totalSales, 0) }}</div>
+            <div class="rpt-kpi-sub">Gross sales total</div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Approved Expenses</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalExpenses, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-wallet2"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-wallet2"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Approved Expenses</p>
+            <div class="rpt-kpi-val is-currency" style="color:#e11d48;">TZS {{ number_format($totalExpenses, 0) }}</div>
+            <div class="rpt-kpi-sub">Total expenditure</div>
         </div>
     </div>
-    <div class="col-md-4">
-        @if($netProfit >= 0)
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #3498db !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Net Profit (Surplus)</h6>
-                    <h3 class="mb-0 fw-800 text-success" style="font-size: 1.6rem;">TZS {{ number_format($netProfit, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #3498db; opacity: 0.25;"><i class="bi bi-cash-coin"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:{{ $netProfit >= 0 ? 'rgba(0,119,182,.1)' : 'rgba(225,29,72,.1)' }};color:{{ $netProfit >= 0 ? '#0077b6' : '#e11d48' }};">
+            <i class="bi {{ $netProfit >= 0 ? 'bi-cash-coin' : 'bi-dash-circle-fill' }}"></i>
         </div>
-        @else
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Net Loss (Deficit)</h6>
-                    <h3 class="mb-0 fw-800 text-danger" style="font-size: 1.6rem;">TZS {{ number_format($netProfit, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-dash-circle-fill"></i></div>
-            </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">{{ $netProfit >= 0 ? 'Net Surplus' : 'Net Deficit' }}</p>
+            <div class="rpt-kpi-val is-currency" style="color:{{ $netProfit >= 0 ? '#059669' : '#e11d48' }};">TZS {{ number_format($netProfit, 0) }}</div>
+            <div class="rpt-kpi-sub">Revenue minus expenses</div>
         </div>
-        @endif
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-pie-chart-fill me-2" style="color:#bc8cff;"></i>Visual Summary</div>
-    <div class="card-body py-4 text-center">
+<div class="rpt-card mb-4">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-pie-chart-fill" style="color:#7c3aed;"></i>Sales vs Expenses Ratio</h6>
+    </div>
+    <div class="p-3 p-md-4">
         @php
             $totalAmount = $totalSales + $totalExpenses;
             $salesPercentage = $totalAmount > 0 ? ($totalSales / $totalAmount) * 100 : 50;
             $expensesPercentage = $totalAmount > 0 ? ($totalExpenses / $totalAmount) * 100 : 50;
         @endphp
-        
-        <h6 class="mb-3 text-secondary">Ratio: Sales vs Approved Expenses</h6>
-        <div class="progress" style="height: 25px; border-radius: 6px; overflow: hidden; background-color: var(--card-border);">
-            <div class="progress-bar bg-success" role="progressbar" style="width: {{ $salesPercentage }}%" aria-valuenow="{{ $salesPercentage }}" aria-valuemin="0" aria-valuemax="100">
-                Sales: {{ number_format($salesPercentage, 1) }}%
+
+        <div class="progress" style="height: 22px; border-radius: 99px; overflow: hidden; background-color: #f1f5f9;">
+            <div class="progress-bar bg-success fw-600" role="progressbar" style="width: {{ $salesPercentage }}%; font-size:.74rem;" aria-valuenow="{{ $salesPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                {{ number_format($salesPercentage, 1) }}%
             </div>
-            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ $expensesPercentage }}%" aria-valuenow="{{ $expensesPercentage }}" aria-valuemin="0" aria-valuemax="100">
-                Expenses: {{ number_format($expensesPercentage, 1) }}%
+            <div class="progress-bar bg-danger fw-600" role="progressbar" style="width: {{ $expensesPercentage }}%; font-size:.74rem;" aria-valuenow="{{ $expensesPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                {{ number_format($expensesPercentage, 1) }}%
             </div>
         </div>
-        
-        <div class="row mt-4">
-            <div class="col-6 text-end">
-                <span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#198754;"></span>
-                <span class="text-secondary small">Total Sales: <strong>TZS {{ number_format($totalSales) }}</strong></span>
+
+        <div class="d-flex flex-wrap justify-content-center gap-4 mt-3">
+            <div class="d-flex align-items-center gap-2 small">
+                <span class="rounded-circle" style="width:10px;height:10px;background:#198754;display:inline-block;"></span>
+                <span class="text-secondary">Sales: <strong class="text-dark">TZS {{ number_format($totalSales) }}</strong></span>
             </div>
-            <div class="col-6 text-start">
-                <span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#dc3545;"></span>
-                <span class="text-secondary small">Total Expenses: <strong>TZS {{ number_format($totalExpenses) }}</strong></span>
+            <div class="d-flex align-items-center gap-2 small">
+                <span class="rounded-circle" style="width:10px;height:10px;background:#dc3545;display:inline-block;"></span>
+                <span class="text-secondary">Expenses: <strong class="text-dark">TZS {{ number_format($totalExpenses) }}</strong></span>
             </div>
         </div>
     </div>

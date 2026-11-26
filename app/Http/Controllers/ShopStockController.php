@@ -11,10 +11,13 @@ use App\Models\StockLog;
 use App\Models\StockTransfer;
 use App\Models\StockTransferItem;
 use App\Models\Notification;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -1273,17 +1276,28 @@ class ShopStockController extends Controller
             $newPrice = $request->filled('selling_price') ? floatval($request->selling_price) : $shopStock->pending_selling_price;
 
             if ($newPrice < $shopStock->buying_price) {
+                $errMsg = 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').';
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errMsg,
+                        'errors'  => ['selling_price' => [$errMsg]],
+                    ], 422);
+                }
                 return back()->withInput()->withErrors([
-                    'selling_price' => 'The selling price must be greater than or equal to the buying price (TZS ' . number_format($shopStock->buying_price) . ').'
+                    'selling_price' => $errMsg,
                 ]);
             }
 
-            $shopStock->update([
-                'selling_price' => $newPrice,
-                'is_price_pending' => false,
-                'pending_selling_price' => null,
-                'is_sellable' => true,
-            ]);
+            ShopStock::where('shop_id', $shopStock->shop_id)
+                ->where('item_id', $shopStock->item_id)
+                ->where('is_admin_stock', (bool) $shopStock->is_admin_stock)
+                ->update([
+                    'selling_price'         => $newPrice,
+                    'is_price_pending'      => false,
+                    'pending_selling_price' => null,
+                    'is_sellable'           => true,
+                ]);
 
             // Notify all sellers of this shop
             $sellers = \App\Models\User::where('shop_id', $shopStock->shop_id)
@@ -1319,9 +1333,16 @@ class ShopStockController extends Controller
                 }
             }
 
-            return back()->with('success', 'Shop stock price approved successfully.');
+            $successMsg = 'Shop stock price approved successfully.';
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => $successMsg]);
+            }
+            return back()->with('success', $successMsg);
         }
 
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => 'No pending price change found.'], 422);
+        }
         return back()->with('error', 'No pending price change found.');
     }
 
@@ -3107,6 +3128,185 @@ class ShopStockController extends Controller
         }
 
         return back()->with('success', $successMsg);
+    }
+
+    /**
+     * Return shop stock items whose Main Store buying/selling price changed and require Shop Admin action.
+     */
+    public function priceReminders(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json([
+                'due_items'     => [],
+                'total_pending' => 0,
+                'pricing_mode'  => Setting::get('store_pricing_mode', 'INDEPENDENT'),
+                'shop_name'     => '',
+                'ringtone_url'  => null,
+                'index_url'     => route('shop-stock.index'),
+                'server_now_ts' => now()->timestamp,
+            ]);
+        }
+
+        $now = now();
+        $pricingMode = Setting::get('store_pricing_mode', 'INDEPENDENT');
+        $isIndependent = $pricingMode === 'INDEPENDENT';
+
+        $pendingQuery = ShopStock::with(['item.category', 'item.unit', 'shop'])
+            ->where('shop_id', $user->shop_id)
+            ->where('is_price_pending', true)
+            ->where('is_admin_stock', false)
+            ->orderByDesc('updated_at');
+
+        // In DEPENDENT mode, only alert Shop Admin for Main Store price pushes (where pending price matches new buying price),
+        // not for price edit requests that the Shop Admin submitted for Owner approval.
+        if (!$isIndependent) {
+            $pendingQuery->whereNotNull('pending_selling_price')
+                ->whereColumn('pending_selling_price', 'buying_price');
+        }
+
+        $pendingStocks = $pendingQuery->get();
+        $grouped = $pendingStocks->groupBy('item_id');
+
+        $dueItems = [];
+        foreach ($grouped as $itemId => $batches) {
+            $latestBatch = $batches->sortByDesc('updated_at')->first();
+            $updatedAt = $latestBatch->updated_at ?? $now;
+            $updatedAtTs = $updatedAt->timestamp;
+
+            // Versioned snooze key: automatically re-alerts immediately if Main Store changes price again
+            $cacheKey = "shop_price_reminder_snooze_{$user->id}_{$itemId}_{$updatedAtTs}";
+            $snoozedUntil = Cache::get($cacheKey);
+            if ($snoozedUntil && (int) $snoozedUntil > $now->timestamp) {
+                continue;
+            }
+
+            $item = $latestBatch->item;
+            $metaParts = array_filter([
+                $item?->brand,
+                $item?->model,
+                $item?->category?->category_name,
+            ]);
+
+            $buyingPrice = (float) $latestBatch->buying_price;
+            $sellingPrice = (float) $latestBatch->selling_price;
+            $pendingSellingPrice = $latestBatch->pending_selling_price !== null
+                ? (float) $latestBatch->pending_selling_price
+                : null;
+            $isSellable = $batches->every(fn ($b) => (bool) $b->is_sellable);
+            $elapsedSeconds = max(0, (int) $updatedAt->diffInSeconds($now));
+
+            $dueItems[] = [
+                'shop_stock_id'         => (int) $latestBatch->id,
+                'item_id'               => (int) $itemId,
+                'name'                  => $item?->item_name ?? 'Product',
+                'meta'                  => implode(' · ', $metaParts),
+                'image_url'             => $item && $item->image_path ? asset('media/' . $item->image_path) : null,
+                'unit'                  => $item?->unit?->symbol ?? 'pcs',
+                'remaining_qty'         => (int) $batches->sum('remaining_quantity'),
+                'batches_count'         => $batches->count(),
+                'buying_price'          => $buyingPrice,
+                'selling_price'         => $sellingPrice,
+                'pending_selling_price' => $pendingSellingPrice,
+                'suggested_price'       => max($sellingPrice, $buyingPrice),
+                'is_sellable'           => $isSellable,
+                'is_below_cost'         => $sellingPrice < $buyingPrice,
+                'action_url'            => $isIndependent
+                    ? route('shop-stock.update-price', $latestBatch)
+                    : route('shop-stock.approve-price', $latestBatch),
+                'action_method'         => $isIndependent ? 'PATCH' : 'POST',
+                'updated_at_ts'         => $updatedAtTs,
+                'updated_at_display'    => $updatedAt->format('M d, Y · h:i A'),
+                'elapsed_seconds'       => $elapsedSeconds,
+                'elapsed_human'         => $this->formatPriceElapsedDuration($elapsedSeconds),
+            ];
+        }
+
+        $customRingtone = Setting::get('notification_sound_user_' . $user->id);
+        $ringtoneUrl = null;
+        if ($customRingtone && Storage::disk('public')->exists($customRingtone)) {
+            $ringtoneUrl = asset('media/' . $customRingtone);
+        }
+
+        return response()->json([
+            'due_items'     => $dueItems,
+            'total_pending' => $grouped->count(),
+            'pricing_mode'  => $pricingMode,
+            'shop_name'     => $user->shop?->shop_name ?? 'Your Branch',
+            'ringtone_url'  => $ringtoneUrl,
+            'index_url'     => route('shop-stock.index'),
+            'server_now_ts' => $now->timestamp,
+        ]);
+    }
+
+    /**
+     * Snooze pending price-change popup reminders for 1 hour for the current Shop Admin.
+     */
+    public function dismissPriceReminders(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->isShopAdmin() || !$user->shop_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validated = $request->validate([
+            'items'                 => 'required|array|min:1',
+            'items.*.item_id'       => 'required|integer',
+            'items.*.updated_at_ts' => 'required|integer',
+        ]);
+
+        $snoozeUntil = now()->addHour();
+        $validItemIds = ShopStock::where('shop_id', $user->shop_id)
+            ->where('is_price_pending', true)
+            ->whereIn('item_id', collect($validated['items'])->pluck('item_id')->all())
+            ->pluck('item_id')
+            ->unique()
+            ->all();
+
+        foreach ($validated['items'] as $entry) {
+            $itemId = (int) $entry['item_id'];
+            if (!in_array($itemId, $validItemIds, true)) {
+                continue;
+            }
+            $updatedAtTs = (int) $entry['updated_at_ts'];
+            $cacheKey = "shop_price_reminder_snooze_{$user->id}_{$itemId}_{$updatedAtTs}";
+            Cache::put($cacheKey, $snoozeUntil->timestamp, $snoozeUntil);
+        }
+
+        return response()->json([
+            'success'        => true,
+            'snoozed_until'  => $snoozeUntil->timestamp,
+            'snooze_minutes' => 60,
+        ]);
+    }
+
+    /**
+     * Helper: format elapsed seconds into a clear human-readable duration.
+     */
+    private function formatPriceElapsedDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return 'Just now';
+        }
+
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        $parts = [];
+        if ($days > 0) {
+            $parts[] = $days . ' ' . ($days === 1 ? 'day' : 'days');
+        }
+        if ($hours > 0) {
+            $parts[] = $hours . ' ' . ($hours === 1 ? 'hr' : 'hrs');
+        }
+        if ($days === 0 && $minutes > 0) {
+            $parts[] = $minutes . ' ' . ($minutes === 1 ? 'min' : 'mins');
+        }
+
+        return implode(', ', $parts) ?: 'Less than a minute';
     }
 }
 

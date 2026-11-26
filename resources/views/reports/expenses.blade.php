@@ -1,24 +1,47 @@
 @extends('layouts.app')
 @section('title', 'Expenses Report')
-@section('page-title', 'Expenses Breakdown Report')
+@section('page-title', 'Expenses Report')
 @section('breadcrumb')
 <li class="breadcrumb-item active">Expenses Report</li>
 @endsection
+
+@push('styles')
+@include('reports._styles')
+@endpush
+
 @section('content')
-<div class="card mb-4">
-    <div class="card-body py-2">
+{{-- Compact Header --}}
+<div class="rpt-header">
+    <div class="rpt-title-row">
+        <h5 class="rpt-title">
+            <i class="bi bi-wallet2 text-danger me-1"></i>Expenses Breakdown
+        </h5>
+        <span class="rpt-pill" style="background:rgba(225,29,72,.08);color:#e11d48;">
+            <i class="bi bi-calendar3"></i>{{ ucfirst($period) }}
+        </span>
+    </div>
+    <div class="rpt-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
+            <i class="bi bi-envelope-at"></i> Send via Email
+        </button>
+    </div>
+</div>
+
+{{-- Filter Bar --}}
+<div class="rpt-card mb-3">
+    <div class="p-3">
         <form method="GET" action="{{ route('reports.expenses') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Time Period</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Period</label>
                 <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Daily (Today)</option>
-                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>Monthly (This Month)</option>
-                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>Yearly (This Year)</option>
-                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
+                    <option value="daily" {{ $period === 'daily' ? 'selected' : '' }}>Today</option>
+                    <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>This Month</option>
+                    <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>This Year</option>
+                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom Range</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Category</label>
+            <div class="col-6 col-md-3">
+                <label class="rpt-filter-label">Category</label>
                 <select name="expense_category_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Categories</option>
                     @foreach($categories as $cat)
@@ -27,8 +50,8 @@
                 </select>
             </div>
             @if(auth()->user()->isOwner())
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-12 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Shops</option>
                     <option value="owner" {{ request('shop_id') === 'owner' ? 'selected' : '' }}>Main Store (Owner)</option>
@@ -38,71 +61,67 @@
                 </select>
             </div>
             @else
-            <div class="col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem;">Filter Shop</label>
+            <div class="col-12 col-md-3">
+                <label class="rpt-filter-label">Shop</label>
                 <select name="shop_id" class="form-select form-select-sm" disabled>
                     <option value="{{ auth()->user()->shop_id }}" selected>{{ auth()->user()->shop?->shop_name ?? 'My Shop' }}</option>
                 </select>
             </div>
             @endif
             @if($period === 'custom')
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">From</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">From</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label mb-1" style="font-size:.75rem;">To</label>
+            <div class="col-6 col-md-2">
+                <label class="rpt-filter-label">To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
             </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-sm btn-accent w-100">Apply</button>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-sm btn-accent w-100" style="height:31px;">Apply</button>
             </div>
             @endif
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#emailReportModal">
-                    <i class="bi bi-envelope-at"></i>
-                    <span>Send via Email</span>
-                </button>
-            </div>
         </form>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #e94560 !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Expenses ({{ ucfirst($period) }})</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">TZS {{ number_format($totalAmount, 0) }}</h3>
-                </div>
-                <div class="fs-2" style="color: #e94560; opacity: 0.25;"><i class="bi bi-wallet2"></i></div>
-            </div>
+{{-- Executive KPI Cards --}}
+<div class="rpt-kpi-grid rpt-kpi-grid-2">
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(225,29,72,.1);color:#e11d48;">
+            <i class="bi bi-wallet2"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Total Expenses ({{ ucfirst($period) }})</p>
+            <div class="rpt-kpi-val is-currency" style="color:#e11d48;">TZS {{ number_format($totalAmount, 0) }}</div>
+            <div class="rpt-kpi-sub">Approved expenditure</div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm bg-white h-100 premium-stat-card" style="border-left: 4px solid #bc8cff !important;">
-            <div class="card-body d-flex align-items-center justify-content-between py-3">
-                <div>
-                    <h6 class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Expense Transactions</h6>
-                    <h3 class="mb-0 fw-800 text-dark" style="font-size: 1.6rem;">{{ $expenses->count() }}</h3>
-                </div>
-                <div class="fs-2" style="color: #bc8cff; opacity: 0.25;"><i class="bi bi-receipt-cutoff"></i></div>
-            </div>
+
+    <div class="rpt-kpi-card">
+        <div class="rpt-kpi-icon" style="background:rgba(124,58,237,.12);color:#7c3aed;">
+            <i class="bi bi-receipt-cutoff"></i>
+        </div>
+        <div class="rpt-kpi-body">
+            <p class="rpt-kpi-label">Transactions</p>
+            <div class="rpt-kpi-val" style="color:#7c3aed;">{{ number_format($expenses->count()) }}</div>
+            <div class="rpt-kpi-sub">{{ $expensesByCategory->count() }} active categories</div>
         </div>
     </div>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-tags-fill me-2 text-warning"></i><strong class="fw-700">Expenses by Category</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="expensesByCategoryTable">
+<div class="rpt-card mb-4">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-tags-fill text-warning"></i>Expenses by Category</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="expensesByCategoryTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="1">Category Name</th>
-                    <th data-priority="2">Transactions</th>
-                    <th data-priority="1">Total Expenses</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="1" class="all primary-col">Category Name</th>
+                    <th data-priority="2" class="min-tablet-l">Transactions</th>
+                    <th data-priority="1" class="min-tablet-l">Total Expenses</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,19 +142,21 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-list-check me-2 text-accent"></i><strong class="fw-700">Expenses Log</strong></div>
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="reportsExpensesTable">
+<div class="rpt-card">
+    <div class="rpt-card-header">
+        <h6 class="rpt-card-title"><i class="bi bi-list-check text-accent"></i>Expenses Log</h6>
+    </div>
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="reportsExpensesTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="2">Date</th>
-                    <th data-priority="2">Category</th>
-                    <th data-priority="3">Activity</th>
-                    <th data-priority="4">Recorded By</th>
-                    <th data-priority="4">Approved By</th>
-                    <th data-priority="1">Amount</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="2" class="min-tablet-l">Date</th>
+                    <th data-priority="1" class="all primary-col">Category</th>
+                    <th data-priority="3" class="min-tablet-l">Activity</th>
+                    <th data-priority="4" class="min-tablet-l">Recorded By</th>
+                    <th data-priority="4" class="min-tablet-l">Approved By</th>
+                    <th data-priority="2" class="min-tablet-l">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -286,6 +307,16 @@ $(() => {
                     });
                 }
             }
+        });
+    }
+
+    if ($('#expensesByCategoryTable tbody tr').length > 0 && !$('#expensesByCategoryTable tbody tr td[colspan]').length) {
+        $('#expensesByCategoryTable').DataTable({
+            paging: false,
+            searching: false,
+            info: false,
+            ordering: false,
+            dom: 'rt'
         });
     }
 

@@ -1,13 +1,147 @@
 @extends('layouts.app')
 @section('title', 'Finished Stocks')
-@section('page-title', 'Finished Stocks (Out of Stock)')
+@section('page-title', 'Finished Stocks')
 @section('breadcrumb')
 <li class="breadcrumb-item"><a href="{{ route('shop-stock.index') }}">Shop Stock</a></li>
 <li class="breadcrumb-item active">Finished Stocks</li>
 @endsection
 
-@section('content')
+@push('styles')
 <style>
+    /* ══════════════════════════════════════════════
+       FINISHED STOCKS — EXECUTIVE & RESPONSIVE
+       ══════════════════════════════════════════════ */
+    .fs-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .fs-title-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .55rem;
+    }
+    .fs-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary, #0f172a);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .fs-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .32rem;
+        padding: .18rem .6rem;
+        border-radius: 50px;
+        background: rgba(220, 38, 38, .08);
+        color: #dc2626;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .fs-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    /* ── Executive KPI Grid (Matches /stock-reorder) ── */
+    .fs-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.1rem;
+    }
+    .fs-kpi-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .fs-kpi-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        padding: .95rem 1.05rem;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        min-width: 0;
+        height: 100%;
+    }
+    .fs-kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+    }
+    .fs-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.12rem;
+        flex-shrink: 0;
+    }
+    .fs-kpi-body {
+        min-width: 0;
+        flex: 1;
+    }
+    .fs-kpi-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        color: var(--text-secondary, #64748b);
+        margin: 0 0 .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .fs-kpi-val {
+        font-size: clamp(1rem, 1.4vw, 1.28rem);
+        font-weight: 800;
+        line-height: 1.18;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .fs-kpi-sub {
+        font-size: .7rem;
+        color: #94a3b8;
+        margin-top: .18rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Filter & Table Cards ── */
+    .fs-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--card-border, #e2e8f0);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+    }
+    .fs-filter-label {
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-secondary, #64748b);
+        margin-bottom: .3rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+    }
+
     #finishedStockTable .bi {
         font-size: 0.78rem !important;
     }
@@ -20,49 +154,116 @@
         font-size: 0.76rem !important;
         line-height: 1.3 !important;
     }
-    .hover-lift {
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+
+    @media (max-width: 991.98px) {
+        .fs-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .65rem;
+        }
+        .fs-kpi-action {
+            grid-column: 1 / -1;
+        }
     }
-    .hover-lift:hover {
-        transform: translateY(-1.5px) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+    @media (max-width: 575.98px) {
+        .fs-controls {
+            width: 100%;
+        }
+        .fs-controls .btn {
+            flex: 1;
+            justify-content: center;
+        }
+        .fs-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .fs-kpi-card {
+            padding: .85rem .9rem;
+            gap: .7rem;
+            border-radius: 12px;
+        }
+        .fs-kpi-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
     }
 </style>
+@endpush
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-    <div>
-        <h5 class="mb-0 fw-700" style="color: var(--text-primary); font-size: 1.25rem;">Finished Stocks</h5>
-        <small style="color: var(--text-secondary); font-size: 0.82rem;">Products with zero total remaining quantity across all batches. Easily review sales velocity and restock.</small>
+@section('content')
+@php
+    $activeShopLabel = auth()->user()->isOwner()
+        ? ($shopId ? ($shops->firstWhere('id', $shopId)?->shop_name ?? 'Selected Shop') : 'All Shops')
+        : (auth()->user()->shop?->shop_name ?? 'My Branch');
+@endphp
+
+{{-- Compact Header --}}
+<div class="fs-header">
+    <div class="fs-title-row">
+        <h5 class="fs-title">
+            <i class="bi bi-archive-fill text-danger me-1"></i>Finished Stocks
+        </h5>
+        <span class="fs-pill">
+            <i class="bi bi-exclamation-circle"></i>Out of Stock
+        </span>
     </div>
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <a href="{{ route('shop-stock.index') }}" class="btn btn-sm btn-outline-secondary fw-600 rounded-3 shadow-xs hover-lift d-inline-flex align-items-center px-3 py-1.5" style="font-size: 0.82rem;">
-            <i class="bi bi-arrow-left me-1.5"></i> Back to Shop Stocks
+
+    <div class="fs-controls">
+        <a href="{{ route('reorder.index', $shopId ? ['shop_id' => $shopId] : []) }}" class="btn btn-sm btn-accent shadow-sm" style="height:34px;border-radius:9px;display:inline-flex;align-items:center;gap:.35rem;">
+            <i class="bi bi-magic"></i> Reorder
+        </a>
+        <a href="{{ route('shop-stock.index') }}" class="btn btn-sm btn-outline-custom" style="height:34px;border-radius:9px;display:inline-flex;align-items:center;gap:.35rem;">
+            <i class="bi bi-arrow-left"></i> Shop Stocks
         </a>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="stat-card premium-stat-card p-3 d-flex align-items-center gap-3" style="border-left: 4px solid var(--accent-red) !important;">
-            <div class="stat-icon mb-0 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.12); color: var(--accent-red); width: 42px; height: 42px; font-size: 1.1rem; border-radius: 10px; flex-shrink: 0;">
-                <i class="bi bi-archive-fill"></i>
-            </div>
-            <div>
-                <div class="stat-value mb-0 text-danger" style="font-size: 1.35rem; font-weight: 800; line-height: 1.2;">{{ number_format($finishedCount) }}</div>
-                <div class="stat-label text-muted" style="font-size: 0.75rem; font-weight: 600;">Total Finished Products</div>
-            </div>
+{{-- Executive KPI Cards --}}
+<div class="fs-kpi-grid">
+    <div class="fs-kpi-card">
+        <div class="fs-kpi-icon" style="background:rgba(220,38,38,.1);color:#dc2626;">
+            <i class="bi bi-archive-fill"></i>
+        </div>
+        <div class="fs-kpi-body">
+            <p class="fs-kpi-label">Finished Products</p>
+            <div class="fs-kpi-val" style="color:#dc2626;">{{ number_format($finishedCount) }}</div>
+            <div class="fs-kpi-sub">0 units remaining</div>
         </div>
     </div>
+
+    <div class="fs-kpi-card">
+        <div class="fs-kpi-icon" style="background:rgba(0,119,182,.1);color:#0077b6;">
+            <i class="bi bi-shop"></i>
+        </div>
+        <div class="fs-kpi-body">
+            <p class="fs-kpi-label">Branch Scope</p>
+            <div class="fs-kpi-val" style="color:#0077b6;">{{ $activeShopLabel }}</div>
+            <div class="fs-kpi-sub">Currently filtered view</div>
+        </div>
+    </div>
+
+    <a href="{{ route('reorder.index', $shopId ? ['shop_id' => $shopId] : []) }}" class="fs-kpi-link fs-kpi-action">
+        <div class="fs-kpi-card">
+            <div class="fs-kpi-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+                <i class="bi bi-lightning-charge-fill"></i>
+            </div>
+            <div class="fs-kpi-body">
+                <p class="fs-kpi-label">Replenishment</p>
+                <div class="fs-kpi-val" style="color:#059669;">Smart Reorder</div>
+                <div class="fs-kpi-sub">Order or transfer stock &rarr;</div>
+            </div>
+        </div>
+    </a>
 </div>
 
-<!-- Filter Bar -->
-<div class="card mb-3 border-0 shadow-sm" style="background:var(--card-bg); border:1px solid var(--card-border) !important; border-radius:12px;">
-    <div class="card-body py-2.5 px-3">
-        <div class="row g-2 align-items-center">
+{{-- Filter Bar --}}
+<div class="fs-card mb-3">
+    <div class="p-3">
+        <div class="row g-2 align-items-end">
             @if(auth()->user()->isOwner())
             <div class="col-12 col-sm-6 col-md-3">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
-                    <i class="bi bi-shop me-1 text-accent"></i>Filter by Shop
+                <label for="filterShop" class="fs-filter-label">
+                    <i class="bi bi-shop text-accent"></i>Shop
                 </label>
                 <form method="GET" action="{{ route('shop-stock.finished') }}" id="shopFilterForm">
                     <select name="shop_id" id="filterShop" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -75,8 +276,8 @@
             </div>
             @endif
             <div class="col-12 col-sm-6 {{ auth()->user()->isOwner() ? 'col-md-3' : 'col-md-4' }}">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
-                    <i class="bi bi-tag me-1 text-accent"></i>Filter by Category
+                <label for="filterCategory" class="fs-filter-label">
+                    <i class="bi bi-tag text-accent"></i>Category
                 </label>
                 <select id="filterCategory" class="form-select form-select-sm">
                     <option value="">All Categories</option>
@@ -86,8 +287,8 @@
                 </select>
             </div>
             <div class="col-12 col-sm-6 {{ auth()->user()->isOwner() ? 'col-md-4' : 'col-md-5' }}">
-                <label class="form-label mb-1" style="font-size:.75rem; color:var(--text-secondary); font-weight:600;">
-                    <i class="bi bi-box-seam me-1 text-accent"></i>Filter by Product
+                <label for="filterProduct" class="fs-filter-label">
+                    <i class="bi bi-box-seam text-accent"></i>Product
                 </label>
                 <select id="filterProduct" class="form-select form-select-sm">
                     <option value="">All Products</option>
@@ -96,8 +297,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-12 {{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }} d-flex gap-2 justify-content-md-end align-items-end mt-2 mt-md-0" style="padding-top: 1.25rem;">
-                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100 w-md-auto" title="Reset Filters">
+            <div class="col-12 {{ auth()->user()->isOwner() ? 'col-md-2' : 'col-md-3' }}">
+                <button type="button" id="btnResetFilters" class="btn btn-sm btn-outline-custom w-100" style="height:31px;" title="Reset Filters">
                     <i class="bi bi-arrow-clockwise me-1"></i>Reset
                 </button>
             </div>
@@ -105,23 +306,23 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="finishedStockTable">
+<div class="fs-card">
+    <div class="p-3 p-md-4">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="finishedStockTable">
             <thead>
                 <tr>
-                    <th data-priority="1" class="text-center" style="width: 45px;">#</th>
-                    <th data-priority="3">Shop</th>
-                    <th data-priority="1">Product</th>
-                    <th data-priority="3">Category</th>
-                    <th data-priority="4">Initial Qty</th>
-                    <th data-priority="2">Remaining Qty</th>
-                    <th data-priority="3">Average Sales</th>
+                    <th data-priority="1" class="all iter-col text-center" style="width: 45px;">#</th>
+                    <th data-priority="3" class="min-tablet-l">Shop</th>
+                    <th data-priority="1" class="all primary-col">Product</th>
+                    <th data-priority="3" class="min-tablet-l">Category</th>
+                    <th data-priority="4" class="min-tablet-l">Initial Qty</th>
+                    <th data-priority="2" class="min-tablet-l">Remaining Qty</th>
+                    <th data-priority="3" class="min-tablet-l">Average Sales</th>
                     @if(auth()->user()->isOwner() || auth()->user()->isShopAdmin())
-                    <th data-priority="4">Buying Price</th>
+                    <th data-priority="4" class="min-tablet-l">Buying Price</th>
                     @endif
-                    <th data-priority="2">Selling Price</th>
-                    <th data-priority="3" class="no-sort text-end" style="min-width: 100px;">Actions</th>
+                    <th data-priority="2" class="min-tablet-l">Selling Price</th>
+                    <th data-priority="3" class="min-tablet-l no-sort text-end" style="min-width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -135,8 +336,8 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background:var(--card-bg); border:1px solid var(--card-border); color:var(--text-primary);">
             <div class="modal-header" style="border-bottom:1px solid var(--card-border);">
-                <h5 class="modal-title fw-700" id="quickRestockModalLabel"><i class="bi bi-plus-circle text-success me-2"></i>Quick Restock Product</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title fw-700" id="quickRestockModalLabel"><i class="bi bi-plus-circle text-success me-2"></i>Quick Restock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ route('shop-stock.quick-restock') }}" method="POST" id="quickRestockForm">
                 @csrf
@@ -148,9 +349,9 @@
                 <input type="hidden" name="is_admin_stock" id="restockIsAdminStock">
 
                 <div class="modal-body">
-                    <div class="p-3 mb-3 rounded" style="background:rgba(255,255,255,0.03); border:1px solid var(--card-border);">
-                        <div class="fw-bold fs-6 text-white" id="restockItemName">Product Name</div>
-                        <small class="text-secondary" id="restockDetailsHelp">Restocking item back into active inventory</small>
+                    <div class="p-3 mb-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                        <div class="fw-bold fs-6" style="color:var(--text-primary);" id="restockItemName">Product Name</div>
+                        <small class="text-secondary" id="restockDetailsHelp">Add stock back into active inventory</small>
                     </div>
 
                     @if(auth()->user()->isOwner())

@@ -295,8 +295,8 @@ class StockTransferController extends Controller
     }
 
     /**
-     * Owner: Store a direct stock assignment to shop.
-     * Deducts from main warehouse (FIFO), creates transfer with pending_receipt status.
+     * Owner: Store direct stock assignment to one or multiple shops.
+     * Deducts from main warehouse (FIFO), creates one transfer per target shop with pending_receipt status.
      */
     public function store(Request $request)
     {
@@ -304,101 +304,210 @@ class StockTransferController extends Controller
         if ($idempotencyKey) {
             $existingId = \Illuminate\Support\Facades\Cache::get("idempotency_transfer_{$idempotencyKey}");
             if ($existingId) {
-                return redirect()->route('transfers.show', $existingId)
+                return redirect()->route('stock-transfers.index')
                     ->with('success', 'Stock transfer already submitted!');
             }
         }
 
-        $request->validate([
-            'idempotency_key' => 'nullable|string|max:64',
-            'shop_id'       => 'required|exists:shops,id',
-            'items'         => 'required|array|min:1',
-            'items.*.id'    => 'required|exists:items,id',
-            'items.*.qty'   => 'required|integer|min:1',
-        ]);
+        $allocationsByShop = [];
+        $totalRequestedByItem = [];
+        $normalizedShopIds = [];
 
-        $shopId = $request->shop_id;
-        $shop   = Shop::findOrFail($shopId);
+        // Mode A: Independent per-shop product lists (`dispatches[shop_id][items][...]` )
+        if ($request->filled('dispatches') && is_array($request->input('dispatches'))) {
+            $request->validate([
+                'idempotency_key'              => 'nullable|string|max:64',
+                'dispatches'                   => 'required|array|min:1',
+                'dispatches.*.shop_id'         => 'required|integer|exists:shops,id',
+                'dispatches.*.items'           => 'required|array|min:1',
+                'dispatches.*.items.*.id'      => 'required|integer|exists:items,id',
+                'dispatches.*.items.*.qty'     => 'required|integer|min:1',
+            ], [
+                'dispatches.required'          => 'Please select at least one destination shop and add products.',
+                'dispatches.*.items.required'  => 'Each selected shop must have at least one product.',
+            ]);
 
-        // Validate stock availability for each item
-        foreach ($request->items as $entry) {
-            $available = MainStock::where('item_id', $entry['id'])
-                ->sum('remaining_quantity');
+            foreach ($request->input('dispatches') as $dispatchEntry) {
+                $shopId = (int) ($dispatchEntry['shop_id'] ?? 0);
+                if ($shopId <= 0) {
+                    continue;
+                }
+                $normalizedShopIds[] = $shopId;
 
-            if ($available < $entry['qty']) {
-                $item = Item::find($entry['id']);
+                foreach ($dispatchEntry['items'] ?? [] as $entry) {
+                    $itemId = (int) ($entry['id'] ?? 0);
+                    $qty    = (int) ($entry['qty'] ?? 0);
+                    if ($itemId <= 0 || $qty <= 0) {
+                        continue;
+                    }
+                    $allocationsByShop[$shopId][$itemId] = ($allocationsByShop[$shopId][$itemId] ?? 0) + $qty;
+                    $totalRequestedByItem[$itemId] = ($totalRequestedByItem[$itemId] ?? 0) + $qty;
+                }
+            }
+
+            $normalizedShopIds = array_values(array_unique($normalizedShopIds));
+        } else {
+            // Mode B: Shared-products multi-shop (`shop_ids[]` + `items[][shop_qtys]`) OR single-shop (`shop_id` + `items[][qty]`)
+            $rawShopIds = $request->input('shop_ids');
+            if (!is_array($rawShopIds) || empty($rawShopIds)) {
+                $singleShopId = $request->input('shop_id');
+                $rawShopIds = $singleShopId ? [$singleShopId] : [];
+            }
+            $normalizedShopIds = array_values(array_unique(array_filter(array_map('intval', $rawShopIds), fn ($id) => $id > 0)));
+            $request->merge(['shop_ids' => $normalizedShopIds]);
+
+            $request->validate([
+                'idempotency_key'        => 'nullable|string|max:64',
+                'shop_ids'               => 'required|array|min:1',
+                'shop_ids.*'             => 'required|integer|exists:shops,id',
+                'items'                  => 'required|array|min:1',
+                'items.*.id'             => 'required|integer|exists:items,id',
+                'items.*.qty'            => 'nullable|integer|min:0',
+                'items.*.shop_qtys'      => 'nullable|array',
+                'items.*.shop_qtys.*'    => 'nullable|integer|min:0',
+            ], [
+                'shop_ids.required' => 'Please select at least one destination shop.',
+                'shop_ids.min'      => 'Please select at least one destination shop.',
+            ]);
+
+            foreach ($request->items as $entry) {
+                $itemId = (int) $entry['id'];
+                $hasPerShopQtys = isset($entry['shop_qtys']) && is_array($entry['shop_qtys']) && !empty($entry['shop_qtys']);
+                $defaultQty = isset($entry['qty']) ? (int) $entry['qty'] : 0;
+
+                foreach ($normalizedShopIds as $shopId) {
+                    $qtyForShop = $hasPerShopQtys
+                        ? (int) ($entry['shop_qtys'][$shopId] ?? $entry['shop_qtys'][(string) $shopId] ?? 0)
+                        : $defaultQty;
+
+                    if ($qtyForShop <= 0) {
+                        continue;
+                    }
+
+                    $allocationsByShop[$shopId][$itemId] = ($allocationsByShop[$shopId][$itemId] ?? 0) + $qtyForShop;
+                    $totalRequestedByItem[$itemId] = ($totalRequestedByItem[$itemId] ?? 0) + $qtyForShop;
+                }
+            }
+        }
+
+        $shops = Shop::whereIn('id', $normalizedShopIds)->get()->keyBy('id');
+
+        if (empty($allocationsByShop) || empty($totalRequestedByItem)) {
+            return back()->withInput()->withErrors([
+                'items' => 'Please enter a dispatch quantity of at least 1 for at least one product and shop.',
+            ]);
+        }
+
+        // Validate aggregate warehouse availability across ALL selected shops before modifying stock
+        foreach ($totalRequestedByItem as $itemId => $totalQty) {
+            $available = (int) MainStock::where('item_id', $itemId)->sum('remaining_quantity');
+            if ($available < $totalQty) {
+                $item = Item::find($itemId);
+                $itemName = $item?->item_name ?? "Item #{$itemId}";
                 return back()->withInput()->withErrors([
-                    'items' => "Insufficient stock for \"{$item->item_name}\". Available: {$available}, Requested: {$entry['qty']}.",
+                    'items' => "Insufficient stock for \"{$itemName}\". Available in Main Warehouse: {$available}, Total requested across selected shop(s): {$totalQty}.",
                 ]);
             }
         }
 
-        DB::transaction(function () use ($request, $shop, $shopId, $idempotencyKey) {
-            // Create the transfer record
-            $transfer = StockTransfer::create([
-                'from_store'    => 'Main Warehouse',
-                'to_shop'       => $shopId,
-                'approved_by'   => Auth::id(),
-                'request_id'    => null,
-                'transfer_date' => now()->toDateString(),
-                'status'        => 'pending_receipt',
-            ]);
+        $createdTransfers = [];
 
-            foreach ($request->items as $entry) {
-                $itemId = $entry['id'];
-                $qty    = $entry['qty'];
-
-                // Get the latest main stock for pricing info
-                $mainStock = MainStock::where('item_id', $itemId)
+        DB::transaction(function () use ($allocationsByShop, $totalRequestedByItem, $shops, $idempotencyKey, &$createdTransfers) {
+            // Capture latest warehouse batch pricing per item before deductions run
+            $itemPricing = [];
+            foreach (array_keys($totalRequestedByItem) as $itemId) {
+                $latestBatch = MainStock::where('item_id', $itemId)
                     ->where('remaining_quantity', '>', 0)
                     ->orderByDesc('date_received')
+                    ->orderByDesc('id')
                     ->first();
 
-                // Deduct from main warehouse (FIFO)
-                $this->deductMainStock($itemId, $qty);
-
-                // Create transfer item with pending status
-                StockTransferItem::create([
-                    'transfer_id'   => $transfer->id,
-                    'item_id'       => $itemId,
-                    'quantity'      => $qty,
-                    'buying_price'  => $mainStock?->buying_price ?? 0,
-                    'selling_price' => $mainStock?->selling_price ?? 0,
-                    'status'        => 'pending',
-                ]);
-
-                // Audit log: dispatched
-                StockLog::create([
-                    'item_id'          => $itemId,
-                    'from_location'    => 'Main Warehouse',
-                    'to_location'      => $shop->shop_name,
-                    'quantity'         => $qty,
-                    'transaction_type' => 'STOCK_TRANSFER',
-                    'performed_by'     => Auth::id(),
-                    'date'             => now()->toDateString(),
-                    'notes'            => "Direct stock assignment to {$shop->shop_name} (Transfer #{$transfer->id})",
-                ]);
+                $itemPricing[$itemId] = [
+                    'buying_price'  => $latestBatch?->buying_price ?? 0,
+                    'selling_price' => $latestBatch?->selling_price ?? 0,
+                ];
             }
 
-            // Notify all shop admins of the target shop
-            $shopAdmins = \App\Models\User::where('shop_id', $shopId)
-                ->where('role', 'shop_admin')
-                ->get();
-            foreach ($shopAdmins as $admin) {
-                \App\Models\Notification::create([
-                    'user_id' => $admin->id,
-                    'title'   => 'New Stock Transfer Dispatched',
-                    'message' => "Owner has dispatched a new stock transfer #{$transfer->id} to your shop ({$shop->shop_name}). Please review and confirm receipt.",
+            foreach ($allocationsByShop as $shopId => $itemsMap) {
+                $shop = $shops->get($shopId);
+                if (!$shop || empty($itemsMap)) {
+                    continue;
+                }
+
+                // Create a dedicated transfer record for this destination shop
+                $transfer = StockTransfer::create([
+                    'from_store'    => 'Main Warehouse',
+                    'to_shop'       => $shopId,
+                    'approved_by'   => Auth::id(),
+                    'request_id'    => null,
+                    'transfer_date' => now()->toDateString(),
+                    'status'        => 'pending_receipt',
                 ]);
+
+                foreach ($itemsMap as $itemId => $qty) {
+                    // Deduct from main warehouse (FIFO)
+                    $this->deductMainStock($itemId, $qty);
+
+                    // Create transfer item with pending status
+                    StockTransferItem::create([
+                        'transfer_id'   => $transfer->id,
+                        'item_id'       => $itemId,
+                        'quantity'      => $qty,
+                        'buying_price'  => $itemPricing[$itemId]['buying_price'] ?? 0,
+                        'selling_price' => $itemPricing[$itemId]['selling_price'] ?? 0,
+                        'status'        => 'pending',
+                    ]);
+
+                    // Audit log: dispatched
+                    StockLog::create([
+                        'item_id'          => $itemId,
+                        'from_location'    => 'Main Warehouse',
+                        'to_location'      => $shop->shop_name,
+                        'quantity'         => $qty,
+                        'transaction_type' => 'STOCK_TRANSFER',
+                        'performed_by'     => Auth::id(),
+                        'date'             => now()->toDateString(),
+                        'notes'            => "Direct stock assignment to {$shop->shop_name} (Transfer #{$transfer->id})",
+                    ]);
+                }
+
+                // Notify all shop admins of this target shop
+                $shopAdmins = \App\Models\User::where('shop_id', $shopId)
+                    ->where('role', 'shop_admin')
+                    ->get();
+                foreach ($shopAdmins as $admin) {
+                    \App\Models\Notification::create([
+                        'user_id' => $admin->id,
+                        'title'   => 'New Stock Transfer Dispatched',
+                        'message' => "Owner has dispatched a new stock transfer #{$transfer->id} to your shop ({$shop->shop_name}). Please review and confirm receipt.",
+                    ]);
+                }
+
+                $createdTransfers[] = [
+                    'id'        => $transfer->id,
+                    'shop_name' => $shop->shop_name,
+                ];
             }
 
-            if ($idempotencyKey) {
-                \Illuminate\Support\Facades\Cache::put("idempotency_transfer_{$idempotencyKey}", $transfer->id, now()->addMinutes(10));
+            if ($idempotencyKey && !empty($createdTransfers)) {
+                \Illuminate\Support\Facades\Cache::put(
+                    "idempotency_transfer_{$idempotencyKey}",
+                    $createdTransfers[0]['id'],
+                    now()->addMinutes(10)
+                );
             }
         });
 
-        return redirect()->route('stock-transfers.index')
-            ->with('success', "Stock dispatched to {$shop->shop_name} successfully. Awaiting shop admin receipt confirmation.");
+        $count = count($createdTransfers);
+        if ($count === 1) {
+            $msg = "Stock dispatched to {$createdTransfers[0]['shop_name']} successfully (Transfer #{$createdTransfers[0]['id']}). Awaiting shop admin receipt confirmation.";
+        } else {
+            $shopNames = implode(', ', array_column($createdTransfers, 'shop_name'));
+            $transferIds = implode(', ', array_map(fn ($t) => '#' . $t['id'], $createdTransfers));
+            $msg = "Stock dispatched to {$count} shops ({$shopNames} — Transfers {$transferIds}) successfully. Awaiting shop admin receipt confirmation.";
+        }
+
+        return redirect()->route('stock-transfers.index')->with('success', $msg);
     }
 
     /**

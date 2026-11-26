@@ -65,14 +65,14 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 border-bottom d-flex align-items-center"><i class="bi bi-activity me-2 text-accent"></i><strong class="fw-700">System Activity Timeline</strong> <span class="badge badge-soft-secondary ms-2 small">Last 1000 logs</span></div>
     <div class="card-body p-3 p-md-4">
-        <table class="table table-hover align-middle w-100" id="activityLogsTable">
+        <table class="table table-hover align-middle w-100 dt-mobile-table" id="activityLogsTable">
             <thead>
                 <tr>
-                    <th data-priority="2" style="width: 150px;">Time</th>
-                    <th data-priority="1" style="width: 180px;">User</th>
-                    <th data-priority="2" style="width: 120px;">Action</th>
-                    <th data-priority="1">Activity Details</th>
-                    <th data-priority="3" style="width: 250px;">Origin Info</th>
+                    <th data-priority="2" class="min-tablet-l" style="width: 150px;">Time</th>
+                    <th data-priority="1" class="all compact-lead-col" style="width: 180px;">User</th>
+                    <th data-priority="2" class="min-tablet-l" style="width: 120px;">Action</th>
+                    <th data-priority="1" class="all primary-col">Activity Details</th>
+                    <th data-priority="3" class="min-tablet-l" style="width: 250px;">Origin Info</th>
                 </tr>
             </thead>
             <tbody>
@@ -130,7 +130,7 @@
                         </div>
                         @if($log->changes && is_array($log->changes))
                         <div class="mt-2" style="max-width: 500px;">
-                            <table class="table table-sm table-bordered mb-0" style="font-size: .75rem; border-color: var(--card-border) !important;">
+                            <table class="table table-sm table-bordered mb-0 mobile-fit-table" style="font-size: .75rem; border-color: var(--card-border) !important;">
                                 <thead style="background: rgba(255,255,255,0.03);">
                                     <tr>
                                         <th style="color:var(--text-secondary); width: 30%;">FIELD</th>
